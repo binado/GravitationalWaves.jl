@@ -309,6 +309,25 @@ end
     @test cdf(t, 20.0) + ccdf(t, 20.0) ≈ 1.0
 end
 
+@testset "BrokenPowerLaw and TruncatedPowerLaw quantile" begin
+    qs = (0.0, 0.01, 0.2, 0.5, 0.8, 0.99, 1.0)
+    d = GWDistributions.BrokenPowerLaw(1.5, 4.0, 35.0, 5.0, 120.0)
+    for q in qs
+        @test cdf(d, quantile(d, q)) ≈ q atol = 1.0e-12
+    end
+    @test quantile(d, 0.0) ≈ 5.0
+    @test quantile(d, 1.0) ≈ 120.0
+    # Continuous across the break, where the CDF equals `low_weight`.
+    @test quantile(d, d.low_weight) ≈ 35.0
+
+    for α in (-1.0, 0.0, 1.0, 2.3)
+        t = GWDistributions.TruncatedPowerLaw(α, 10.0, 5.0, 50.0)
+        for q in qs
+            @test cdf(t, quantile(t, q)) ≈ q atol = 1.0e-12
+        end
+    end
+end
+
 @testset "primary mass density is differentiable" begin
     for (build, x0) in (
             (v -> DefaultBBHPrimaryMass(; _primary_params(δm1 = v)...), 4.0),

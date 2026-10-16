@@ -51,6 +51,11 @@ function Distributions.ccdf(d::BrokenPowerLaw, value::Real)
     return (1 - d.low_weight) * ccdf(d.upper, value)
 end
 
+function Distributions.quantile(d::BrokenPowerLaw, q::Real)
+    q < d.low_weight && return quantile(d.lower, q / d.low_weight)
+    return quantile(d.upper, (q - d.low_weight) / (1 - d.low_weight))
+end
+
 function Random.rand(rng::AbstractRNG, d::BrokenPowerLaw)
     if rand(rng) <= d.low_weight
         return rand(rng, d.lower)

@@ -71,8 +71,8 @@ function Distributions.ccdf(d::TruncatedPowerLaw, value::Real)
     return _truncated_power_mass(d, value, d.high) / normalizer(d)
 end
 
-function _rand_scaled_power(rng::AbstractRNG, low::Real, high::Real, exponent::Real)
-    u = rand(rng)
+# Inverse CDF of the density ∝ x^exponent on [low, high] at probability `u`.
+function _quantile_scaled_power(u::Real, low::Real, high::Real, exponent::Real)
     a = exponent + 1
     if abs(a) <= _SQRT_EPS_FLOAT64
         return low * exp(u * log(high / low))
@@ -80,6 +80,14 @@ function _rand_scaled_power(rng::AbstractRNG, low::Real, high::Real, exponent::R
     return (low^a + u * (high^a - low^a))^(1 / a)
 end
 
+function _rand_scaled_power(rng::AbstractRNG, low::Real, high::Real, exponent::Real)
+    return _quantile_scaled_power(rand(rng), low, high, exponent)
+end
+
 function Random.rand(rng::AbstractRNG, d::TruncatedPowerLaw)
     return _rand_scaled_power(rng, d.low, d.high, -d.α)
+end
+
+function Distributions.quantile(d::TruncatedPowerLaw, q::Real)
+    return _quantile_scaled_power(q, d.low, d.high, -d.α)
 end

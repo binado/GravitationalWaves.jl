@@ -7,7 +7,8 @@ using JSON
             "run `uv run --project python python python/generate.py`"
         get(ENV, "CI", "") == "true" ? error(msg) : @warn msg
     else
-        cases = JSON.parsefile(file)["masses"]
+        fixtures = JSON.parsefile(file)
+        cases = fixtures["masses"]
         # Julia and Python can bind different libm `pow`s, so allow an ulp-level difference.
         rtol = 1.0e-14
         for c in cases
@@ -30,6 +31,16 @@ using JSON
                 else
                     @test isapprox(mass_2_and_chirp_mass_to_mass_ratio(m2, mc), expected; rtol)
                 end
+            end
+        end
+        @testset "spin frame" begin
+            for c in fixtures["spins"]
+                p = NamedTuple(Symbol(k) => v for (k, v) in c if k in ("mass_1", "mass_2", "theta_jn", "phase", "a_1", "a_2", "tilt_1", "tilt_2", "phi_12", "phi_jl"))
+                s = spins_to_lal_frame(p, c["f_ref"])
+                # bilby runs LAL's own transform. The port agrees to ~1e-14 on macOS; on Linux Julia's
+                # openlibm differs from the glibc LAL uses, and nearly-aligned cases (N̂ almost
+                # parallel to L̂, where the azimuth reference is ill-conditioned) amplify that.
+                @test collect(values(s)) ≈ c["spins"] atol = 1.0e-12
             end
         end
     end

@@ -17,6 +17,39 @@ OUT = HERE.parent / "reference"
 MASS_PAIRS = [(36.0, 29.0), (50.0, 20.0), (30.0, 30.0), (10.5, 1.4), (80.3, 12.1), (1.4, 1.35)]
 
 
+# Spin-frame cases: bilby parameter names, reference frequency in Hz.
+SPIN_CASES = [
+    {"mass_1": 36.0, "mass_2": 29.0, "theta_jn": 0.4, "phase": 1.3, "a_1": 0.3, "a_2": 0.2, "tilt_1": 0.0, "tilt_2": float(np.pi), "f_ref": 50.0},
+    {"mass_1": 40.0, "mass_2": 25.0, "theta_jn": 0.9, "phase": 2.1, "a_1": 0.6, "a_2": 0.4, "tilt_1": 0.7, "tilt_2": 1.9, "phi_12": 1.1, "phi_jl": 2.5, "f_ref": 30.0},
+    {"mass_1": 50.0, "mass_2": 20.0, "theta_jn": 1.2, "phase": 0.5, "a_1": 0.5, "a_2": 0.3, "tilt_1": 1.0, "tilt_2": 0.6, "phi_12": 0.3, "phi_jl": 4.0, "f_ref": 50.0},
+    {"mass_1": 10.5, "mass_2": 1.4, "theta_jn": 2.6, "phase": 5.0, "a_1": 0.9, "a_2": 0.05, "tilt_1": 2.9, "tilt_2": 0.2, "phi_12": 5.8, "phi_jl": 0.3, "f_ref": 20.0},
+    {"mass_1": 30.0, "mass_2": 30.0, "theta_jn": 0.05, "phase": 3.0, "a_1": 0.95, "a_2": 0.95, "tilt_1": 1.5, "tilt_2": 1.6, "phi_12": 3.1, "phi_jl": 6.0, "f_ref": 100.0},
+    {"mass_1": 80.3, "mass_2": 12.1, "theta_jn": 3.0, "phase": 0.0, "a_1": 0.2, "a_2": 0.7, "tilt_1": 0.4, "tilt_2": 2.4, "phi_12": 2.0, "phi_jl": 1.0, "f_ref": 40.0},
+]
+
+
+def write_spin_cases() -> list[dict]:
+    """bilby's `bilby_to_lalsimulation_spins` for each case in SPIN_CASES."""
+    out = []
+    for case in SPIN_CASES:
+        c = {"phi_12": 0.0, "phi_jl": 0.0} | case
+        spins = conv.bilby_to_lalsimulation_spins(
+            theta_jn=c["theta_jn"],
+            phi_jl=c["phi_jl"],
+            tilt_1=c["tilt_1"],
+            tilt_2=c["tilt_2"],
+            phi_12=c["phi_12"],
+            a_1=c["a_1"],
+            a_2=c["a_2"],
+            mass_1=c["mass_1"] * solar_mass,
+            mass_2=c["mass_2"] * solar_mass,
+            reference_frequency=c["f_ref"],
+            phase=c["phase"],
+        )
+        out.append({**c, "spins": [float(x) for x in spins]})  # iota, s1x, s1y, s1z, s2x, s2y, s2z
+    return out
+
+
 def finite_or_none(x) -> float | None:
     """bilby returns nan (numpy) or a complex number (Python floats) where its closed-form cubic
     root has no real solution; the fixtures record those cases as null."""
@@ -65,8 +98,8 @@ def write_conversion_cases() -> None:
             }
         )
     OUT.mkdir(exist_ok=True)
-    (OUT / "conversion.json").write_text(json.dumps({"masses": cases}, indent=1))
-    print(f"wrote conversion.json: {len(cases)} mass cases")
+    (OUT / "conversion.json").write_text(json.dumps({"masses": cases, "spins": write_spin_cases()}, indent=1))
+    print(f"wrote conversion.json: {len(cases)} mass cases, {len(SPIN_CASES)} spin cases")
 
 
 def main() -> None:

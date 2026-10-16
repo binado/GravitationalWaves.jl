@@ -8,7 +8,7 @@ A Julia package that calls LALSimulation frequency-domain waveforms directly via
 
 ## Repository layout
 
-Monorepo using a Julia workspace (root `Project.toml`): Julia packages live in `packages/`: `LALWaveforms` (LAL-backed waveforms) and `GWParameterConversion` (dependency-free, AD-friendly mass/spin/frame conversions ported from bilby; `LALWaveforms` depends on it via `[sources]`); the bilby fixture tooling (`cases.json`, `generate.py`, `libdir.py`) is shared in `python/`, and generated fixtures go to `reference/` (gitignored). Paths below are relative to `packages/LALWaveforms/` unless noted.
+Monorepo using a Julia workspace (root `Project.toml`): Julia packages live in `packages/`: `LALWaveforms` (LAL-backed waveforms), `GWParameterConversion` (dependency-free, AD-friendly mass/spin/frame conversions ported from bilby; `LALWaveforms` depends on it via `[sources]`) and `GWWaveforms` (pure-Julia, AD-friendly TaylorF2 and IMRPhenomD ported from LALSimulation, same API as `LALWaveforms`; its tests use `LALWaveforms` as the oracle); the bilby fixture tooling (`cases.json`, `generate.py`, `libdir.py`) is shared in `python/`, and generated fixtures go to `reference/` (gitignored). Paths below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands
 
@@ -22,6 +22,7 @@ export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suite (Aqua, JET, reference, etc.)
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAVEFORMS_LIBDIR for the LAL comparison
 runic --inplace .                              # format (Runic; CI enforces it)
 ```
 
@@ -38,6 +39,10 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 - **`parameters.jl` / `conversion.jl`** – `bilby_parameters` validates the NamedTuple (unknown keys throw), derives `mass_1`/`mass_2` from other mass parameters via `GWParameterConversion.convert_parameters`, and returns a plain `Float64` NamedTuple (no parameter struct); `bilby_to_lalsimulation_spins` ports bilby's conversion, short-circuiting to aligned spins and otherwise calling `XLALSimInspiralTransformPrecessingNewInitialConditions`.
 - **`fd.jl`** – `hphc_fd` dispatches to `XLALSimInspiralChooseFDWaveform` (native FD approximants) or `XLALSimInspiralFD` (time-domain approximants transformed to FD, followed by bilby's time shift). Output is copied into Julia arrays, zero-masked outside `[f_min, f_max]`, and LAL series are always destroyed in `finally`.
 - **`errors.jl`** – XLAL calls use a silent error handler; each call does `clear_errno!` → `ccall` → `check(rc, name, fns)`, which raises `LALError`.
+
+## GWWaveforms
+
+`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; `test_ad.jl` checks them against finite differences). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
 
 ## Fidelity gotchas
 

@@ -1,0 +1,9 @@
+[project]
+name = "lalwaveforms-reference"
+version = "0.0.0"
+description = "Generates bilby reference waveforms for the LALWaveforms.jl test suite"
+requires-python = ">=3.10,<3.14"
+dependencies = ["bilby", "lalsuite", "numpy"]
+
+[tool.uv]
+package = false

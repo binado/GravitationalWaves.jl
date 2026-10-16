@@ -1,0 +1,5 @@
+Manifest.toml
+test/reference/
+test/python/.venv/
+.claude/
+LocalPreferences.toml

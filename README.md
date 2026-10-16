@@ -47,6 +47,14 @@ export LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/lib
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
+Julia loads `libopenlibm` globally, so on Linux LAL's libm calls resolve to it instead of glibc. Output is bit-identical to Python on macOS, but differs at the ulp level on Linux (up to ~1e-6 for IMRPhenomT, whose time-domain pipeline amplifies it), so `cases.json` carries a per-case `rtol`.
+
+To get bit-for-bit agreement with Python on Linux, start Julia with glibc's libm forced ahead of openlibm (`LD_PRELOAD` is read by the dynamic loader at process start, so it must be set before launching Julia; the path varies by distro, and it affects every native library in the process):
+
+```sh
+LD_PRELOAD=/lib/x86_64-linux-gnu/libm.so.6 julia --project
+```
+
 Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 ## Formatting

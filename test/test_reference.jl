@@ -1,0 +1,52 @@
+using JSON
+using NPZ
+
+@testset "reference (bilby)" begin
+    LW = LALWaveforms
+    here = @__DIR__
+    spec = JSON.parsefile(joinpath(here, "python", "cases.json"))
+    refdir = joinpath(here, "reference")
+    df = spec["frequency"]["delta_f"]
+    fmax = spec["frequency"]["f_max"]
+    f = range(0, fmax; step = df)
+
+    missing_names = [
+        c["name"] for c in spec["cases"] if !isfile(joinpath(refdir, c["name"] * ".npz"))
+    ]
+    if !isempty(missing_names)
+        msg = "bilby reference fixtures missing in $refdir ($(join(missing_names, ", "))); " *
+            "run `uv run --project test/python python test/python/generate.py`"
+        if get(ENV, "CI", "") == "true"
+            error(msg)
+        else
+            @warn msg
+        end
+    end
+
+    for c in spec["cases"]
+        file = joinpath(refdir, c["name"] * ".npz")
+        isfile(file) || continue
+        @testset "$(c["name"])" begin
+            ref = npzread(file)
+            params = NamedTuple(Symbol(k) => Float64(v) for (k, v) in c["params"])
+            kw = Dict{Symbol, Any}(Symbol(k) => v for (k, v) in c["settings"])
+            if haskey(kw, :mode_array)
+                kw[:mode_array] = [(Int(m[1]), Int(m[2])) for m in kw[:mode_array]]
+            end
+            settings = WaveformSettings(c["approximant"]; kw...)
+
+            h = hphc_fd(f, params, settings)
+            @test isapprox(h.plus, ref["plus"]; rtol = 1.0e-12)
+            @test isapprox(h.cross, ref["cross"]; rtol = 1.0e-12)
+
+            full = LW.BBHParameters(params)
+            fref = get(kw, :reference_frequency, 50.0)
+            s = LW.bilby_to_lalsimulation_spins(
+                LW.BBHParameters(
+                    (; (k => getfield(full, k) for k in LW.ALLOWED_KEYS)...)
+                ), fref,
+            )
+            @test collect(values(s)) ≈ ref["spins"] atol = 1.0e-14
+        end
+    end
+end

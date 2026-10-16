@@ -2,17 +2,22 @@
 
 [![CI](https://github.com/binado/GWDistributions.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/binado/GWDistributions.jl/actions/workflows/CI.yml)
 
-Population-distribution building blocks for gravitational-wave source modeling: interpolated 1-D
-distributions with cached normalizers (`Interpolated1DDistribution`), the DEFAULT BBH mass law
-(`DefaultBBHPrimaryMass` / `DefaultBBHMassPair` with `planck_taper`), and the Madau–Dickinson
-source-frame merger rate (`MadauDickinsonSourceFrame`) composed into a detector-frame redshift
-distribution (`RedshiftInterpolatedDistribution`) whose `normalizer` is the total merger rate in
-events/sec once the local rate `R₀` is included.
+Population-distribution building blocks for gravitational-wave source modeling, ported from the
+Python/NumPyro `astrogwb.distributions` and built on [Distributions.jl](https://github.com/JuliaStats/Distributions.jl):
 
-The package is cosmology-independent by design: redshift distributions take solid-angle-integrated
-`dV_c/dz` **arrays**, not cosmology types. Pair it with
-[BackgroundCosmology.jl](https://github.com/binado/BackgroundCosmology.jl) (not a dependency) for
-real cosmology.
+- `RedshiftDistribution`: detector-frame redshift density `ψ(z)/(1+z) · dV_c/dz` for any source-frame
+  rate `ψ`, with `madau_dickinson_redshift_distribution` and
+  `madau_dickinson_time_delayed_redshift_distribution` (mergers delayed from a formation rate by a
+  delay-time distribution) as ready-made factories;
+- `InterpolatedDistribution`: tabulated density with trapezoid normalizer, `cdf` and `quantile`;
+- `MaxOfTwoNormals`, `MaxOfTwoUniforms`, `PowerLawDelay` (smooth through `α = -1`) and
+  `UniformCosine`, each with closed-form `cdf`/`quantile`;
+- the default BBH mass law (`DefaultBBHPrimaryMass` / `DefaultBBHMassPair` with `planck_taper`).
+
+Cosmology comes from [BackgroundCosmology.jl](https://github.com/binado/BackgroundCosmology.jl).
+`params` is a `NamedTuple` holding its keys (`H0`, `Ωm`, optionally `w0`, `wa`) next to the rate
+parameters (`γ`, `κ`, `z_peak`, optional `local_merger_rate`) and the optional modified-propagation
+keys `xi_0`, `xi_n`, so a single tuple feeds both `cosmology(params)` and the distribution.
 
 ## Installation
 
@@ -23,23 +28,27 @@ Pkg.add(url = "https://github.com/binado/GWDistributions.jl")
 
 ## Example
 
-A Madau–Dickinson redshift distribution from a volume grid, with `logpdf` and `rand`:
-
 ```julia
+using Distributions
 using GWDistributions
-using BackgroundCosmology   # or any other source of dV_c/dz
 
-c = cosmology(; H0 = 67.0, Ωm = 0.315)
-z = collect(LinRange(0.0, 2.0, 201))
-dVc = distance_and_volume_grid(c, z).differential_comoving_volume   # all-sky, Mpc³ per unit z
+params = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)  # R₀ in Gpc⁻³ yr⁻¹
 
-sf = MadauDickinsonSourceFrame(; γ = 2.7, κ = 3.0, zpeak = 2.5, R₀ = 161.0)  # R₀ in Gpc⁻³ yr⁻¹
-d = RedshiftInterpolatedDistribution(sf, dVc, z)
+d = madau_dickinson_redshift_distribution(; params)
+logpdf(d, 0.5)           # detector-frame density at z = 0.5
+rand(d, 10)              # 10 redshift samples
+total_merger_rate(d)     # mergers per second
+luminosity_distance(d, 0.5)
 
-logpdf(d, 0.5)    # detector-frame density at z = 0.5
-rand(d, 10)       # 10 redshift samples
-normalizer(d)     # total detector-frame merger rate, events/sec
+# Mergers delayed from the same formation rate by p(τ) ∝ 1/τ on [0.02, 13] Gyr
+td = madau_dickinson_time_delayed_redshift_distribution(;
+    params, time_delay_distribution = PowerLawDelay(-1.0, 0.02, 13.0),
+)
+merger_rate(td, 0.0)     # == local_merger_rate
 ```
+
+Everything is differentiable with ForwardDiff: quadratures have a fixed order and the cosmology
+inversion uses a fixed iteration count.
 
 ## Development
 

@@ -10,7 +10,7 @@ Cumulative trapezoidal integral of `y` over nodes `x`, evaluated at each node:
 `out[1] = 0` and `out[i+1] = out[i] + (x[i+1] - x[i]) * (y[i] + y[i+1]) / 2`.
 
 The rule is exact for a piecewise-*linear* integrand sampled on `x`, which is why it
-backs [`Interpolated1DDistribution`](@ref): it integrates the linear interpolant itself,
+backs [`InterpolatedDistribution`](@ref): it integrates the linear interpolant itself,
 not an approximation of it.
 """
 function _cumtrapz(y::AbstractVector, x::AbstractVector{<:Real})
@@ -71,4 +71,37 @@ end
         return -a - log1p(exp(-a))
     end
     return -log1p(exp(a))
+end
+
+"""
+    _interp(xq, xs, ys; left = nothing, right = nothing)
+
+Piecewise-linear interpolation of `(xs, ys)` at `xq`, matching `jnp.interp`: `xs` must be
+increasing, and outside `[xs[1], xs[end]]` the result is `left`/`right` when given, or
+the clamped end value otherwise. Generic in the element types, so `ForwardDiff.Dual`s in
+`xq` or `ys` pass through.
+"""
+function _interp(xq::Real, xs::AbstractVector, ys::AbstractVector; left = nothing, right = nothing)
+    n = length(xs)
+    length(ys) == n || throw(ArgumentError("xs and ys must have the same length"))
+    xq < first(xs) && return isnothing(left) ? first(ys) : oftype(first(ys) * one(xq), left)
+    xq > last(xs) && return isnothing(right) ? last(ys) : oftype(last(ys) * one(xq), right)
+    i = min(searchsortedlast(xs, xq), n - 1)
+    x0, x1 = xs[i], xs[i + 1]
+    y0, y1 = ys[i], ys[i + 1]
+    x1 > x0 || return y0 * one(xq)
+    return y0 + (y1 - y0) * ((xq - x0) / (x1 - x0))
+end
+
+"""
+    _gauss_legendre_nodes_weights(a, b, (nodes, weights)) -> (points, weights)
+
+Map the reference Gauss–Legendre rule on `[-1, 1]` onto `[a, b]`. The returned weights
+include the `(b - a) / 2` Jacobian, so `∫ₐᵇ f ≈ sum(w .* f.(points))`. Differentiable in
+`a` and `b`.
+"""
+function _gauss_legendre_nodes_weights(a::Real, b::Real, (nodes, weights))
+    half = (b - a) / 2
+    mid = (a + b) / 2
+    return mid .+ half .* nodes, half .* weights
 end

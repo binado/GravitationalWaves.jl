@@ -2,6 +2,8 @@ using Distributions
 using FastGaussQuadrature: gausslegendre
 using Random
 
+abstract type SourceMassPairDistribution <: ContinuousMultivariateDistribution end
+
 const DEFAULT_BBH_M_HIGH = 300.0
 const _PLANCK_Q_GAUSS_16 = gausslegendre(16)
 const _PRIMARY_BAND_GAUSS_LEGENDRE = gausslegendre(64)

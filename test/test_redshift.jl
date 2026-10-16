@@ -1,108 +1,114 @@
+using BackgroundCosmology
+using Distributions
 using ForwardDiff
-using FastGaussQuadrature: gausslegendre
 using Random
-using Distributions: insupport, logpdf
 
-# Flat-ΛCDM reference for the volume grid, computed inline so the tests stay
-# standalone: GWDistributions takes volume arrays, not cosmology types, and
-# BackgroundCosmology is deliberately not a dependency — not even a test one.
-# A fixed 40-node Gauss–Legendre rule keeps the helper ForwardDiff-compatible.
-const _TEST_H0 = 67.0
-const _TEST_DH_MPC = 299_792.458 / _TEST_H0
-const _TEST_GAUSS_LEGENDRE_40 = gausslegendre(40)
+const _RS_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
 
-_test_E(z, Ωm) = sqrt(Ωm * (1 + z)^3 + 1 - Ωm)
-
-function _test_comoving_distance(z::Real, Ωm::Real)
-    nodes, weights = _TEST_GAUSS_LEGENDRE_40
-    half = z / 2
-    acc = zero(half * inv(_test_E(half, Ωm)))
-    for k in eachindex(nodes)
-        acc += weights[k] * inv(_test_E(half * (1 + nodes[k]), Ωm))
+@testset "madau_dickinson_rate" begin
+    γ, κ, z_peak = 2.7, 3.0, 2.0
+    @test madau_dickinson_rate(0.0, γ, κ, z_peak) ≈ 1.0
+    @test madau_dickinson_rate(0.0, γ, κ, z_peak, 17.0) ≈ 17.0
+    for z in (0.5, 2.0, 3.0)
+        by_hand = (1 + (1 + z_peak)^(-(γ + κ))) * (1 + z)^γ /
+            (1 + ((1 + z) / (1 + z_peak))^(γ + κ))
+        @test madau_dickinson_rate(z, γ, κ, z_peak) ≈ by_hand
     end
-    return _TEST_DH_MPC * half * acc
 end
 
-# Solid-angle-integrated dV_c/dz in Mpc³ per unit redshift, matching
-# BackgroundCosmology's `distance_and_volume_grid` volume for the same (H0, Ωm).
-function _test_differential_comoving_volume(z::Real, Ωm::Real)
-    return 4π * _TEST_DH_MPC * _test_comoving_distance(z, Ωm)^2 / _test_E(z, Ωm)
+@testset "RedshiftDistribution table" begin
+    d = madau_dickinson_redshift_distribution(; params = _RS_PARAMS, maximum_redshift = 2.0, n_grid = 101)
+    c = cosmology(_RS_PARAMS)
+    z = collect(range(0.0, 2.0; length = 101))
+    @test redshift_grid(d) == z
+    @test n_grid(d) == 101
+    @test minimum(d) == 0.0 && maximum(d) == 2.0
+
+    # Hand-built table: ψ(z)/(1+z) · dV_c/dz with dV_c/dz = 4π · (c/H₀) d_c² / E.
+    dvc = @. 4π * comoving_volume_element(c, z)
+    ψ = madau_dickinson_rate.(z, 2.7, 3.0, 2.0, 17.0)
+    y = @. ψ / (1 + z) * dvc
+    @test d.dist.y ≈ y rtol = 1.0e-9
+    @test normalizer(d) === GWDistributions._trapz(d.dist.y, z)
+    @test total_merger_rate(d) ≈ 1.0e-9 * GWDistributions._trapz(y, z) / JULIAN_YEAR_SEC rtol = 1.0e-9
+
+    # Quadrature version over the same nodes agrees up to the trapezoid weights.
+    nodes = collect(range(0.0, 2.0; length = 4001))
+    weights = fill(nodes[2] - nodes[1], length(nodes))
+    weights[[1, end]] ./= 2
+    quad = total_merger_rate(nodes, weights, madau_dickinson_rate.(nodes, 2.7, 3.0, 2.0, 17.0), c)
+    @test quad ≈ total_merger_rate(d) rtol = 1.0e-4
+
+    @test merger_rate(d, 1.3) == madau_dickinson_rate(1.3, 2.7, 3.0, 2.0, 17.0)
+    @test source_frame_distribution(d, 1.3, _RS_PARAMS) == merger_rate(d, 1.3)
+    @test MadauDickinsonRedshiftDistribution === madau_dickinson_redshift_distribution
+
+    # Support behaviour.
+    @test isfinite(logpdf(d, 0.5))
+    @test logpdf(d, -0.1) == -Inf
+    @test logpdf(d, 2.1) == -Inf
+    @test cdf(d, quantile(d, 0.3)) ≈ 0.3 atol = 1.0e-12
+    samples = rand(MersenneTwister(1234), d, 100)
+    @test all(s -> insupport(d, s), samples)
 end
 
-function _madau_dickinson_with_denom_exp(z, γ, denom_exp, zpeak)
-    one_plus_z = 1 + z
-    return ((one_plus_z^γ) / (1 + (one_plus_z / (1 + zpeak))^denom_exp)) *
-        (1 + (1 + zpeak)^(-denom_exp))
-end
+@testset "RedshiftDistribution distance accessors" begin
+    d = madau_dickinson_redshift_distribution(; params = _RS_PARAMS, maximum_redshift = 2.0, n_grid = 101)
+    c = cosmology(_RS_PARAMS)
+    # On a node: exact; between nodes: linear; outside: clamped.
+    z_node = redshift_grid(d)[41]
+    @test luminosity_distance(d, z_node) ≈ luminosity_dist(c, z_node) rtol = 1.0e-8
+    @test differential_comoving_volume(d, z_node) ≈ 4π * comoving_volume_element(c, z_node) rtol = 1.0e-8
+    z_mid = 0.5 * (redshift_grid(d)[41] + redshift_grid(d)[42])
+    @test luminosity_distance(d, z_mid) ≈
+        (d.luminosity_distance_grid[41] + d.luminosity_distance_grid[42]) / 2
+    @test luminosity_distance(d, 5.0) == last(d.luminosity_distance_grid)
+    @test luminosity_distance(d, -1.0) == 0.0
 
-@testset "Madau–Dickinson κ reparametrization" begin
-    γ, κ, zpeak = 2.7, 3.0, 2.0
-    denom_exp = γ + κ
-    z_samples = [0.0, 0.5, zpeak, 3.0]
+    # Without xi_0 the GW distance is the EM distance.
+    @test distance_ratio(d, 1.0) == 1.0
+    @test gw_luminosity_distance(d, 1.0) == luminosity_distance(d, 1.0)
 
-    @test madau_dickinson_source_frame_distribution(0.0; γ, κ, zpeak) ≈ 1.0
-    for z in z_samples
-        @test madau_dickinson_source_frame_distribution(z; γ, κ, zpeak) ≈
-            _madau_dickinson_with_denom_exp(z, γ, denom_exp, zpeak)
-    end
-    R₀ = 161.0
-    model = MadauDickinsonSourceFrame(; γ, κ, zpeak, R₀)
-    amp = 1.0e-9 * R₀ / JULIAN_YEAR_SEC
-    @test source_frame_distribution(model, 1.0) ≈
-        amp * madau_dickinson_source_frame_distribution(1.0; γ, κ, zpeak)
-end
-
-@testset "redshift prior from volume grid" begin
-    Λ = (γ = 2.7, κ = 3.0, zpeak = 2.5, R₀ = 161.0)
-    Ωm = 0.315
-    z_grid = collect(LinRange(0.0, 2.0, 101))
-    source_model = MadauDickinsonSourceFrame(
-        γ = Λ.γ, κ = Λ.κ, zpeak = Λ.zpeak, R₀ = Λ.R₀
+    p = merge(_RS_PARAMS, (xi_0 = 0.8, xi_n = 1.5))
+    dm = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 101)
+    expected = 0.8 + (1 - 0.8) * (1 + 1.0)^(-1.5)
+    @test distance_ratio(dm, 1.0) ≈ expected
+    @test gw_luminosity_distance(dm, 1.0) ≈ luminosity_distance(dm, 1.0) * expected
+    # xi_0 = 1 is GR propagation.
+    dgr = madau_dickinson_redshift_distribution(;
+        params = merge(_RS_PARAMS, (xi_0 = 1.0, xi_n = 2.0)), maximum_redshift = 2.0, n_grid = 11
     )
-
-    # Volume-array constructor (cosmology-decoupled, typed source frame)
-    dvc = _test_differential_comoving_volume.(z_grid, Ωm)
-    distribution = RedshiftInterpolatedDistribution(source_model, dvc, z_grid)
-    expected = @. dvc * source_frame_distribution(source_model, z_grid) / (1 + z_grid)
-    @test distribution.dist.x == z_grid
-    @test distribution.dist.y ≈ expected
-    @test normalizer(distribution) ===
-        GWDistributions._trapz(distribution.dist.y, distribution.dist.x)
-
-    # Shape-only integral × amplitude recovers the same normalizer
-    shape = madau_dickinson_source_frame_distribution.(
-        z_grid; γ = Λ.γ, κ = Λ.κ, zpeak = Λ.zpeak
-    )
-    shape_y = @. dvc * shape / (1 + z_grid)
-    @test normalizer(distribution) ≈
-        (1.0e-9 * Λ.R₀ / JULIAN_YEAR_SEC) * GWDistributions._trapz(shape_y, z_grid)
-
-    # Wrap-inner constructor
-    wrapped = RedshiftInterpolatedDistribution(Interpolated1DDistribution(z_grid, expected))
-    @test normalizer(wrapped) ≈ normalizer(distribution)
-
-    @test minimum(distribution) == first(z_grid)
-    @test maximum(distribution) == last(z_grid)
-    @test isfinite(logpdf(distribution, 0.5))
-    @test logpdf(distribution, -0.1) == -Inf
-    @test logpdf(distribution, 2.1) == -Inf
-
-    samples = rand(MersenneTwister(1234), distribution, 100)
-    @test all(x -> insupport(distribution, x), samples)
+    @test distance_ratio(dgr, 1.7) ≈ 1.0
 end
 
-@testset "redshift prior preserves AD" begin
-    Λ = (γ = 2.7, κ = 3.0, zpeak = 2.5, R₀ = 161.0)
-    z_grid = collect(LinRange(0.0, 2.0, 101))
+@testset "RedshiftDistribution with w0waCDM" begin
+    p = merge(_RS_PARAMS, (w0 = -0.9, wa = 0.1))
+    d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)
+    @test isfinite(normalizer(d))
+    @test isfinite(logpdf(d, 1.0))
+end
+
+@testset "RedshiftDistribution preserves AD" begin
     f = Ωm -> begin
-        source_model = MadauDickinsonSourceFrame(
-            γ = Λ.γ, κ = Λ.κ, zpeak = Λ.zpeak, R₀ = Λ.R₀
-        )
-        dvc = _test_differential_comoving_volume.(z_grid, Ref(Ωm))
-        distribution = RedshiftInterpolatedDistribution(source_model, dvc, z_grid)
-        normalizer(distribution)
+        p = (H0 = 67.66, Ωm = Ωm, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
+        d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)
+        total_merger_rate(d)
     end
-    derivative = ForwardDiff.derivative(f, 0.315)
-    @test isfinite(derivative)
-    @test derivative != 0.0
+    g = ForwardDiff.derivative(f, 0.31)
+    @test isfinite(g) && g != 0.0
+
+    h = γ -> begin
+        p = merge(_RS_PARAMS, (γ = γ,))
+        d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)
+        logpdf(d, 0.7)
+    end
+    @test isfinite(ForwardDiff.derivative(h, 2.7))
+    grad = ForwardDiff.gradient(
+        v -> begin
+            p = merge(_RS_PARAMS, (Ωm = v[1], γ = v[2]))
+            d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)
+            logpdf(d, 0.7) + quantile(d, 0.4)
+        end, [0.31, 2.7]
+    )
+    @test all(isfinite, grad)
 end

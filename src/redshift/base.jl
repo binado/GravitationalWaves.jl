@@ -1,98 +1,116 @@
+using BackgroundCosmology: cosmology, distance_and_volume_grid
 using Distributions
 using Random
 
-export AbstractSourceFrame,
-    source_frame_distribution,
-    RedshiftInterpolatedDistribution,
-    DEFAULT_Z_GRID
-
 """
-    AbstractSourceFrame
+    RedshiftDistribution(; params, source_frame_distribution, minimum_redshift = 0.0,
+                         maximum_redshift = 10.0, n_grid = 1000)
 
-Source-frame merger-rate density model. Subtypes implement
-[`source_frame_distribution`](@ref)`(sf, z)`.
+Detector-frame redshift distribution induced by a source-frame merger-rate density
+`ψ(z)`,
 
-Used as a constructor argument to [`RedshiftInterpolatedDistribution`](@ref); the
-tabulated detector-frame distribution does not store the source-frame model.
+    p(z | θ) ∝ ψ(z) / (1 + z) · dV_c/dz,
+
+tabulated on a linear grid and wrapped in an [`InterpolatedDistribution`](@ref), which owns
+the normalization, `logpdf`, `cdf`, `quantile` and `rand`.
+
+`params` is a `NamedTuple` holding the cosmology keys of BackgroundCosmology (`H0`, `Ωm`,
+optionally `w0`, `wa`) plus whatever `source_frame_distribution(z, params)` reads; the
+modified-propagation keys `xi_0` and `xi_n` are used by [`distance_ratio`](@ref) when
+present. Note that `minimum_redshift = 0` puts a zero-density node at the left edge, since
+`dV_c/dz` vanishes at `z = 0`.
 """
-abstract type AbstractSourceFrame end
-
-Base.broadcastable(sf::AbstractSourceFrame) = Ref(sf)
-
-"""
-    source_frame_distribution(sf::AbstractSourceFrame, z) -> Real
-
-Source-frame merger-rate density at redshift `z`. Subtypes of
-[`AbstractSourceFrame`](@ref) must implement this method.
-"""
-function source_frame_distribution end
-
-"""
-    DEFAULT_Z_GRID
-
-Default redshift integration grid: 256 uniformly-spaced points on [0, 20].
-Shared across callers that do not pass an explicit grid.
-
-The grid starts at `0` and is strictly increasing. `distance_and_volume_grid`
-requires a non-negative, strictly increasing grid and prepends `0` internally,
-because its cumulative comoving-distance integral starts at `d_c(0) = 0`.
-"""
-const DEFAULT_Z_GRID = collect(LinRange(0.0, 20.0, 256))
-
-"""
-    RedshiftInterpolatedDistribution
-
-Detector-frame redshift distribution: composes an [`Interpolated1DDistribution`](@ref)
-whose tabulated density is the detector-frame merger-rate density. When the source-frame
-model includes the local merger rate and unit conversions, [`normalizer`](@ref) is the
-detector-frame merger rate in events/sec.
-"""
-struct RedshiftInterpolatedDistribution{D <: Interpolated1DDistribution} <:
-    ContinuousUnivariateDistribution
+struct RedshiftDistribution{
+        R, P <: NamedTuple, D <: InterpolatedDistribution, V <: AbstractVector,
+    } <: ContinuousUnivariateDistribution
+    merger_rate_fn::R
+    params::P
     dist::D
+    luminosity_distance_grid::V
+    differential_comoving_volume_grid::V
 end
+
+function RedshiftDistribution(;
+        params::NamedTuple,
+        source_frame_distribution,
+        minimum_redshift::Real = 0.0,
+        maximum_redshift::Real = 10.0,
+        n_grid::Integer = 1000
+    )
+    z = collect(range(minimum_redshift, maximum_redshift, n_grid))
+    grids = distance_and_volume_grid(cosmology(params), z)
+    dVc = grids.differential_comoving_volume
+    rate = [source_frame_distribution(zi, params) for zi in z]
+    y = @. rate / (1 + z) * dVc
+    return RedshiftDistribution(
+        source_frame_distribution, params, InterpolatedDistribution(z, y),
+        grids.luminosity_distance, dVc
+    )
+end
+
+normalizer(d::RedshiftDistribution) = normalizer(d.dist)
+Base.minimum(d::RedshiftDistribution) = minimum(d.dist)
+Base.maximum(d::RedshiftDistribution) = maximum(d.dist)
+Base.eltype(d::RedshiftDistribution) = eltype(d.dist)
+Distributions.insupport(d::RedshiftDistribution, v::Real) = insupport(d.dist, v)
+Distributions.logpdf(d::RedshiftDistribution, v::Real) = logpdf(d.dist, v)
+Distributions.cdf(d::RedshiftDistribution, v::Real) = cdf(d.dist, v)
+Distributions.quantile(d::RedshiftDistribution, q::Real) = quantile(d.dist, q)
+Random.rand(rng::AbstractRNG, d::RedshiftDistribution) = rand(rng, d.dist)
 
 """
-    RedshiftInterpolatedDistribution(sf, differential_comoving_volume, z_grid)
+    merger_rate(d, z)
 
-Tabulate the detector-frame redshift density
-`4π · dV/dz · ψ(z) / (1 + z)` on `z_grid` from an [`AbstractSourceFrame`](@ref) and a
-precomputed, **solid-angle-integrated** differential-comoving-volume array (i.e. the
-`4π` is already included — see [`distance_and_volume_grid`](@ref)), then wrap it as an
-[`Interpolated1DDistribution`](@ref).
-
-Cosmology-independent: callers supply `differential_comoving_volume` themselves (e.g. from
-[`distance_and_volume_grid`](@ref)).
+Source-frame merger rate `ψ(z)` evaluated pointwise at the hyperparameters `d` was built
+with (not interpolated from the grid). For a time-delayed distribution this is the delayed
+rate.
 """
-function RedshiftInterpolatedDistribution(
-        sf::AbstractSourceFrame,
-        differential_comoving_volume::AbstractVector{<:Real},
-        z_grid::AbstractVector{<:Real}
-    )
-    length(differential_comoving_volume) == length(z_grid) || throw(
-        DimensionMismatch(
-            "differential_comoving_volume and z_grid must have the same length"
-        )
-    )
-    z_grid_f = z_grid isa AbstractVector{Float64} ? z_grid : collect(Float64, z_grid)
-    y = @. differential_comoving_volume *
-        source_frame_distribution(sf, z_grid_f) / (1 + z_grid_f)
-    return RedshiftInterpolatedDistribution(Interpolated1DDistribution(z_grid_f, y))
+merger_rate(d::RedshiftDistribution, z::Real) = d.merger_rate_fn(z, d.params)
+
+# The user-supplied shape: the rate itself, except for a time-delayed rate, where it is
+# the formation rate.
+_source_frame(f) = f
+
+"""
+    source_frame_distribution(d, z, params)
+
+The supplied source-frame rate shape `ψ(z)` evaluated with `params` (the formation rate
+for a time-delayed distribution).
+"""
+source_frame_distribution(d::RedshiftDistribution, z::Real, params) = _source_frame(d.merger_rate_fn)(z, params)
+
+"""Redshift grid the table was built on (the interpolant abscissa)."""
+redshift_grid(d::RedshiftDistribution) = d.dist.x
+
+"""Number of grid nodes."""
+n_grid(d::RedshiftDistribution) = length(d.dist.x)
+
+"""
+    total_merger_rate(d) -> Real
+
+Total merger rate in mergers per second, `1e-9 ∫ ψ(z)/(1+z) dV_c/dz dz / yr`, with `ψ` in
+Gpc⁻³ yr⁻¹.
+"""
+total_merger_rate(d::RedshiftDistribution) = 1.0e-9 * normalizer(d) / JULIAN_YEAR_SEC
+
+"""Luminosity distance in Mpc at `z`, clamped outside the grid."""
+luminosity_distance(d::RedshiftDistribution, z::Real) = _interp(z, d.dist.x, d.luminosity_distance_grid)
+
+"""
+    distance_ratio(d, z)
+
+GW-to-EM luminosity-distance ratio `Ξ(z)`: from `xi_0` and `xi_n` when `params` has them,
+else 1.
+"""
+function distance_ratio(d::RedshiftDistribution, z::Real)
+    if haskey(d.params, :xi_0)
+        return exp(_log_gw_em_ratio(z, d.params.xi_0, d.params.xi_n))
+    end
+    return one(float(z))
 end
 
-normalizer(d::RedshiftInterpolatedDistribution) = normalizer(d.dist)
-Base.minimum(d::RedshiftInterpolatedDistribution) = minimum(d.dist)
-Base.maximum(d::RedshiftInterpolatedDistribution) = maximum(d.dist)
-Base.eltype(d::RedshiftInterpolatedDistribution) = eltype(d.dist)
+"""Gravitational-wave luminosity distance in Mpc: [`luminosity_distance`](@ref) times [`distance_ratio`](@ref)."""
+gw_luminosity_distance(d::RedshiftDistribution, z::Real) = luminosity_distance(d, z) * distance_ratio(d, z)
 
-function Distributions.insupport(d::RedshiftInterpolatedDistribution, value::Real)
-    return insupport(d.dist, value)
-end
-
-function Distributions.logpdf(d::RedshiftInterpolatedDistribution, value::Real)
-    return logpdf(d.dist, value)
-end
-
-function Random.rand(rng::AbstractRNG, d::RedshiftInterpolatedDistribution)
-    return rand(rng, d.dist)
-end
+"""All-sky `dV_c/dz` in Mpc³ at `z`, clamped outside the grid."""
+differential_comoving_volume(d::RedshiftDistribution, z::Real) = _interp(z, d.dist.x, d.differential_comoving_volume_grid)

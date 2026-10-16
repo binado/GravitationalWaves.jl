@@ -1,5 +1,7 @@
 using GWDistributions
 using Test
+using ForwardDiff
+using FastGaussQuadrature: gausslegendre
 
 @testset "time conversions" begin
     @test year_to_second(1.0) ≈ 365.25 * 24 * 3600
@@ -25,4 +27,33 @@ end
 
     @test_throws ArgumentError GWDistributions._trapz([1.0], [0.0, 1.0])
     @test_throws ArgumentError GWDistributions._cumtrapz([1.0], [0.0, 1.0])
+end
+
+@testset "private _interp matches jnp.interp" begin
+    xs = [0.0, 1.0, 3.0]
+    ys = [1.0, 3.0, 4.0]
+    @test GWDistributions._interp(0.5, xs, ys) == 2.0
+    @test GWDistributions._interp(2.0, xs, ys) == 3.5
+    @test GWDistributions._interp(3.0, xs, ys) == 4.0
+    # Clamped by default, constants when given.
+    @test GWDistributions._interp(-1.0, xs, ys) == 1.0
+    @test GWDistributions._interp(5.0, xs, ys) == 4.0
+    @test GWDistributions._interp(-1.0, xs, ys; left = 0, right = 0) == 0.0
+    @test GWDistributions._interp(5.0, xs, ys; left = 0, right = 0) == 0.0
+    # Duals propagate through both the query and the table.
+    @test ForwardDiff.derivative(x -> GWDistributions._interp(x, xs, ys), 2.0) == 0.5
+    @test ForwardDiff.derivative(s -> GWDistributions._interp(2.0, xs, s .* ys), 1.0) == 3.5
+    @test_throws ArgumentError GWDistributions._interp(0.5, xs, ys[1:2])
+end
+
+@testset "private Gauss–Legendre mapping" begin
+    rule = gausslegendre(8)
+    points, weights = GWDistributions._gauss_legendre_nodes_weights(1.0, 3.0, rule)
+    @test sum(weights) ≈ 2.0
+    @test sum(weights .* points .^ 3) ≈ (3.0^4 - 1.0) / 4
+    # Differentiable in the endpoints.
+    d = ForwardDiff.derivative(
+        b -> sum(GWDistributions._gauss_legendre_nodes_weights(0.0, b, rule)[2]), 2.0
+    )
+    @test d ≈ 1.0
 end

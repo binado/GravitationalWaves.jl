@@ -323,3 +323,36 @@ end
         @test g ≈ (f(x0 + h) - f(x0 - h)) / (2h) rtol = 1.0e-5
     end
 end
+
+@testset "MaxOfTwoNormals" begin
+    d = MaxOfTwoNormals(1.4, 0.3)
+    total, _ = quadgk(x -> exp(logpdf(d, x)), -Inf, Inf)
+    @test total ≈ 1.0 rtol = 1.0e-8
+    for q in (0.01, 0.3, 0.5, 0.99)
+        @test cdf(d, quantile(d, q)) ≈ q
+    end
+    @test cdf(d, 1.5) ≈ cdf(Normal(1.4, 0.3), 1.5)^2
+    @test insupport(d, -100.0) && !insupport(d, Inf)
+    samples = rand(MersenneTwister(3), d, 100_000)
+    @test all(isfinite, samples)
+    # E[max] = μ + σ/√π for two i.i.d. normals.
+    @test mean(samples) ≈ 1.4 + 0.3 / sqrt(π) atol = 5.0e-3
+    @test_throws ArgumentError MaxOfTwoNormals(0.0, -1.0)
+end
+
+@testset "MaxOfTwoUniforms" begin
+    d = MaxOfTwoUniforms(1.1, 1.4)
+    @test minimum(d) == 1.1 && maximum(d) ≈ 2.5
+    total, _ = quadgk(x -> exp(logpdf(d, x)), 1.1, 2.5)
+    @test total ≈ 1.0 rtol = 1.0e-10
+    for q in (0.0, 0.3, 0.5, 1.0)
+        @test cdf(d, quantile(d, q)) ≈ q
+    end
+    @test cdf(d, 0.0) == 0.0 && cdf(d, 3.0) == 1.0
+    @test logpdf(d, 1.0) == -Inf && logpdf(d, 2.6) == -Inf
+    samples = rand(MersenneTwister(4), d, 100_000)
+    @test all(s -> insupport(d, s), samples)
+    # E[max] = a + 2w/3.
+    @test mean(samples) ≈ 1.1 + 2 * 1.4 / 3 atol = 5.0e-3
+    @test_throws ArgumentError MaxOfTwoUniforms(0.0, 0.0)
+end

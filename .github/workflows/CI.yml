@@ -15,15 +15,20 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         julia: ["1.12", "1"]
-        package: [LALWaveforms, GWParameterConversion, GWWaveforms]
+        package: [LALWaveforms, GWParameterConversion, GWWaveforms, GWDistributions]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - name: Generate bilby reference waveforms
-        run: |
-          uv sync --project python --locked
-          uv run --project python python python/generate.py
-          echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV
+        if: matrix.package != 'GWDistributions'
+      - name: Set up waveform reference environment
+        if: matrix.package != 'GWDistributions'
+        run: uv sync --project python --locked
+      - name: Generate bilby reference fixtures
+        if: matrix.package == 'LALWaveforms' || matrix.package == 'GWParameterConversion'
+        run: uv run --project python python python/generate.py
+      - name: Locate LAL libraries
+        if: matrix.package == 'LALWaveforms' || matrix.package == 'GWWaveforms'
+        run: echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia }}

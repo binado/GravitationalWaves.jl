@@ -4,11 +4,24 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ## What this is
 
-A Julia package that calls LALSimulation frequency-domain waveforms directly via `ccall` (no PyCall/LAL wrappers), reproducing bilby's `lal_binary_black_hole` parameter names, units and parameter-to-LAL conversions. The goal is bit-level agreement with bilby/Python. Scope is deliberately narrow: FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tidal parameters.
+GravitationalWaves.jl is a monorepo of composable Julia packages for gravitational-wave modeling.
+The root is a Julia workspace, not an umbrella package. Packages retain independent APIs,
+versions, dependencies, and licenses.
 
 ## Repository layout
 
-Monorepo using a Julia workspace (root `Project.toml`): Julia packages live in `packages/`: `LALWaveforms` (LAL-backed waveforms), `GWParameterConversion` (dependency-free, AD-friendly mass/spin/frame conversions ported from bilby; `LALWaveforms` depends on it via `[sources]`) and `GWWaveforms` (pure-Julia, AD-friendly TaylorF2 and IMRPhenomD ported from LALSimulation, same API as `LALWaveforms`; its tests use `LALWaveforms` as the oracle); the bilby fixture tooling (`cases.json`, `generate.py`, `libdir.py`) is shared in `python/`, and generated fixtures go to `reference/` (gitignored). Paths below are relative to `packages/LALWaveforms/` unless noted.
+Julia packages live in `packages/`:
+
+- `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
+- `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
+- `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms`; tests use LAL as the oracle.
+- `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
+
+The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
+Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
+Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
+The waveform/conversion packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
+Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands
 
@@ -21,6 +34,7 @@ uv run --project python python python/generate.py
 export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suite (Aqua, JET, reference, etc.)
+julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAVEFORMS_LIBDIR for the LAL comparison
 runic --inplace .                              # format (Runic; CI enforces it)
@@ -43,6 +57,13 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 ## GWWaveforms
 
 `packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; `test_ad.jl` checks them against finite differences). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
+
+## GWDistributions
+
+Follow the package-local guidance in `packages/GWDistributions/AGENTS.md`.
+`astrogwb.distributions` is the behavioral reference; existing test values are pinned from JAX x64.
+Keep fixed-order Gauss–Legendre quadrature and fixed iteration counts so ForwardDiff duals propagate.
+Adaptive QuadGK is test-only. Keep BackgroundCosmology external; do not add other cosmology dependencies.
 
 ## Fidelity gotchas
 

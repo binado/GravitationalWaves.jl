@@ -8,27 +8,32 @@ on:
 
 jobs:
   test:
-    name: Julia ${{ matrix.julia }} - ${{ matrix.os }}
+    name: ${{ matrix.package }} - Julia ${{ matrix.julia }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         julia: ["1.12", "1"]
+        package: [LALWaveforms]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - name: Generate bilby reference waveforms
         run: |
-          uv sync --project test/python --locked
-          uv run --project test/python python test/python/generate.py
-          echo "LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/libdir.py)" >> $GITHUB_ENV
+          uv sync --project python --locked
+          uv run --project python python python/generate.py
+          echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
+        with:
+          project: packages/${{ matrix.package }}
       - uses: julia-actions/julia-runtest@v1
+        with:
+          project: packages/${{ matrix.package }}
 
   format:
     runs-on: ubuntu-latest

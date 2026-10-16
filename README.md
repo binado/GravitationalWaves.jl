@@ -41,10 +41,10 @@ Loading is lazy: the package loads without LAL and the first waveform call expla
 The reference tests compare against bilby output generated locally (not committed):
 
 ```sh
-uv sync --project test/python
-uv run --project test/python python test/python/generate.py
-export LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/libdir.py)
-julia --project -e 'using Pkg; Pkg.test()'
+uv sync --project python
+uv run --project python python python/generate.py
+export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
+julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'
 ```
 
 Julia loads `libopenlibm` globally, so on Linux LAL's libm calls resolve to it instead of glibc. Output is bit-identical to Python on macOS, but differs at the ulp level on Linux (up to ~1e-6 for IMRPhenomT, whose time-domain pipeline amplifies it), so `cases.json` carries a per-case `rtol`.

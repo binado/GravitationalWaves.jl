@@ -1,4 +1,4 @@
-# LALWaveforms.jl
+# Waveforms.jl
 
 Frequency-domain compact-binary waveforms from [LALSimulation](https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/),
 called directly through `ccall`, with [bilby](https://bilby-dev.github.io/bilby/)'s parameter names, units and

@@ -1,9 +1,6 @@
 # Mirrors of the LAL C structs we touch. Layouts follow LALAtomicDatatypes.h and
 # LALDatatypes.h; `test_fd.jl` asserts sizes and offsets.
 
-const MSUN_SI = 1.988409870698050731911960804878414216e30
-const PC_SI = 3.085677581491367278913937957796471611e16
-
 struct LIGOTimeGPS
     gpsSeconds::Int32
     gpsNanoSeconds::Int32

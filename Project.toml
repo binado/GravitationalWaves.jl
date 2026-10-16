@@ -1,2 +1,2 @@
 [workspace]
-projects = ["packages/LALWaveforms"]
+projects = ["packages/LALWaveforms", "packages/GWParameterConversion"]

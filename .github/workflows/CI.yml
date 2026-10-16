@@ -15,7 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         julia: ["1.12", "1"]
-        package: [LALWaveforms]
+        package: [LALWaveforms, GWParameterConversion]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

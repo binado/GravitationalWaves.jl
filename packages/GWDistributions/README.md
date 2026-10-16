@@ -24,6 +24,7 @@ keys `xi_0`, `xi_n`, so a single tuple feeds both `cosmology(params)` and the di
 ```julia
 using Pkg
 Pkg.add([
+    PackageSpec(name = "Distributions"),
     PackageSpec(url = "https://github.com/binado/BackgroundCosmology.jl"),
     PackageSpec(url = "https://github.com/binado/GravitationalWaves.jl", subdir = "packages/GWDistributions"),
 ])

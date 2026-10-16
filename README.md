@@ -30,6 +30,7 @@ For population distributions:
 
 ```julia
 Pkg.add([
+    PackageSpec(name = "Distributions"),
     PackageSpec(url = "https://github.com/binado/BackgroundCosmology.jl"),
     PackageSpec(url = repo, subdir = "packages/GWDistributions"),
 ])

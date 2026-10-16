@@ -1,4 +1,43 @@
-# Waveforms.jl
+# GravitationalWaves.jl
+
+A collection of composable Julia packages for gravitational-wave modeling. The repository is a
+Julia workspace; each package has its own dependencies, tests, version, and public API.
+
+| Package | Purpose | License |
+|---------|---------|---------|
+| [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
+| [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
+| [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
+| [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
+
+## Installation
+
+Install individual packages by subdirectory. The packages are currently unregistered, so include
+unregistered dependencies explicitly in the active environment:
+
+```julia
+using Pkg
+
+repo = "https://github.com/binado/GravitationalWaves.jl"
+Pkg.add([
+    PackageSpec(url = repo, subdir = "packages/GWParameterConversion"),
+    PackageSpec(url = repo, subdir = "packages/GWWaveforms"),
+])
+```
+
+For `LALWaveforms`, replace `packages/GWWaveforms` above with `packages/LALWaveforms`.
+For population distributions:
+
+```julia
+Pkg.add([
+    PackageSpec(url = "https://github.com/binado/BackgroundCosmology.jl"),
+    PackageSpec(url = repo, subdir = "packages/GWDistributions"),
+])
+```
+
+`BackgroundCosmology` remains an external dependency. There is no umbrella Julia module.
+
+## LALWaveforms
 
 Frequency-domain compact-binary waveforms from [LALSimulation](https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/),
 called directly through `ccall`, with [bilby](https://bilby-dev.github.io/bilby/)'s parameter names, units and
@@ -51,7 +90,18 @@ LAL is not bundled. Provide the directory holding `liblal` and `liblalsimulation
 The `lalsuite` wheels carry the libraries in `lal/.dylibs/` (macOS) or `lalsuite.libs/` (Linux).
 Loading is lazy: the package loads without LAL and the first waveform call explains how to configure it.
 
-## Tests
+## Development and tests
+
+From the repository root, instantiate the workspace and test each package:
+
+```sh
+julia --project -e 'using Pkg; Pkg.instantiate(; workspace = true)'
+julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'
+```
+
+The waveform tests require the reference setup below for full coverage.
 
 The reference tests compare against bilby output generated locally (not committed):
 
@@ -81,6 +131,7 @@ julia -e 'using Pkg; Pkg.Apps.add("Runic")'
 runic --inplace .
 ```
 
-## License
+## Licenses
 
-GPL-2.0-or-later.
+The root [LICENSE](LICENSE) and the waveform and conversion packages use GPL-2.0-or-later.
+`GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).

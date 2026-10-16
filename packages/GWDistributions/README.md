@@ -1,6 +1,6 @@
 # GWDistributions.jl
 
-[![CI](https://github.com/binado/GWDistributions.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/binado/GWDistributions.jl/actions/workflows/CI.yml)
+[![CI](https://github.com/binado/GravitationalWaves.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/binado/GravitationalWaves.jl/actions/workflows/CI.yml)
 
 Population-distribution building blocks for gravitational-wave source modeling, ported from the
 Python/NumPyro `astrogwb.distributions` and built on [Distributions.jl](https://github.com/JuliaStats/Distributions.jl):
@@ -23,7 +23,10 @@ keys `xi_0`, `xi_n`, so a single tuple feeds both `cosmology(params)` and the di
 
 ```julia
 using Pkg
-Pkg.add(url = "https://github.com/binado/GWDistributions.jl")
+Pkg.add([
+    PackageSpec(url = "https://github.com/binado/BackgroundCosmology.jl"),
+    PackageSpec(url = "https://github.com/binado/GravitationalWaves.jl", subdir = "packages/GWDistributions"),
+])
 ```
 
 ## Example
@@ -52,8 +55,14 @@ inversion uses a fixed iteration count.
 
 ## Development
 
+Run these commands from `packages/GWDistributions` in the monorepo:
+
 ```
 just install-runic   # once
 just fmt             # format with Runic
 just test            # Pkg.test() on Julia 1.12
 ```
+
+## License
+
+MIT; see [LICENSE](LICENSE).

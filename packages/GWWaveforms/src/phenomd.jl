@@ -585,12 +585,9 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, settings, f_start, f_max) where {T}
-    # LAL takes SI masses and converts back to solar masses inside the waveform routines.
-    m1_SI = p.mass_1 * MSUN_SI
-    m2_SI = p.mass_2 * MSUN_SI
+    m1 = p.mass_1
+    m2 = p.mass_2
     distance = p.luminosity_distance * 1.0e6 * PC_SI
-    m1 = m1_SI / MSUN_SI
-    m2 = m2_SI / MSUN_SI
     fRef_in = settings.reference_frequency
     fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
     deltaF > 0 || throw(ArgumentError("frequency step must be positive"))

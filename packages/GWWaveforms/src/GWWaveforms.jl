@@ -8,7 +8,7 @@ LALSimulation's TaylorF2 and IMRPhenomD, which `LALWaveforms` reproduces for tes
 """
 module GWWaveforms
 
-using GWParameterConversion: MSUN_SI, MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
+using GWParameterConversion: MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
     is_aligned, aligned_spins_to_lal_frame
 
 export hphc_fd, WaveformSettings

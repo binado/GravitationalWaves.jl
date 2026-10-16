@@ -1,4 +1,4 @@
-# Constants as defined in LALConstants.h (lalsuite 7.26). `MSUN_SI`, `PC_SI` and `MTSUN_SI`
+# Constants as defined in LALConstants.h (lalsuite 7.26). `PC_SI` and `MTSUN_SI`
 # come from GWParameterConversion.
 
 # Geometrised solar mass, G M_sun / c^2 in metres.

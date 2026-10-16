@@ -288,14 +288,11 @@ are applied by `hphc_fd`) on the grid `f_i = i deltaF`, `i = 0 … nout - 1`, ze
 the Schwarzschild ISCO. `p` holds the output of `aligned_parameters`, converted to `T`.
 """
 function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, settings, f_start, f_max) where {T}
-    # LAL takes SI masses and converts back to solar masses inside the waveform routines.
-    m1_SI = p.mass_1 * MSUN_SI
-    m2_SI = p.mass_2 * MSUN_SI
+    m1 = p.mass_1
+    m2 = p.mass_2
     r = p.luminosity_distance * 1.0e6 * PC_SI
-    m1 = m1_SI / MSUN_SI
-    m2 = m2_SI / MSUN_SI
     f_ref = settings.reference_frequency
-    (m1_SI > 0 && m2_SI > 0) || throw(ArgumentError("masses must be positive"))
+    (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     f_ref >= 0 || throw(ArgumentError("reference frequency must not be negative"))
     r > 0 || throw(ArgumentError("luminosity distance must be positive"))

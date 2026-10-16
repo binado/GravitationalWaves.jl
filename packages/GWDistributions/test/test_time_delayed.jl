@@ -1,4 +1,4 @@
-using BackgroundCosmology
+using BackgroundCosmology: cosmology, lookback_time, age
 using Distributions
 using ForwardDiff
 using QuadGK

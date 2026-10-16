@@ -1,4 +1,4 @@
-using BackgroundCosmology
+using BackgroundCosmology: cosmology, comoving_volume_element, luminosity_dist
 using Distributions
 using ForwardDiff
 using Random

@@ -8,7 +8,7 @@ A Julia package that calls LALSimulation frequency-domain waveforms directly via
 
 ## Repository layout
 
-Monorepo using a Julia workspace (root `Project.toml`): Julia packages live in `packages/` (currently `LALWaveforms`); the bilby fixture tooling (`cases.json`, `generate.py`, `libdir.py`) is shared in `python/`, and generated fixtures go to `reference/` (gitignored). Paths below are relative to `packages/LALWaveforms/` unless noted.
+Monorepo using a Julia workspace (root `Project.toml`): Julia packages live in `packages/`: `LALWaveforms` (LAL-backed waveforms) and `GWParameterConversion` (dependency-free, AD-friendly mass/spin/frame conversions ported from bilby; `LALWaveforms` depends on it via `[sources]`); the bilby fixture tooling (`cases.json`, `generate.py`, `libdir.py`) is shared in `python/`, and generated fixtures go to `reference/` (gitignored). Paths below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands
 
@@ -21,6 +21,7 @@ uv run --project python python python/generate.py
 export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suite (Aqua, JET, reference, etc.)
+julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 runic --inplace .                              # format (Runic; CI enforces it)
 ```
 

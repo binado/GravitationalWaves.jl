@@ -1,4 +1,5 @@
-using BackgroundCosmology: cosmology, comoving_volume_element, luminosity_dist
+import BackgroundCosmology
+using BackgroundCosmology: cosmology, comoving_volume_element
 using Distributions
 using ForwardDiff
 using Random
@@ -57,7 +58,7 @@ end
     c = cosmology(_RS_PARAMS)
     # On a node: exact; between nodes: linear; outside: clamped.
     z_node = redshift_grid(d)[41]
-    @test luminosity_distance(d, z_node) ≈ luminosity_dist(c, z_node) rtol = 1.0e-8
+    @test luminosity_distance(d, z_node) ≈ BackgroundCosmology.luminosity_distance(c, z_node) rtol = 1.0e-8
     @test differential_comoving_volume(d, z_node) ≈ 4π * comoving_volume_element(c, z_node) rtol = 1.0e-8
     z_mid = 0.5 * (redshift_grid(d)[41] + redshift_grid(d)[42])
     @test luminosity_distance(d, z_mid) ≈

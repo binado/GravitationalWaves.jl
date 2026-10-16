@@ -9,6 +9,9 @@ using NPZ
     df = spec["frequency"]["delta_f"]
     fmax = spec["frequency"]["f_max"]
     f = range(0, fmax; step = df)
+    # Julia loads libopenlibm globally, so on Linux LAL's libm calls bind to it rather than
+    # glibc. Results are bit-identical to Python on macOS but differ at the ulp level on
+    # Linux (amplified by sensitive models), hence the optional per-case `rtol`.
 
     missing_names = [
         c["name"] for c in spec["cases"] if !isfile(joinpath(refdir, c["name"] * ".npz"))
@@ -36,8 +39,9 @@ using NPZ
             settings = WaveformSettings(c["approximant"]; kw...)
 
             h = hphc_fd(f, params, settings)
-            @test isapprox(h.plus, ref["plus"]; rtol = 1.0e-12)
-            @test isapprox(h.cross, ref["cross"]; rtol = 1.0e-12)
+            rtol = Float64(get(c, "rtol", spec["default_rtol"]))
+            @test isapprox(h.plus, ref["plus"]; rtol)
+            @test isapprox(h.cross, ref["cross"]; rtol)
 
             full = LW.BBHParameters(params)
             fref = get(kw, :reference_frequency, 50.0)

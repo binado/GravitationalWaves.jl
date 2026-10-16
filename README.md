@@ -47,6 +47,8 @@ export LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/lib
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
+Julia loads `libopenlibm` globally, so on Linux LAL's libm calls resolve to it instead of glibc. Output is bit-identical to Python on macOS, but differs at the ulp level on Linux (up to ~1e-6 for IMRPhenomT, whose time-domain pipeline amplifies it), so `cases.json` carries a per-case `rtol`.
+
 Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 ## Formatting

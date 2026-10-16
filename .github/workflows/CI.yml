@@ -23,24 +23,11 @@ jobs:
           uv sync --project test/python --locked
           uv run --project test/python python test/python/generate.py
           echo "LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/libdir.py)" >> $GITHUB_ENV
-      - name: DIAG python determinism
-        run: |
-          cp -r test/reference /tmp/ref1
-          uv run --project test/python python test/python/generate.py
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
-      - name: DIAG julia
-        continue-on-error: true
-        run: |
-          julia --project=@diag -e 'using Pkg; Pkg.develop(path="."); Pkg.add(["NPZ","JSON"])'
-          julia --project=@diag test/diag.jl
-          echo "=== LD_PRELOAD libm ==="
-          LD_PRELOAD=$(ldconfig -p | grep -m1 'libm.so.6' | awk '{print $NF}') julia --project=@diag test/diag.jl
-          echo "=== openlibm loaded? ==="
-          julia --project=@diag -e 'using LALWaveforms; LALWaveforms.lal(); using Libdl; println(filter(contains("libm"), dllist()))'
       - uses: julia-actions/julia-runtest@v1
 
   format:

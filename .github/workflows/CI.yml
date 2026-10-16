@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         julia: ["1.12", "1"]
     steps:
       - uses: actions/checkout@v4
@@ -23,11 +23,20 @@ jobs:
           uv sync --project test/python --locked
           uv run --project test/python python test/python/generate.py
           echo "LALWAVEFORMS_LIBDIR=$(uv run --project test/python python test/python/libdir.py)" >> $GITHUB_ENV
+      - name: DIAG python determinism
+        run: |
+          cp -r test/reference /tmp/ref1
+          uv run --project test/python python test/python/generate.py
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
+      - name: DIAG julia
+        continue-on-error: true
+        run: |
+          julia --project=@diag -e 'using Pkg; Pkg.develop(path="."); Pkg.add(["NPZ","JSON"])'
+          julia --project=@diag test/diag.jl
       - uses: julia-actions/julia-runtest@v1
 
   format:

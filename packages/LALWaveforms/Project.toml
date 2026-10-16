@@ -1,0 +1,28 @@
+name = "LALWaveforms"
+uuid = "46d55bfd-a6ec-4788-a7e2-8ddbff47c71c"
+version = "0.1.0"
+authors = ["binado <bernardopveronese@gmail.com>"]
+
+[deps]
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+
+[compat]
+Aqua = "0.8"
+JET = "0.11, 0.12"
+Libdl = "1"
+JSON = "0.21, 1"
+NPZ = "0.4"
+Preferences = "1"
+Test = "1"
+julia = "1.12"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "JET", "JSON", "NPZ", "Test"]

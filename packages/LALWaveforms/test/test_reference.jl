@@ -3,9 +3,9 @@ using NPZ
 
 @testset "reference (bilby)" begin
     LW = LALWaveforms
-    here = @__DIR__
-    spec = JSON.parsefile(joinpath(here, "python", "cases.json"))
-    refdir = joinpath(here, "reference")
+    root = normpath(@__DIR__, "..", "..", "..")
+    spec = JSON.parsefile(joinpath(root, "python", "cases.json"))
+    refdir = joinpath(root, "reference")
     df = spec["frequency"]["delta_f"]
     fmax = spec["frequency"]["f_max"]
     f = range(0, fmax; step = df)
@@ -18,7 +18,7 @@ using NPZ
     ]
     if !isempty(missing_names)
         msg = "bilby reference fixtures missing in $refdir ($(join(missing_names, ", "))); " *
-            "run `uv run --project test/python python test/python/generate.py`"
+            "run `uv run --project python python python/generate.py`"
         if get(ENV, "CI", "") == "true"
             error(msg)
         else

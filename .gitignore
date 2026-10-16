@@ -1,5 +1,5 @@
 Manifest.toml
-test/reference/
-test/python/.venv/
+reference/
+python/.venv/
 .claude/
 LocalPreferences.toml

@@ -19,6 +19,17 @@ function effective_precessing_spin(
     )
     chi_1_in_plane = sqrt(spin_1x^2 + spin_1y^2)
     chi_2_in_plane = sqrt(spin_2x^2 + spin_2y^2)
+    return effective_precessing_spin(chi_1_in_plane, chi_2_in_plane, mass_ratio)
+end
+
+"""
+    effective_precessing_spin(chi_1_in_plane, chi_2_in_plane, mass_ratio)
+
+Same from the in-plane spin magnitudes.
+"""
+function effective_precessing_spin(
+        chi_1_in_plane::Real, chi_2_in_plane::Real, mass_ratio::Real
+    )
     return max(
         chi_1_in_plane,
         (4 * mass_ratio + 3) / (3 * mass_ratio + 4) * mass_ratio * chi_2_in_plane,

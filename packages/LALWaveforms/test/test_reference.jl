@@ -31,7 +31,10 @@ using NPZ
         isfile(file) || continue
         @testset "$(c["name"])" begin
             ref = npzread(file)
-            params = NamedTuple(Symbol(k) => Float64(v) for (k, v) in c["params"])
+            # `julia_params` lets a case feed Julia a different (equivalent) parameterisation than bilby.
+            params = NamedTuple(
+                Symbol(k) => Float64(v) for (k, v) in get(c, "julia_params", c["params"])
+            )
             kw = Dict{Symbol, Any}(Symbol(k) => v for (k, v) in c["settings"])
             if haskey(kw, :mode_array)
                 kw[:mode_array] = [(Int(m[1]), Int(m[2])) for m in kw[:mode_array]]
@@ -43,13 +46,8 @@ using NPZ
             @test isapprox(h.plus, ref["plus"]; rtol)
             @test isapprox(h.cross, ref["cross"]; rtol)
 
-            full = LW.BBHParameters(params)
             fref = get(kw, :reference_frequency, 50.0)
-            s = LW.bilby_to_lalsimulation_spins(
-                LW.BBHParameters(
-                    (; (k => getfield(full, k) for k in LW.ALLOWED_KEYS)...)
-                ), fref,
-            )
+            s = LW.bilby_to_lalsimulation_spins(LW.bilby_parameters(params), fref)
             @test collect(values(s)) ≈ ref["spins"] atol = 1.0e-14
         end
     end

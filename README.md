@@ -19,7 +19,9 @@ params = (
 ```
 
 `WaveformSettings` builds the LAL waveform dictionary once; reuse it across calls. Optional parameters
-(`a_1, a_2, tilt_1, tilt_2, phi_12, phi_jl, eccentricity`) default to 0, and unknown keys throw.
+(`a_1, a_2, tilt_1, tilt_2, phi_12, phi_jl, eccentricity`) default to 0, and unknown keys throw. Instead of
+`mass_1`/`mass_2` you may pass any other mass parameters that
+[GWParameterConversion](packages/GWParameterConversion) can convert (for example `chirp_mass` and `mass_ratio`).
 
 Scope for now: frequency domain only, uniform `AbstractRange` grids starting at 0, detector-frame masses,
 no tidal parameters.

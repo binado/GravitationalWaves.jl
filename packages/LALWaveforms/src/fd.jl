@@ -11,10 +11,11 @@ units: required `mass_1`, `mass_2` (detector-frame solar masses),
 outside `minimum_frequency ≤ f ≤ maximum_frequency`.
 
 Throws [`LALError`](@ref) when LAL rejects the input, and `ArgumentError` for
-malformed `params` or `f`.
+malformed `params` or `f`; mass parameters other than `mass_1`, `mass_2` are converted
+with `GWParameterConversion.convert_parameters`.
 """
 function hphc_fd(f::AbstractRange, params, settings::WaveformSettings)
-    p = BBHParameters(params)
+    p = bilby_parameters(params)
     first(f) == 0 || throw(ArgumentError("frequency grid must start at 0, got $(first(f))"))
     df = step(f)
     df > 0 || throw(ArgumentError("frequency grid must have a positive step, got $df"))

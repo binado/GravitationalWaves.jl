@@ -1,3 +1,6 @@
 # SI values as used by LAL (LALConstants.h).
 const MSUN_SI = 1.988409870698050731911960804878414216e30
 const PC_SI = 3.085677581491367278913937957796471611e16
+
+# G M_sun / c^3 in seconds, from the nominal solar mass parameter (LAL >= 7).
+const MTSUN_SI = 4.925490947641266978197229498498379006e-6

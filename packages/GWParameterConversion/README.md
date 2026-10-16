@@ -13,8 +13,11 @@ q = mass_ratio(36.0, 29.0)
 m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(mc, q)
 ```
 
-Currently covers mass conversions. Spins, the LAL frame transform and a key-driven
-`convert_parameters` are planned. The mass-ratio solves from `mass_1`/`mass_2` and the chirp mass
+Covers mass conversions, effective spins (`effective_spin`, `effective_precessing_spin`) and the
+bilby-to-LAL spin frame transform (`spins_to_lal_frame`), a pure-Julia equivalent of
+`XLALSimInspiralTransformPrecessingNewInitialConditions` that agrees with LAL to about 1e-14
+(LALWaveforms keeps LAL itself as the test oracle). A key-driven `convert_parameters` is planned.
+The mass-ratio solves from `mass_1`/`mass_2` and the chirp mass
 use bilby's closed-form cubic root, which has no real root once `(chirp_mass / mass)^5 > 27/4`
 (possible for `mass_2`); there bilby returns `NaN` and this package throws `DomainError`.
 

@@ -1,3 +1,6 @@
+using GWParameterConversion
+using Random
+
 @testset "conversion" begin
     LW = LALWaveforms
     base = (mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3)
@@ -32,5 +35,23 @@
         s = LW.bilby_to_lalsimulation_spins(p, 50.0)
         @test hypot(s.s1x, s.s1y, s.s1z) ≈ 0.6
         @test hypot(s.s2x, s.s2y, s.s2z) ≈ 0.4
+    end
+
+    @testset "pure-Julia port agrees with LAL" begin
+        rng = Random.Xoshiro(20260416)
+        worst = 0.0
+        for _ in 1:500
+            p = (
+                mass_1 = 5 + 70rand(rng), mass_2 = 1 + 20rand(rng), luminosity_distance = 100.0,
+                theta_jn = π * rand(rng), phase = 2π * rand(rng), a_1 = rand(rng), a_2 = rand(rng),
+                tilt_1 = π * rand(rng), tilt_2 = π * rand(rng), phi_12 = 2π * rand(rng),
+                phi_jl = 2π * rand(rng),
+            )
+            f_ref = 10 + 90rand(rng)
+            lal = LW.transform_precessing(LW.BBHParameters(p), f_ref)
+            port = GWParameterConversion.spins_to_lal_frame(p, f_ref)
+            worst = max(worst, maximum(abs, collect(values(lal)) .- collect(values(port))))
+        end
+        @test worst < 1.0e-12
     end
 end

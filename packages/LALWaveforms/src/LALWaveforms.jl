@@ -10,7 +10,7 @@ The LAL shared libraries are not bundled: point the package at them with the
 """
 module LALWaveforms
 
-using GWParameterConversion: MSUN_SI, PC_SI
+using GWParameterConversion: MSUN_SI, PC_SI, is_aligned, aligned_spins_to_lal_frame
 using Libdl
 using Preferences
 

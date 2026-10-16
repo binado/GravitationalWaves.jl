@@ -6,6 +6,8 @@ on:
       - main
     tags: ['*']
   pull_request:
+  schedule:
+    - cron: 0 6 * * 1
 
 permissions:
   actions: write
@@ -20,6 +22,8 @@ jobs:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    # The prerelease job is informational only, so skip it on PRs.
+    if: matrix.version != 'pre' || github.event_name != 'pull_request'
     continue-on-error: ${{ matrix.version == 'pre' }}
     strategy:
       fail-fast: false

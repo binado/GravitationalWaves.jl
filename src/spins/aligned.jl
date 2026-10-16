@@ -33,6 +33,9 @@ end
 
 function Random.rand(rng::AbstractRNG, d::AlignedSpinChiSimple)
     T = typeof(d.a_max)
-    magnitude = d.a_max * rand(rng, T) * rand(rng, T)
+    # Aligned component chi = a * cos(tilt), with a ~ U(0, a_max) and |cos(tilt)| ~ U(0, 1)
+    a = d.a_max * rand(rng, T)
+    abs_cos_tilt = rand(rng, T)
+    magnitude = a * abs_cos_tilt
     return rand(rng, Bool) ? magnitude : -magnitude
 end

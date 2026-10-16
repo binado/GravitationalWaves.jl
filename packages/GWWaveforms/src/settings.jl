@@ -6,7 +6,7 @@ approximant, frequency bounds and post-Newtonian orders. Mirrors
 `LALWaveforms.WaveformSettings`, so code can switch between the LAL-backed and the native
 implementation. Defaults are those of bilby's `lal_binary_black_hole`.
 
-`approximant` is `"TaylorF2"` (a `Symbol` also works); other names throw
+`approximant` is `"TaylorF2"` or `"IMRPhenomD"` (a `Symbol` also works); other names throw
 `ArgumentError`.
 
 # Keywords

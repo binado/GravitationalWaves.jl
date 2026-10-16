@@ -29,6 +29,25 @@ const BNS = (
 
 # (name, approximant, parameters, WaveformSettings keywords, rtol)
 const CASES = [
+    ("D equal mass", "IMRPhenomD", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
+    ("D unequal mass", "IMRPhenomD", BBH, (;), 1.0e-10),
+    ("D aligned spins", "IMRPhenomD", merge(BBH, ALIGNED), (;), 1.0e-10),
+    ("D anti-aligned spins", "IMRPhenomD", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
+    ("D high spin", "IMRPhenomD", merge(BBH, (; a_1 = 0.9, a_2 = 0.9, tilt_1 = 0.0, tilt_2 = 0.0)), (;), 1.0e-10),
+    ("D extreme mass ratio", "IMRPhenomD", merge(BBH, (; mass_1 = 60.0, mass_2 = 7.0, a_1 = 0.4)), (;), 1.0e-10),
+    ("D light", "IMRPhenomD", merge(BNS, (; mass_1 = 5.0, mass_2 = 3.0)), (;), 1.0e-10),
+    (
+        "D chirp mass and mass ratio", "IMRPhenomD",
+        (
+            chirp_mass = 28.0, mass_ratio = 0.8, luminosity_distance = 400.0, theta_jn = 1.0,
+            phase = 0.4, a_1 = 0.2, a_2 = 0.1, tilt_1 = 0.0, tilt_2 = 0.0,
+        ),
+        (;), 1.0e-10,
+    ),
+    ("D other reference frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; reference_frequency = 30.0), 1.0e-10),
+    ("D zero reference frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),
+    ("D maximum frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; maximum_frequency = 300.0), 1.0e-10),
+    ("D amplitude order", "IMRPhenomD", BBH, (; pn_amplitude_order = 3), 1.0e-10),
     ("F2 BNS", "TaylorF2", BNS, (;), 1.0e-10),
     ("F2 NSBH", "TaylorF2", merge(BNS, (; mass_1 = 8.0, mass_2 = 1.4)), (;), 1.0e-10),
     ("F2 BBH", "TaylorF2", BBH, (;), 1.0e-10),
@@ -69,7 +88,7 @@ const CASES = [
         end
 
         @testset "other grids" begin
-            for approximant in ("TaylorF2",), df in (0.125, 1.0 / 3.0, 1.0)
+            for approximant in ("IMRPhenomD", "TaylorF2"), df in (0.125, 1.0 / 3.0, 1.0)
                 grid = range(0, 512; step = df)
                 params = merge(BBH, ALIGNED)
                 h = hphc_fd(grid, params, WaveformSettings(approximant))

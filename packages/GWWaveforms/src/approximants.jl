@@ -9,7 +9,10 @@ abstract type Approximant end
 "Post-Newtonian stationary-phase inspiral (`XLALSimInspiralTaylorF2`), aligned spins only."
 struct TaylorF2 <: Approximant end
 
-const APPROXIMANTS = (TaylorF2 = TaylorF2(),)
+"Aligned-spin inspiral-merger-ringdown model of Husa et al. and Khan et al. (`XLALSimIMRPhenomDGenerateFD`)."
+struct IMRPhenomD <: Approximant end
+
+const APPROXIMANTS = (TaylorF2 = TaylorF2(), IMRPhenomD = IMRPhenomD())
 
 function approximant_from_name(name::Union{Symbol, AbstractString})
     key = Symbol(name)

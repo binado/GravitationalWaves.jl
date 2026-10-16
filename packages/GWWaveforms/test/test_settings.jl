@@ -5,14 +5,14 @@
     f = range(0, 512; step = 0.25)
 
     @testset "WaveformSettings" begin
-        s = WaveformSettings("TaylorF2")
+        s = WaveformSettings("IMRPhenomD")
         @test s.minimum_frequency == 20.0
         @test s.reference_frequency == 50.0
         @test s.maximum_frequency === nothing
         @test WaveformSettings(:TaylorF2) isa WaveformSettings{GWWaveforms.TaylorF2}
-        @test s isa WaveformSettings{GWWaveforms.TaylorF2}
+        @test s isa WaveformSettings{GWWaveforms.IMRPhenomD}
         @test_throws ArgumentError WaveformSettings("IMRPhenomXPHM")
-        @test_throws ArgumentError WaveformSettings("TaylorF2"; mode_array = [(2, 2)])
+        @test_throws ArgumentError WaveformSettings("IMRPhenomD"; mode_array = [(2, 2)])
         @test_throws ArgumentError WaveformSettings("TaylorF2"; pn_amplitude_order = 1)
         @test_throws ArgumentError WaveformSettings("TaylorF2"; pn_phase_order = 8)
         @test_throws ArgumentError WaveformSettings("TaylorF2"; pn_spin_order = -2)
@@ -21,7 +21,7 @@
     end
 
     @testset "parameters" begin
-        s = WaveformSettings("TaylorF2")
+        s = WaveformSettings("IMRPhenomD")
         @test_throws ArgumentError hphc_fd(f, merge(base, (; foo = 1.0)), s)
         @test_throws ArgumentError hphc_fd(f, Base.structdiff(base, (; phase = 0.0)), s)
         # Precessing spins and eccentricity are outside both models.
@@ -40,14 +40,14 @@
     end
 
     @testset "grid" begin
-        s = WaveformSettings("TaylorF2")
+        s = WaveformSettings("IMRPhenomD")
         @test_throws ArgumentError hphc_fd(range(1, 512; step = 0.25), base, s)
         @test_throws ArgumentError hphc_fd(range(0, 512; step = -0.25), base, s)
         @test_throws ArgumentError hphc_fd(range(0, 0; length = 1), base, s)
     end
 
     @testset "masking and f_max" begin
-        for name in ("TaylorF2",)
+        for name in ("IMRPhenomD", "TaylorF2")
             h = hphc_fd(f, base, WaveformSettings(name; minimum_frequency = 30, maximum_frequency = 200))
             below = f .< 30
             above = f .> 200
@@ -67,7 +67,7 @@
 
     @testset "orientation" begin
         # Face-on: hc = -i hp; edge-on: no cross polarisation, hp halved.
-        for name in ("TaylorF2",)
+        for name in ("IMRPhenomD", "TaylorF2")
             s = WaveformSettings(name)
             face = hphc_fd(f, merge(base, (; theta_jn = 0.0)), s)
             @test face.cross ≈ -im .* face.plus

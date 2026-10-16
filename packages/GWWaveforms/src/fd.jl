@@ -65,3 +65,4 @@ function hphc_fd(f::AbstractRange, params::NamedTuple, settings::WaveformSetting
 end
 
 waveform_fd(::TaylorF2, args...) = taylorf2_fd(args...)
+waveform_fd(::IMRPhenomD, args...) = phenomd_fd(args...)

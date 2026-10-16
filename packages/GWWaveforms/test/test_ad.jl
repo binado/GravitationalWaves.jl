@@ -37,7 +37,7 @@ end
         "Enzyme" => AutoEnzyme(; function_annotation = Enzyme.Const),
     ]
     x_template = AD_X0 .* [1.01, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    for approximant in ("TaylorF2",)
+    for approximant in ("TaylorF2", "IMRPhenomD")
         @testset "$approximant" begin
             settings = WaveformSettings(approximant; minimum_frequency = 25.0)
             template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), settings).cross

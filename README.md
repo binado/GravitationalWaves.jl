@@ -26,6 +26,19 @@ params = (
 Scope for now: frequency domain only, uniform `AbstractRange` grids starting at 0, detector-frame masses,
 no tidal parameters.
 
+## GWWaveforms: native, differentiable waveforms
+
+[`packages/GWWaveforms`](packages/GWWaveforms) provides the same interface in pure Julia (no LAL install),
+for TaylorF2 and IMRPhenomD. The code is generic over `Real`, so it works with ForwardDiff, Enzyme and
+Mooncake, and its tests check it against `LALWaveforms` to about 1e-12.
+
+```julia
+using GWWaveforms
+
+settings = WaveformSettings("IMRPhenomD")
+(; plus, cross) = hphc_fd(range(0, 1024; step = 0.25), params, settings)
+```
+
 ## Pointing the package at LAL
 
 LAL is not bundled. Provide the directory holding `liblal` and `liblalsimulation` in one of two ways

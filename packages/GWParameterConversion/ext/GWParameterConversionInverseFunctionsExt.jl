@@ -1,0 +1,14 @@
+module GWParameterConversionInverseFunctionsExt
+
+using GWParameterConversion: chirp_mass_and_mass_ratio_to_component_masses,
+    total_mass_and_mass_ratio_to_component_masses,
+    component_masses_to_chirp_mass_and_mass_ratio,
+    component_masses_to_total_mass_and_mass_ratio
+import InverseFunctions: inverse
+
+inverse(::typeof(chirp_mass_and_mass_ratio_to_component_masses)) = component_masses_to_chirp_mass_and_mass_ratio
+inverse(::typeof(component_masses_to_chirp_mass_and_mass_ratio)) = chirp_mass_and_mass_ratio_to_component_masses
+inverse(::typeof(total_mass_and_mass_ratio_to_component_masses)) = component_masses_to_total_mass_and_mass_ratio
+inverse(::typeof(component_masses_to_total_mass_and_mass_ratio)) = total_mass_and_mass_ratio_to_component_masses
+
+end

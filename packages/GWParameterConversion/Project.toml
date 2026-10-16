@@ -3,20 +3,36 @@ uuid = "8025f710-d0ad-4738-9700-57195c00f751"
 version = "0.1.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
+[weakdeps]
+ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
+
+[extensions]
+GWParameterConversionChangesOfVariablesExt = "ChangesOfVariables"
+GWParameterConversionForwardDiffExt = "ForwardDiff"
+GWParameterConversionInverseFunctionsExt = "InverseFunctions"
+
 [compat]
 Aqua = "0.8"
+ChangesOfVariables = "0.1"
 ForwardDiff = "1"
+InverseFunctions = "0.1"
 JET = "0.11, 0.12"
 JSON = "0.21, 1"
+LinearAlgebra = "1"
 Test = "1"
 julia = "1.12"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "ForwardDiff", "JET", "JSON", "Test"]
+test = ["Aqua", "ChangesOfVariables", "ForwardDiff", "InverseFunctions", "JET", "JSON", "LinearAlgebra", "Test"]

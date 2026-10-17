@@ -347,8 +347,8 @@ function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
     return nothing
 end
 
-const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: stopping at the ISCO " *
-    "depends on the masses, which the compiled path cannot do"
+const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the default cutoff " *
+    "(the ISCO for TaylorF2, 0.2 / M for IMRPhenomD) depends on the masses, which the compiled path cannot do"
 
 """
     taylorf2_slice(f, f_start, f_min, f_max) -> (lo, hi)

@@ -169,3 +169,37 @@ end
     @test a.plus == b.plus
     @test a.cross == b.cross
 end
+
+@testset "IMRPhenomD static slice against the loop" begin
+    f = range(0, 256; step = 0.25)
+    base = (
+        luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
+        a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
+    )
+    df = Float64(step(f))
+    fcut(m1, m2) = GWWaveforms.F_CUT / ((m1 + m2) * GWWaveforms.MTSUN_SI)
+    # The last pair puts fCut inside the grid; the second-last makes it an exact grid point.
+    for (m1, m2) in ((36.0, 29.0), (29.0, 36.0), (90.0, 85.0), (130.0, 100.0))
+        M = m1 + m2
+        # f_max such that f_max / df is an integer, below and above fCut.
+        for g in (
+                IMRPhenomD(; minimum_frequency = 25.0),
+                IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = 180.0),
+                IMRPhenomD(; minimum_frequency = 20.1, maximum_frequency = 200.3, reference_frequency = 0),
+                IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = fcut(m1, m2)),
+            )
+            p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
+            f_min, f_max = GWWaveforms.frequency_bounds(g, f)
+            fcut(m1, m2) > f_min || continue
+            lo, hi = GWWaveforms.taylorf2_slice(f, f_min, f_min, f_max)
+            expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
+            expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
+            got = GWWaveforms.phenomd_fd_slice(Float64, length(f), lo, hi, df, p, g, f_min, f_max)
+            @test maximum(abs, got .- expected) <= 1.0e-12 * maximum(abs, expected)
+            @test iszero.(got) == iszero.(expected)
+        end
+    end
+    # Nothing in band.
+    p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
+    @test all(iszero, GWWaveforms.phenomd_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0))
+end

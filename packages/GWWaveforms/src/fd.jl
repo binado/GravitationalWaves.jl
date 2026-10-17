@@ -29,8 +29,8 @@ The parameter values are **not** checked: spins must be (anti-)aligned with the 
 momentum, `eccentricity` zero, masses and distance positive, and so on. Run
 [`validate_parameters`](@ref) first (once, on the host) for that. In exchange, `hphc_fd` is free of
 data-dependent branches and can be compiled by Reactant with tracked scalar parameters.
-Only `TaylorF2` is supported so far, and it needs a positive `maximum_frequency` (`ArgumentError`
-otherwise, as the ISCO cutoff depends on the masses).
+Both `TaylorF2` and `IMRPhenomD` are supported, and `maximum_frequency` must be positive
+(`ArgumentError` otherwise, as the ISCO or `0.2 / M` cutoff depends on the masses).
 
 The element type is `Complex{T}` with `T` the floating-point type promoted from the
 parameters, so dual numbers (ForwardDiff) and Enzyme or Mooncake reverse mode pass through.
@@ -64,9 +64,6 @@ function waveform_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
 end
 
 function waveform_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
-    h = phenomd_fd(T, length(f), Float64(step(f)), p, g, f_start, f_max)
-    for i in eachindex(h)
-        f_min <= f[i] <= f_max || (h[i] = zero(eltype(h)))
-    end
-    return h
+    lo, hi = taylorf2_slice(f, f_start, f_min, f_max)
+    return phenomd_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g, f_start, f_max)
 end

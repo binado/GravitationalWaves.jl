@@ -63,10 +63,11 @@
         g = IMRPhenomD()
         @test_throws ArgumentError validate_parameters(f, merge(base, (; a_1 = 1.5)), g)
         @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_1 = 5000.0, mass_2 = 5000.0)), g)
-        # The ISCO cutoff depends on the masses, which TaylorF2 does not support on the static path.
-        z = TaylorF2(; maximum_frequency = 0)
-        @test_throws ArgumentError validate_parameters(f, base, z)
-        @test_throws ArgumentError hphc_fd(f, base, z)
+        # The default cutoff depends on the masses, which the static path does not support.
+        for z in (TaylorF2(; maximum_frequency = 0), IMRPhenomD(; maximum_frequency = 0))
+            @test_throws ArgumentError validate_parameters(f, base, z)
+            @test_throws ArgumentError hphc_fd(f, base, z)
+        end
     end
 
     @testset "grid" begin

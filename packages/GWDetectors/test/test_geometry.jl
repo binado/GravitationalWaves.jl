@@ -13,8 +13,8 @@
     end
     @test detectors.H1.vertex == SVector(-2161414.92636, -3834695.17889, 4600350.22664)
     @test detectors.H1.arm_lengths == SVector(3995.084, 3995.044)
-    @test_throws ArgumentError Detector("unknown")
-    @test_throws ArgumentError Detector("H1")
+    @test_throws UndefKeywordError Detector("unknown")
+    @test_throws UndefKeywordError Detector("H1")
     args = ((0, 0, 0), (1, 0, 0), (0, 1, 0), (1000, 1000))
     d = Detector("test", args...)
     @test detector_tensor(d) == @SMatrix [0.5 0 0; 0 -0.5 0; 0 0 0]
@@ -47,10 +47,10 @@
     @test tilted.xarm[1] ≈ sin(0.1)
     @test tilted.yarm[1] ≈ sin(-0.2)
     @test abs(sum(detector_tensor(tilted)[i, i] for i in 1:3)) < 1.0e-15
-    for kwargs in ((; latitude = 2.0), (; xarm_tilt = 2.0), (; longitude = Inf))
+    for kwargs in ((; latitude = 2.0), (; xarm_tilt = 2.0), (; longitude = Inf), (; elevation = Inf))
         base = (; latitude = 0.0, longitude = 0.0, xarm_azimuth = 0.0, yarm_azimuth = 1.0, arm_lengths = (1, 1))
         @test_throws ArgumentError Detector("bad"; merge(base, kwargs)...)
     end
-    @test_throws ArgumentError Detector("partial"; latitude = 0.0)
-    @test_throws ArgumentError Detector("H1"; elevation = Inf)
+    @test_throws UndefKeywordError Detector("partial"; latitude = 0.0)
+    @test_throws UndefKeywordError Detector("H1"; elevation = Inf)
 end

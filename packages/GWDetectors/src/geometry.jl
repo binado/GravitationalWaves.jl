@@ -54,15 +54,10 @@ function Detector(name::AbstractString, vertex, xarm, yarm, arm_lengths; check =
 end
 
 function Detector(
-        name::AbstractString; latitude = nothing, longitude = nothing, xarm_azimuth = nothing,
-        yarm_azimuth = nothing, arm_lengths = nothing, elevation = nothing,
-        xarm_tilt = nothing, yarm_tilt = nothing, check = true
+        name::AbstractString; latitude, longitude, xarm_azimuth,
+        yarm_azimuth, arm_lengths, elevation = 0,
+        xarm_tilt = 0, yarm_tilt = 0, check = true
     )
-    coordinates = (latitude, longitude, xarm_azimuth, yarm_azimuth, arm_lengths)
-    any(isnothing, coordinates) && throw(ArgumentError("supply latitude, longitude, both azimuths, and arm_lengths"))
-    elevation = something(elevation, 0)
-    xarm_tilt = something(xarm_tilt, 0)
-    yarm_tilt = something(yarm_tilt, 0)
     if check
         all(_finite_real, (latitude, longitude, elevation, xarm_azimuth, yarm_azimuth, xarm_tilt, yarm_tilt)) ||
             throw(ArgumentError("geodetic coordinates must be finite and real"))

@@ -131,13 +131,13 @@ function _plan(keys::Tuple, targets::Tuple)
     return keep
 end
 
-@generated function _convert(nt::NamedTuple{K}, ::Val{T}, rtol) where {K, T}
+@generated function _convert(nt::NamedTuple{K}, ::Val{T}, ::Val{C}, rtol) where {K, T, C}
     plan = _plan(K, T)
     plan isa String && return :(throw(ArgumentError($plan)))
 
     body = Expr[]
     # Redundant inputs: check them against what the other given keys imply.
-    for c in REGISTRY
+    for c in (C ? REGISTRY : ())
         all(in(K), c.needs) || continue
         present = [j for (j, g) in enumerate(c.gives) if g in K]
         isempty(present) && continue
@@ -182,7 +182,7 @@ end
 end
 
 """
-    convert_parameters(nt::NamedTuple, targets::Tuple{Vararg{Symbol}}; rtol = 1e-12) -> NamedTuple
+    convert_parameters(nt::NamedTuple, targets::Tuple{Vararg{Symbol}}; rtol = 1e-12, check_consistency::Bool = true) -> NamedTuple
 
 Return `nt` extended with the parameters in `targets` that it lacks, derived from the keys it
 has (for example `(:mass_1, :mass_2)` from `chirp_mass` and `mass_ratio`). Keys already in `nt`
@@ -197,10 +197,14 @@ the earliest registered one is used (component masses are the preferred source).
 
 Throws `ArgumentError` when a target cannot be derived, and [`InconsistentParametersError`](@ref)
 when `nt` holds redundant parameters that disagree, i.e. differ by more than `rtol` (relative and
-absolute).
+absolute). Set `check_consistency=false` for compiled inference calls: redundant-input
+calculations and checks are omitted entirely, so callers must supply consistent redundant
+inputs. Supplied keys still win. Keep `targets`, `check_consistency`, and `rtol` as
+compile-time configuration when tracing.
 """
 @inline function convert_parameters(
-        nt::NamedTuple, targets::Tuple{Vararg{Symbol}}; rtol::Real = 1.0e-12
+        nt::NamedTuple, targets::Tuple{Vararg{Symbol}}; rtol::Number = 1.0e-12,
+        check_consistency::Bool = true
     )
-    return _convert(nt, Val(targets), rtol)
+    return _convert(nt, Val(targets), Val(check_consistency), rtol)
 end

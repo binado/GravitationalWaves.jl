@@ -2,8 +2,9 @@
 
 Dependency-free conversions between gravitational-wave source parameters, following
 [bilby](https://bilby-dev.github.io/bilby/)'s names and conventions (`mass_1 ≥ mass_2`,
-`mass_ratio = mass_2 / mass_1 ≤ 1`). Everything is generic over `Real`, so it works with
-ForwardDiff and other AD tools.
+`mass_ratio = mass_2 / mass_1 ≤ 1`). Numerical data arguments accept `Number` to support traced real scalars,
+ForwardDiff, and other AD tools. Physical inputs remain real-valued; complex-valued
+physics is not supported.
 
 ```julia
 using GWParameterConversion
@@ -29,6 +30,94 @@ equivalent of `XLALSimInspiralTransformPrecessingNewInitialConditions` that agre
 The mass-ratio solves from `mass_1`/`mass_2` and the chirp mass use bilby's closed-form cubic root,
 which has no real root once `(chirp_mass / mass)^5 > 27/4` (possible for `mass_2`); there bilby
 returns `NaN` and this package throws `DomainError`.
+
+## Inference coordinate changes
+
+NamedTuple overloads change between independent mass coordinate pairs:
+
+```julia
+x = (; chirp_mass = 28.0, mass_ratio = 0.8)
+f = chirp_mass_and_mass_ratio_to_component_masses
+masses = f(x) # (; mass_1, mass_2)
+component_masses_to_chirp_mass_and_mass_ratio(masses) # recovers x
+
+total = component_masses_to_total_mass_and_mass_ratio(masses)
+total_mass_and_mass_ratio_to_component_masses(total) # recovers masses
+```
+
+Each NamedTuple must contain exactly the two corresponding coordinate keys, in either
+order; outputs use the order shown above. Masses must be finite and positive, with
+`mass_1 ≥ mass_2` and `0 < mass_ratio ≤ 1`. Incorrect keys or nonnumeric values throw
+`ArgumentError`. Physical domains are caller preconditions and are not checked. Invalid
+physical inputs can produce arithmetic errors or invalid results that differ by backend.
+Equal masses are supported.
+The existing positional methods retain their behavior and return ordinary tuples;
+the two new `component_masses_to_*` functions also support that convention.
+
+For analytic Jacobians and inverse registration, install and load the optional
+ChangesOfVariables and InverseFunctions packages:
+
+```julia
+using ChangesOfVariables: with_logabsdet_jacobian
+using InverseFunctions: inverse
+
+y, ladj = with_logabsdet_jacobian(f, x)
+inverse(f)(y) # recovers x
+_, inverse_ladj = with_logabsdet_jacobian(inverse(f), y) # approximately -ladj
+```
+
+`ladj` is the log absolute determinant in the direction of the function called:
+`log p_y(y) = log p_x(x) - ladj`. The Jacobian methods cover all four NamedTuple
+transformations and are also accessible through Bijectors' re-export of
+`with_logabsdet_jacobian`. Each integration loads independently; neither adds a required
+dependency to GWParameterConversion. Unlike these coordinate changes,
+`convert_parameters` retains inputs and adds derived fields, so it has no Jacobian method.
+The transformations and log determinants preserve ForwardDiff duals and BigFloat precision,
+including derivatives and nested derivatives at equal masses.
+
+## Compiled inference with Reactant
+
+All public numerical functions, including the four NamedTuple coordinate transforms and
+their Jacobians, support Reactant CPU compilation. Reactant and Enzyme are test-only
+dependencies; install them separately to use compiled inference.
+
+Track scalar inputs explicitly so one executable can be reused with new parameter values.
+Keep target keys, the consistency flag, and tolerance as compile-time configuration:
+
+```julia
+using Reactant, Enzyme
+Reactant.set_default_backend("cpu")
+
+infer(p) = convert_parameters(p, (:mass_1, :mass_2); check_consistency = false)
+p = Reactant.to_rarray((; chirp_mass = 28.0, mass_ratio = 0.8); track_numbers = true)
+compiled = Reactant.@compile infer(p)
+masses = compiled(p)
+p2 = Reactant.to_rarray((; chirp_mass = 32.0, mass_ratio = 0.6); track_numbers = true)
+masses2 = compiled(p2)
+
+loss(v) = Reactant.@allowscalar chirp_mass(v[1], v[2])
+v = Reactant.to_rarray([36.0, 29.0])
+gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, loss, v)
+dm = gradient(Enzyme.Reverse, loss, v)[1]
+```
+
+`check_consistency=true` remains the host default, including
+`InconsistentParametersError`. With `false`, redundant-input derivations and comparisons
+are omitted entirely. Redundant inputs must therefore be consistent; supplied keys retain
+precedence and unrelated fields pass through. Loading Reactant never disables checks.
+
+Masses must be positive and finite, with `mass_1 ≥ mass_2`, `0 < mass_ratio ≤ 1`,
+and `0 < symmetric_mass_ratio ≤ 1/4`; redshifts must satisfy `1 + redshift > 0`.
+Spin magnitudes and angles must describe physical real spins. Frame transforms require
+positive reference frequency and nonzero total angular momentum.
+The closed-form cubic solves also have the real-root restriction described above.
+
+Derivatives are supported at smooth physical inputs. Do not require derivatives at
+nondifferentiable alignment switches, ties in the maximum defining `chi_p`, zero in-plane
+spin norms, the equal-mass square-root inverse of symmetric mass ratio, or undefined
+frame azimuths. Boundary values are supported separately: aligned results have exactly zero
+in-plane components, and line-of-sight degeneracy uses the fixed fallback direction.
+The mass-coordinate transforms and their log determinants are smooth at equal masses.
 
 ## Tests
 

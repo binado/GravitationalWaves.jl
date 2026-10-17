@@ -12,25 +12,25 @@ function _antenna(ra, dec, psi, gmst, D)
 end
 
 """
-    antenna_pattern(sky, detector)
-    antenna_pattern(ra, dec, psi, gmst, detector)
+    antenna_pattern(params::NamedTuple, detector)
+    antenna_pattern(ra::Number, dec::Number, psi::Number, gmst::Number, detector)
 
 Return `(; plus, cross)` in LAL's polarization convention using a fixed,
 long-wavelength detector response. `ra` is right ascension (radians, conventionally
 in `[0, 2π)`), `dec` is declination (radians, in `[-π/2, π/2]`), and `psi` is the
 polarization angle (radians, periodic modulo `π`). `gmst` is the Greenwich mean
-sidereal angle in radians and may be unwrapped. The `sky` form supplies `ra`,
+sidereal angle in radians and may be unwrapped. The `params` named tuple supplies `ra`,
 `dec`, `psi`, and `geocent_time` in GPS seconds, including fractions; its epoch
 follows the conventions of [`greenwich_mean_sidereal_time`](@ref).
 Inputs are assumed finite and real; argument values are not validated.
 """
-function antenna_pattern(ra, dec, psi, gmst, d::Detector)
+function antenna_pattern(ra::Number, dec::Number, psi::Number, gmst::Number, d::Detector)
     return _antenna(ra, dec, psi, gmst, detector_tensor(d))
 end
 
-function antenna_pattern(sky, d::Detector)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
-    return antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d)
+function antenna_pattern(params::NamedTuple, d::Detector)
+    gmst = greenwich_mean_sidereal_time(params.geocent_time)
+    return antenna_pattern(params.ra, params.dec, params.psi, gmst, d)
 end
 
 function _delay(ra, dec, gmst, vertex)

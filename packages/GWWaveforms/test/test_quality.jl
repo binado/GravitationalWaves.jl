@@ -18,9 +18,8 @@ if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
             mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
             a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),
         )
-        for approximant in ("TaylorF2", "IMRPhenomD")
-            settings = WaveformSettings(approximant)
-            JET.@test_opt target_modules = (GWWaveforms,) hphc_fd(f, params, settings)
+        for generator in (TaylorF2(), IMRPhenomD())
+            JET.@test_opt target_modules = (GWWaveforms,) hphc_fd(f, params, generator)
         end
     end
 end
@@ -30,7 +29,7 @@ end
     params = (
         chirp_mass = 28.0, mass_ratio = 0.8, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
     )
-    for approximant in ("TaylorF2", "IMRPhenomD")
-        @test (@inferred hphc_fd(f, params, WaveformSettings(approximant))) isa NamedTuple
+    for generator in (TaylorF2(), IMRPhenomD())
+        @test (@inferred hphc_fd(f, params, generator)) isa NamedTuple
     end
 end

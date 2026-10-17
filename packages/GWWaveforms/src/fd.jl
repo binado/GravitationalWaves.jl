@@ -13,10 +13,10 @@ function promote_parameters(p::NamedTuple)
 end
 
 """
-    hphc_fd(f::AbstractRange, params::NamedTuple, settings::WaveformSettings) -> (; plus, cross)
+    hphc_fd(f::AbstractRange, params::NamedTuple, generator::Approximant) -> (; plus, cross)
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz), following bilby's
-`lal_binary_black_hole` and the interface of `LALWaveforms.hphc_fd`. `params` has bilby's
+`lal_binary_black_hole` and the interface of [`AbstractGWWaveforms.hphc_fd`](@ref). `params` has bilby's
 names and units: required `mass_1`, `mass_2` (detector-frame solar masses; other mass
 parameters are converted by `GWParameterConversion.convert_parameters`),
 `luminosity_distance` (Mpc), `theta_jn`, `phase`; optional (default 0) `a_1`, `a_2`, `tilt_1`,
@@ -29,20 +29,17 @@ angular momentum and `eccentricity` zero, else `ArgumentError` is thrown.
 The element type is `Complex{T}` with `T` the floating-point type promoted from the
 parameters, so dual numbers (ForwardDiff) and Enzyme or Mooncake reverse mode pass through.
 """
-function hphc_fd(f::AbstractRange, params::NamedTuple, settings::WaveformSettings)
+function hphc_fd(f::AbstractRange, params::NamedTuple, g::Approximant)
     p0 = aligned_parameters(params)
-    first(f) == 0 || throw(ArgumentError("frequency grid must start at 0, got $(first(f))"))
+    check_frequency_grid(f)
     df = step(f)
-    df > 0 || throw(ArgumentError("frequency grid must have a positive step, got $df"))
-    length(f) >= 2 || throw(ArgumentError("frequency grid needs at least two points"))
     T, p = promote_parameters(p0)
 
-    f_min = settings.minimum_frequency
-    f_max = something(settings.maximum_frequency, Float64(last(f)))
-    f_start = settings.pn_amplitude_order != 0 ?
-        f_low_to_f_start(f_min, settings.pn_amplitude_order) : f_min
+    f_min, f_max = frequency_bounds(g, f)
+    f_start = g.pn_amplitude_order != 0 ?
+        f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
 
-    h = waveform_fd(settings.approximant, T, length(f), Float64(df), p, settings, f_start, f_max)
+    h = waveform_fd(g, T, length(f), Float64(df), p, f_start, f_max)
 
     # The models return h(f) for ι = 0; other orientations multiply by the inclination
     # dependence, hc ∝ -i hp (ChooseFDWaveform in LALSimInspiral).
@@ -64,5 +61,8 @@ function hphc_fd(f::AbstractRange, params::NamedTuple, settings::WaveformSetting
     return (; plus, cross)
 end
 
-waveform_fd(::TaylorF2, args...) = taylorf2_fd(args...)
-waveform_fd(::IMRPhenomD, args...) = phenomd_fd(args...)
+# The inclination-independent kernels, selected by the generator type.
+waveform_fd(g::TaylorF2, T, nout, deltaF, p, f_start, f_max) =
+    taylorf2_fd(T, nout, deltaF, p, g, f_start, f_max)
+waveform_fd(g::IMRPhenomD, T, nout, deltaF, p, f_start, f_max) =
+    phenomd_fd(T, nout, deltaF, p, g, f_start, f_max)

@@ -20,6 +20,7 @@ const LIBSIM_SYMBOLS = (
     :XLALSimInspiralChooseFDWaveform,
     :XLALSimInspiralFD,
     :XLALSimInspiralImplementedFDApproximants,
+    :XLALSimInspiralGetSpinSupportFromApproximant,
     :XLALSimInspiralGetApproximantFromString,
     :XLALSimInspiralTransformPrecessingNewInitialConditions,
     :XLALSimInspiralfLow2fStart,

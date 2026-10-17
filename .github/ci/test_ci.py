@@ -4,13 +4,17 @@ import unittest
 from ci import PACKAGES, check_status, select_matrix, select_packages
 
 
+CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "GWWaveforms"]
+
+
 class SelectionTests(unittest.TestCase):
     def test_package_dependencies(self):
         cases = {
             "GWDistributions": ["GWDistributions"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
-            "GWParameterConversion": list(PACKAGES[:3]),
+            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],
+            "GWParameterConversion": CONVERSION_AFFECTED,
         }
         for package, expected in cases.items():
             for suffix in (
@@ -49,7 +53,7 @@ class SelectionTests(unittest.TestCase):
         ):
             with self.subTest(name=name):
                 self.assertEqual(
-                    select_packages([f"python/{name}"]), list(PACKAGES[:3])
+                    select_packages([f"python/{name}"]), CONVERSION_AFFECTED
                 )
 
     def test_documentation_only_and_empty(self):
@@ -80,7 +84,7 @@ class SelectionTests(unittest.TestCase):
                     "packages/GWParameterConversion/src/new.jl",
                 ]
             ),
-            list(PACKAGES),
+            CONVERSION_AFFECTED + ["GWDistributions"],
         )
 
     def test_unusual_filenames_are_data(self):

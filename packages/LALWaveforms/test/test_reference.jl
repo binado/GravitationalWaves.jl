@@ -39,7 +39,7 @@ using NPZ
             if haskey(kw, :mode_array)
                 kw[:mode_array] = [(Int(m[1]), Int(m[2])) for m in kw[:mode_array]]
             end
-            settings = WaveformSettings(c["approximant"]; kw...)
+            settings = LALWaveformGenerator(c["approximant"]; kw...)
 
             h = hphc_fd(f, params, settings)
             rtol = Float64(get(c, "rtol", spec["default_rtol"]))

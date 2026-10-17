@@ -1,19 +1,31 @@
-using LALWaveforms: LALWaveforms
+using LALWaveforms: LALWaveformGenerator
 
-# The LAL-backed `LALWaveforms.hphc_fd` is the oracle. It needs the LAL shared libraries
+# The LAL-backed `LALWaveformGenerator` is the oracle. It needs the LAL shared libraries
 # (`LALWAVEFORMS_LIBDIR` or a saved preference); without them the comparison is skipped, or
 # fails on CI.
 lal_available() = try
-    LALWaveforms.hphc_fd(
+    hphc_fd(
         range(0, 64; step = 1.0),
         (mass_1 = 30.0, mass_2 = 30.0, luminosity_distance = 100.0, theta_jn = 0.0, phase = 0.0),
-        LALWaveforms.WaveformSettings("TaylorF2"; minimum_frequency = 20.0),
+        LALWaveformGenerator("TaylorF2"; minimum_frequency = 20.0),
     )
     true
 catch err
     err isa InterruptException && rethrow()
     false
 end
+
+# The LAL generator with the same approximant and options as the native `g`.
+function lal_twin(g)
+    common = (;
+        reference_frequency = reference_frequency(g), minimum_frequency = minimum_frequency(g),
+        maximum_frequency = maximum_frequency(g), pn_amplitude_order = g.pn_amplitude_order,
+    )
+    options = g isa TaylorF2 ? (; g.pn_spin_order, g.pn_phase_order) : (;)
+    return LALWaveformGenerator(approximant(g); common..., options...)
+end
+
+generator(name; kw...) = name == "TaylorF2" ? TaylorF2(; kw...) : IMRPhenomD(; kw...)
 
 # Largest deviation relative to the largest LAL sample.
 relative_error(h, h_lal) = maximum(abs, h .- h_lal) / maximum(abs, h_lal)
@@ -27,7 +39,7 @@ const BNS = (
     mass_1 = 1.4, mass_2 = 1.35, luminosity_distance = 100.0, theta_jn = 0.9, phase = 0.2,
 )
 
-# (name, approximant, parameters, WaveformSettings keywords, rtol)
+# (name, approximant, parameters, generator keywords, rtol)
 const CASES = [
     ("D equal mass", "IMRPhenomD", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
     ("D unequal mass", "IMRPhenomD", BBH, (;), 1.0e-10),
@@ -75,8 +87,9 @@ const CASES = [
     else
         for grid in (range(0, 1024; step = 0.25),), (name, approximant, params, kw, rtol) in CASES
             @testset "$name" begin
-                h = hphc_fd(grid, params, WaveformSettings(approximant; kw...))
-                h_lal = LALWaveforms.hphc_fd(grid, params, LALWaveforms.WaveformSettings(approximant; kw...))
+                g = generator(approximant; kw...)
+                h = hphc_fd(grid, params, g)
+                h_lal = hphc_fd(grid, params, lal_twin(g))
                 err_plus = relative_error(h.plus, h_lal.plus)
                 err_cross = relative_error(h.cross, h_lal.cross)
                 @info "$name: relative error" plus = err_plus cross = err_cross
@@ -91,8 +104,9 @@ const CASES = [
             for approximant in ("IMRPhenomD", "TaylorF2"), df in (0.125, 1.0 / 3.0, 1.0)
                 grid = range(0, 512; step = df)
                 params = merge(BBH, ALIGNED)
-                h = hphc_fd(grid, params, WaveformSettings(approximant))
-                h_lal = LALWaveforms.hphc_fd(grid, params, LALWaveforms.WaveformSettings(approximant))
+                g = generator(approximant)
+                h = hphc_fd(grid, params, g)
+                h_lal = hphc_fd(grid, params, lal_twin(g))
                 @test relative_error(h.plus, h_lal.plus) <= 1.0e-10
             end
         end

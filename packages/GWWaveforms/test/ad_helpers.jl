@@ -18,9 +18,9 @@ end
 
 # A real scalar that keeps the phase in the gradient: the norm of the plus polarisation plus
 # the overlap of the cross polarisation with a fixed template. Rescaled to order one.
-function ad_loss(settings, template)
+function ad_loss(generator, template)
     return function (x)
-        h = hphc_fd(AD_GRID, ad_params(x), settings)
+        h = hphc_fd(AD_GRID, ad_params(x), generator)
         scale = 1.0e22
         return scale^2 * (sum(abs2, h.plus) + sum(real, h.cross .* conj(template)))
     end
@@ -29,11 +29,11 @@ end
 function test_waveform_gradients(backends)
     return @testset "automatic differentiation" begin
         x_template = AD_X0 .* [1.01, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        for approximant in ("TaylorF2", "IMRPhenomD")
-            @testset "$approximant" begin
-                settings = WaveformSettings(approximant; minimum_frequency = 25.0)
-                template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), settings).cross
-                loss(x) = ad_loss(settings, template)(x)
+        for G in (TaylorF2, IMRPhenomD)
+            @testset "$G" begin
+                generator = G(; minimum_frequency = 25.0)
+                template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), generator).cross
+                loss(x) = ad_loss(generator, template)(x)
                 fd = central_fdm(5, 1)
                 g_fd = grad(fd, loss, AD_X0)[1]
                 @test all(isfinite, g_fd)

@@ -1,23 +1,26 @@
 name = "GWWaveforms"
 uuid = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]
+AbstractGWWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 GWParameterConversion = "8025f710-d0ad-4738-9700-57195c00f751"
 
 [sources]
+AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 LALWaveforms = {path = "../LALWaveforms"}
 
 [compat]
+AbstractGWWaveforms = "0.1"
 Aqua = "0.8"
 DifferentiationInterface = "0.7"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
 GWParameterConversion = "0.1"
 JET = "0.11, 0.12"
-LALWaveforms = "0.1"
+LALWaveforms = "0.2"
 Test = "1"
 julia = "1.12"
 

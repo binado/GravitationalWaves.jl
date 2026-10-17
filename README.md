@@ -5,6 +5,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 
 | Package | Purpose | License |
 |---------|---------|---------|
+| [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | GPL-2.0-or-later |
 | [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
@@ -47,7 +48,7 @@ parameter-to-LAL conversions.
 ```julia
 using LALWaveforms
 
-settings = WaveformSettings("IMRPhenomXPHM"; reference_frequency = 50.0, minimum_frequency = 20.0)
+generator = LALWaveformGenerator("IMRPhenomXPHM"; reference_frequency = 50.0, minimum_frequency = 20.0)
 f = range(0, 1024; step = 0.25)
 params = (
     mass_1 = 36.0, mass_2 = 29.0,          # detector-frame solar masses
@@ -55,10 +56,10 @@ params = (
     theta_jn = 0.4, phase = 1.3,
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 1.0, tilt_2 = 0.6, phi_12 = 0.3, phi_jl = 4.0,
 )
-(; plus, cross) = hphc_fd(f, params, settings)
+(; plus, cross) = hphc_fd(f, params, generator)
 ```
 
-`WaveformSettings` builds the LAL waveform dictionary once; reuse it across calls. Optional parameters
+`LALWaveformGenerator` builds the LAL waveform dictionary once; reuse it across calls. Optional parameters
 (`a_1, a_2, tilt_1, tilt_2, phi_12, phi_jl, eccentricity`) default to 0, and unknown keys throw. Instead of
 `mass_1`/`mass_2` you may pass any other mass parameters that
 [GWParameterConversion](packages/GWParameterConversion) can convert (for example `chirp_mass` and `mass_ratio`).
@@ -75,9 +76,13 @@ Mooncake, and its tests check it against `LALWaveforms` to about 1e-12.
 ```julia
 using GWWaveforms
 
-settings = WaveformSettings("IMRPhenomD")
-(; plus, cross) = hphc_fd(range(0, 1024; step = 0.25), params, settings)
+generator = IMRPhenomD()
+(; plus, cross) = hphc_fd(range(0, 1024; step = 0.25), params, generator)
 ```
+
+Both packages implement the interface of [`AbstractGWWaveforms`](packages/AbstractGWWaveforms): a concrete
+`AbstractWaveformGenerator` (`TaylorF2()`, `IMRPhenomD()`, `LALWaveformGenerator("...")`) and the one generic
+`hphc_fd(f, params, generator)`. Loading both with `using` is unambiguous, and generic code can take any backend.
 
 ## Pointing the package at LAL
 
@@ -97,6 +102,7 @@ From the repository root, instantiate the workspace and test each package:
 
 ```sh
 julia --project -e 'using Pkg; Pkg.instantiate(; workspace = true)'
+julia --project=packages/AbstractGWWaveforms -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'

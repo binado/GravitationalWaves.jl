@@ -577,18 +577,18 @@ phenomd_phase(model::PhenomDModel, Mf) = _phenomd_phase(model, Mf, useful_powers
 # --- driver -----------------------------------------------------------------------------
 
 """
-    phenomd_fd(T, nout, deltaF, p, settings, f_start, f_max)
+    phenomd_fd(T, nout, deltaF, p, g, f_start, f_max)
 
 Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i deltaF`,
 `i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
 `min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 """
-function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, settings, f_start, f_max) where {T}
+function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
     m2 = p.mass_2
     distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = settings.reference_frequency
+    fRef_in = g.reference_frequency
     fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
     deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
     (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))

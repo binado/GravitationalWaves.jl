@@ -53,9 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        if: matrix.package != 'GWDistributions'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms'
       - name: Set up waveform reference environment
-        if: matrix.package != 'GWDistributions'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms'
         run: uv sync --project python --locked
       - name: Generate bilby reference fixtures
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWParameterConversion'

@@ -2,7 +2,9 @@
     LALWaveforms
 
 Frequency-domain compact-binary waveforms from LALSimulation, called directly
-through `ccall` with bilby's parameter names, units and parameter conversions.
+through `ccall` with bilby's parameter names, units and parameter conversions. A
+[`LALWaveformGenerator`](@ref) implements the `AbstractGWWaveforms` interface shared with
+`GWWaveforms`.
 
 The LAL shared libraries are not bundled: point the package at them with the
 `LALWAVEFORMS_LIBDIR` environment variable, [`set_libdir!`](@ref) or
@@ -12,15 +14,21 @@ module LALWaveforms
 
 using GWParameterConversion: MSUN_SI, PC_SI, MASS_KEYS, convert_parameters, is_aligned,
     aligned_spins_to_lal_frame
+using AbstractGWWaveforms: AbstractWaveformGenerator, check_frequency_grid, frequency_bounds
+import AbstractGWWaveforms: hphc_fd, approximant, reference_frequency, minimum_frequency,
+    maximum_frequency, spin_support, supports_mode_array, is_differentiable
 using Libdl
 using Preferences
 
-export hphc_fd, WaveformSettings, LALError, set_libdir!, set_libdir_from_python!
+export LALWaveformGenerator, LALError, set_libdir!, set_libdir_from_python!
+export AbstractWaveformGenerator, hphc_fd
+export approximant, reference_frequency, minimum_frequency, maximum_frequency
+export spin_support, supports_mode_array, is_differentiable
 
 include("types.jl")
 include("library.jl")
 include("errors.jl")
-include("settings.jl")
+include("generator.jl")
 include("parameters.jl")
 include("conversion.jl")
 include("fd.jl")

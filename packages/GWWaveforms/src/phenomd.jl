@@ -337,15 +337,17 @@ function phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
     )
 end
 
+# All three regions are evaluated and one is selected, so the kernel has no data-dependent
+# branch (Reactant traces it with tracked parameters). Every piece is finite for `Mf > 0`, so the
+# unselected ones cannot poison the value or the gradient.
 function _phenomd_amplitude(a, Mf, pm)
     AmpPreFac = a.amp0 * pm.m_seven_sixths
-    if Mf < AMP_FJOIN_INS # inspiral
-        return AmpPreFac * amp_ins_ansatz(Mf, pm, a.pre)
-    elseif Mf >= a.fmaxCalc # merger-ringdown
-        return AmpPreFac * amp_mrd_ansatz(Mf, a)
-    else # intermediate
-        return AmpPreFac * amp_int_ansatz(Mf, a)
-    end
+    inspiral = amp_ins_ansatz(Mf, pm, a.pre)
+    intermediate = amp_int_ansatz(Mf, a)
+    merger_ringdown = amp_mrd_ansatz(Mf, a)
+    return AmpPreFac * ifelse(
+        Mf < AMP_FJOIN_INS, inspiral, ifelse(Mf >= a.fmaxCalc, merger_ringdown, intermediate)
+    )
 end
 
 # --- phase ------------------------------------------------------------------------------
@@ -481,13 +483,12 @@ end
 
 function _phenomd_phase(m, Mf, pm)
     p = m.phi
-    if Mf < PHI_FJOIN_INS # inspiral
-        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
-    elseif Mf >= m.conn.fMRDJoin # merger-ringdown
-        return p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
-    else # intermediate
-        return p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
-    end
+    inspiral = phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
+    intermediate = p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
+    merger_ringdown = p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
+    return ifelse(
+        Mf < PHI_FJOIN_INS, inspiral, ifelse(Mf >= m.conn.fMRDJoin, merger_ringdown, intermediate)
+    )
 end
 
 # 3PN spin-spin term that LAL's TaylorF2 has but PhenomD was tuned without.

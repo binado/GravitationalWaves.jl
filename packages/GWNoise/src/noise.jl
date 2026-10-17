@@ -55,9 +55,10 @@ noise_fd(rng::AbstractRNG, model::GaussianNoise) =
     noise_fd!(rng, Vector{ComplexF64}(undef, length(model.frequencies)), model)
 
 """`noise_fd!([rng], destination, model)` fills a complex vector with a new FD draw."""
-noise_fd!(destination::AbstractVector, model::GaussianNoise) = noise_fd!(default_rng(), destination, model)
+noise_fd!(destination::AbstractVector{<:Complex}, model::GaussianNoise) =
+    noise_fd!(default_rng(), destination, model)
 
-function noise_fd!(rng::AbstractRNG, destination::AbstractVector, model::GaussianNoise)
+function noise_fd!(rng::AbstractRNG, destination::AbstractVector{<:Complex}, model::GaussianNoise)
     length(destination) == length(model.scales) || throw(DimensionMismatch("wrong FD output length"))
     for i in eachindex(destination, model.scales)
         destination[i] = model.scales[i] * complex(randn(rng), randn(rng))
@@ -81,9 +82,10 @@ noise_td(rng::AbstractRNG, model::GaussianNoise) =
 Fill a real vector with a new TD draw. This convenience method allocates FFT
 temporaries; it does not cache scratch buffers or FFT plans in the model.
 """
-noise_td!(destination::AbstractVector, model::GaussianNoise) = noise_td!(default_rng(), destination, model)
+noise_td!(destination::AbstractVector{<:Real}, model::GaussianNoise) =
+    noise_td!(default_rng(), destination, model)
 
-function noise_td!(rng::AbstractRNG, destination::AbstractVector, model::GaussianNoise)
+function noise_td!(rng::AbstractRNG, destination::AbstractVector{<:Real}, model::GaussianNoise)
     length(destination) == model.nsamples || throw(DimensionMismatch("wrong TD output length"))
     return copyto!(destination, noise_td(rng, model))
 end

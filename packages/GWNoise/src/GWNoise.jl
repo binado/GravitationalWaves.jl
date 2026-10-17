@@ -1,6 +1,7 @@
 """Read one-sided spectral densities and sample stationary Gaussian strain noise."""
 module GWNoise
 
+using DelimitedFiles: readdlm
 using FFTW: irfft
 using Random: AbstractRNG, default_rng, randn
 

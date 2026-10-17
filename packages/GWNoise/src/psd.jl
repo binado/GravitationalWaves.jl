@@ -53,16 +53,25 @@ function read_density(path::AbstractString, kind, interpolation)
 end
 
 function read_density(io::IO, kind, interpolation)
-    f, s = Float64[], Float64[]
-    for line in eachline(io)
+    text = read(io, String)
+    row = first_data_row(text)
+    isnothing(row) && throw(ArgumentError("no frequency/density rows found"))
+    # The delimiter is decided by the first data row, since comments may contain commas.
+    table = if occursin(',', row)
+        readdlm(IOBuffer(text), ',', Float64; comments = true)
+    else
+        readdlm(IOBuffer(text), Float64; comments = true)
+    end::Matrix{Float64}
+    size(table, 2) == 2 || throw(ArgumentError("expected two columns: frequency and density"))
+    return TabulatedPSD(table[:, 1], table[:, 2]; kind, interpolation)
+end
+
+function first_data_row(text)
+    for line in eachline(IOBuffer(text))
         row = strip(first(split(line, '#'; limit = 2)))
-        isempty(row) && continue
-        columns = split(replace(row, ',' => ' '))
-        length(columns) == 2 || throw(ArgumentError("expected two columns: frequency and density"))
-        push!(f, parse(Float64, columns[1]))
-        push!(s, parse(Float64, columns[2]))
+        isempty(row) || return row
     end
-    return TabulatedPSD(f, s; kind, interpolation)
+    return nothing
 end
 
 """

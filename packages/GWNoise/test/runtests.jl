@@ -24,6 +24,22 @@ using GWNoise
         @test_throws ArgumentError TabulatedPSD([0, 1], [1, 2]; interpolation = :loglog)
     end
 
+    @testset "Reading files" begin
+        loglog = read_psd(IOBuffer("1 1\n10 100\n100 10000\n"); interpolation = :loglog)
+        @test psd(2, loglog) ≈ 4
+        csv = read_psd(IOBuffer("# frequency, PSD\n1, 2\n3 ,4\n"))
+        @test psd([1, 3], csv) == [2, 4]
+        tabs = read_psd(IOBuffer("1\t2\n3\t4\n"))
+        @test psd([1, 3], tabs) == [2, 4]
+        @test_throws ArgumentError read_psd(IOBuffer("1 2 3\n4 5 6\n"))
+        @test_throws ArgumentError read_psd(IOBuffer(""))
+        @test_throws ArgumentError read_psd(IOBuffer("# only a comment\n\n"))
+        @test_throws ErrorException read_psd(IOBuffer("1 2\n3 abc\n"))
+        @test_throws ArgumentError read_psd(IOBuffer("1 2\n3 NaN\n"))
+        @test_throws ArgumentError read_psd(IOBuffer("1 2\n3 -4\n"))
+        @test_throws ArgumentError read_asd(IOBuffer("1 Inf\n3 4\n"))
+    end
+
     @testset "Sampling and Fourier convention" begin
         curve = TabulatedPSD([0, 64], [2, 2])
         for n in (127, 128)
@@ -52,6 +68,16 @@ using GWNoise
         @test all(iszero, noise_fd(model)[expected .== 0])
         @test_throws ArgumentError GaussianNoise(curve; sampling_frequency = 128, nsamples = 128, maximum_frequency = 65)
         @test_throws DimensionMismatch noise_fd!(zeros(ComplexF64, 3), model)
+        @test_throws DimensionMismatch noise_td!(zeros(3), model)
+        @test_throws MethodError noise_fd!(zeros(length(frequencies(model))), model)
+        @test_throws MethodError noise_td!(zeros(ComplexF64, model.nsamples), model)
+        for kwargs in ((sampling_frequency = 0, nsamples = 128), (sampling_frequency = 128, nsamples = 1))
+            @test_throws ArgumentError GaussianNoise(curve; kwargs...)
+        end
+        @test_throws ArgumentError GaussianNoise(
+            TabulatedPSD([20, 100], [2, 4]); sampling_frequency = 128, nsamples = 128,
+            minimum_frequency = 10, maximum_frequency = 50,
+        )
         limited = GaussianNoise(TabulatedPSD([20, 100], [2, 4]); sampling_frequency = 128, nsamples = 128)
         @test all(iszero, psd(limited)[frequencies(limited) .< 20])
         @test psd(limited)[21] == 2
@@ -80,4 +106,6 @@ using GWNoise
         # Each active interior bin contributes S Δf to the TD variance.
         @test sum(abs2, td) / length(td) ≈ sum(psd(model)) * step(frequencies(model)) rtol = 0.02
     end
+
+    include("test_quality.jl")
 end

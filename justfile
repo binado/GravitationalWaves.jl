@@ -25,7 +25,7 @@ update:
     {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.update()'
 
 # Format everything in place (CI enforces Runic).
-format:
+fmt:
     runic --inplace .
 
 # Generate bilby reference fixtures (gitignored) and print the LAL libdir export.

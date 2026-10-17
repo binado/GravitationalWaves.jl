@@ -1,3 +1,5 @@
+import ForwardDiff as FD
+
 @testset "model building blocks" begin
     G = GWWaveforms
 
@@ -53,6 +55,43 @@
 
         # Equal masses sit at the upper limit of eta.
         @test isfinite(G.phenomd_amplitude(G.phenomd_model(30.0, 30.0, 0.0, 0.0, 50.0, 0.0), 0.01))
+    end
+
+    @testset "all regions stay finite where they are not selected" begin
+        # The kernels evaluate the inspiral, intermediate and merger-ringdown pieces everywhere and
+        # select one, so each must be finite (value and derivative) for every Mf > 0 it may see.
+        for (m1, m2) in ((36.0, 29.0), (10.0, 1.4), (200.0, 150.0), (3000.0, 3000.0), (50.0, 1.0)),
+                (chi1, chi2) in ((0.0, 0.0), (0.99, 0.99), (-0.99, -0.99), (0.9, -0.7), (-0.5, 0.95))
+
+            m = G.phenomd_model(m1, m2, chi1, chi2, 20.0, 0.3)
+            pieces = (
+                Mf -> G.amp_ins_ansatz(Mf, G.useful_powers(Mf), m.amp.pre),
+                Mf -> G.amp_int_ansatz(Mf, m.amp),
+                Mf -> G.amp_mrd_ansatz(Mf, m.amp),
+                Mf -> G.phi_ins_ansatz_int(Mf, G.useful_powers(Mf), m.phi_pre, m.phi),
+                Mf -> m.phi.etaInv * G.phi_int_ansatz(Mf, m.phi) + m.conn.C1Int + m.conn.C2Int * Mf,
+                Mf -> m.phi.etaInv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.C1MRD + m.conn.C2MRD * Mf,
+            )
+            for piece in pieces, Mf in exp10.(range(-4, log10(10.0); length = 60))
+                @test isfinite(piece(Mf))
+                @test isfinite(FD.derivative(piece, Mf))
+            end
+        end
+    end
+
+    @testset "gradients across the region boundaries" begin
+        m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
+        ε = 1.0e-7
+        for edge in (G.AMP_FJOIN_INS, m.amp.fmaxCalc), Mf in (edge - ε, edge, edge + ε)
+            @test isfinite(FD.derivative(x -> G.phenomd_amplitude(m, x), Mf))
+        end
+        # The phase is C¹ across both joins.
+        for edge in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+            left = FD.derivative(x -> G.phenomd_phase(m, x), edge - ε)
+            right = FD.derivative(x -> G.phenomd_phase(m, x), edge + ε)
+            @test isfinite(left) && isfinite(right)
+            @test left ≈ right rtol = 1.0e-3
+        end
     end
 
     @testset "natural cubic spline" begin

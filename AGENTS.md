@@ -73,4 +73,18 @@ Adaptive QuadGK is test-only. Keep BackgroundCosmology external; do not add othe
 
 ## Git
 
-Conventional Commits; work on a non-`main` branch and open PRs (CI: tests on Julia 1.12 and latest, plus Runic format check).
+Conventional Commits; work on a non-`main` branch and open PRs.
+
+PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
+`GWParameterConversion` changes also test both waveform packages, and `LALWaveforms`
+changes also test `GWWaveforms`. Python tooling changes test all three conversion/waveform
+packages. CI configuration, root Julia environment files, and unfamiliar paths test all
+packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
+`LICENSE` skip package tests; package-local documentation still selects its package.
+Formatting runs on every workflow, coverage collection is disabled, and newer PR commits
+cancel superseded runs. `CI passed` aggregates detection, test, and formatting results.
+
+Pushes to `main` and manual CI runs test all four packages on Julia 1.12 and latest stable.
+For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
+Selection and status checks can be tested locally with
+`python3 -m unittest discover -s .github/ci -v`.

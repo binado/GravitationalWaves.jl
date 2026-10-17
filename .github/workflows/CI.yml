@@ -6,16 +6,50 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      packages: ${{ steps.select.outputs.packages }}
+      julia: ${{ steps.select.outputs.julia }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test CI selection and status handling
+        run: python3 -m unittest discover -s .github/ci -v
+      - uses: dorny/paths-filter@v4
+        if: github.event_name == 'pull_request'
+        id: paths
+        with:
+          list-files: json
+          filters: |
+            all:
+              - '**'
+      - name: Select packages and Julia versions
+        id: select
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CHANGED_FILES: ${{ steps.paths.outputs.all_files }}
+          PR_CHANGED_FILE_COUNT: ${{ github.event.pull_request.changed_files || 0 }}
+        run: python3 .github/ci/ci.py select
+
   test:
+    needs: changes
+    if: needs.changes.outputs.packages != '[]'
     name: ${{ matrix.package }} - Julia ${{ matrix.julia }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        julia: ["1.12", "1"]
-        package: [LALWaveforms, GWParameterConversion, GWWaveforms, GWDistributions]
+        julia: ${{ fromJSON(needs.changes.outputs.julia) }}
+        package: ${{ fromJSON(needs.changes.outputs.packages) }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -39,6 +73,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           project: packages/${{ matrix.package }}
+          coverage: 'false'
 
   format:
     runs-on: ubuntu-latest
@@ -47,3 +82,17 @@ jobs:
       - uses: fredrikekre/runic-action@v1
         with:
           version: '1'
+
+  status:
+    name: CI passed
+    if: always()
+    needs: [changes, test, format]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required jobs
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python3 .github/ci/ci.py check

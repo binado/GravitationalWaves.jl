@@ -1,4 +1,4 @@
-# Owning wrapper for a `LALDict*`. The finalizer frees it once no settings object
+# Owning wrapper for a `LALDict*`. The finalizer frees it once no generator
 # refers to it any more.
 mutable struct LALDictHandle
     ptr::Ptr{Cvoid}
@@ -15,12 +15,14 @@ mutable struct LALDictHandle
 end
 
 """
-    WaveformSettings(approximant; kwargs...)
+    LALWaveformGenerator(approximant; kwargs...)
+    LALWaveformGenerator(; approximant, kwargs...)
 
-Everything about a waveform call that does not vary between parameter draws: the
-approximant, frequency bounds and the LAL waveform dictionary (post-Newtonian
-orders, mode array). Build it once and reuse it; it is immutable and its
-dictionary is only read after construction.
+Everything about a waveform call that does not vary between parameter draws: the LAL
+approximant, frequency bounds and the LAL waveform dictionary (post-Newtonian orders, mode
+array). Build it once and reuse it; it is immutable and its dictionary is only read after
+construction. `approximant` is any name LAL knows (a `Symbol` also works), else [`LALError`](@ref)
+is thrown.
 
 Defaults are those of bilby's `lal_binary_black_hole`.
 
@@ -31,10 +33,11 @@ Defaults are those of bilby's `lal_binary_black_hole`.
   `pn_amplitude_order = 0`
 - `mode_array = nothing`: vector of `(l, m)` tuples restricting the modes used
 """
-struct WaveformSettings
-    approximant_name::String
-    approximant::Cint
+struct LALWaveformGenerator <: AbstractWaveformGenerator
+    name::String
+    code::Cint
     fd_native::Bool
+    spin_support::Symbol
     reference_frequency::Float64
     minimum_frequency::Float64
     maximum_frequency::Union{Nothing, Float64}
@@ -42,7 +45,7 @@ struct WaveformSettings
     dict::LALDictHandle
 end
 
-function WaveformSettings(
+function LALWaveformGenerator(
         approximant::Union{Symbol, AbstractString};
         reference_frequency::Real = 50.0,
         minimum_frequency::Real = 20.0,
@@ -58,23 +61,42 @@ function WaveformSettings(
     name = String(approximant)
 
     clear_errno!(fns)
-    approx = ccall(
+    code = ccall(
         fns.XLALSimInspiralGetApproximantFromString, Cint, (Cstring,), name
     )
-    check(approx < 0 ? -1 : 0, :XLALSimInspiralGetApproximantFromString, fns)
+    check(code < 0 ? -1 : 0, :XLALSimInspiralGetApproximantFromString, fns)
     fd_native = ccall(
-        fns.XLALSimInspiralImplementedFDApproximants, Cint, (Cint,), approx
+        fns.XLALSimInspiralImplementedFDApproximants, Cint, (Cint,), code
     ) != 0
+    spin = ccall(fns.XLALSimInspiralGetSpinSupportFromApproximant, Cint, (Cint,), code)
 
     dict = new_dict(
         fns; pn_spin_order, pn_tidal_order, pn_phase_order, pn_amplitude_order, mode_array
     )
-    return WaveformSettings(
-        name, approx, fd_native, reference_frequency, minimum_frequency,
+    return LALWaveformGenerator(
+        name, code, fd_native, spin_support_symbol(spin),
+        reference_frequency, minimum_frequency,
         maximum_frequency === nothing ? nothing : Float64(maximum_frequency),
         pn_amplitude_order, dict,
     )
 end
+
+LALWaveformGenerator(; approximant, kwargs...) = LALWaveformGenerator(approximant; kwargs...)
+
+# `SimInspiralSpinSupport` in LALSimInspiral.h: SPINLESS, SINGLESPIN, ALIGNEDSPIN,
+# PRECESSINGSPIN, CASEBYCASE_SPINSUPPORT. Single-spin and case-by-case models are not
+# restricted to aligned spins, so they count as precessing.
+function spin_support_symbol(code::Integer)
+    return code == 0 ? :none : code == 2 ? :aligned : :precessing
+end
+
+approximant(g::LALWaveformGenerator) = g.name
+reference_frequency(g::LALWaveformGenerator) = g.reference_frequency
+minimum_frequency(g::LALWaveformGenerator) = g.minimum_frequency
+maximum_frequency(g::LALWaveformGenerator) = g.maximum_frequency
+spin_support(g::LALWaveformGenerator) = g.spin_support
+supports_mode_array(::LALWaveformGenerator) = true
+is_differentiable(::LALWaveformGenerator) = false
 
 # Mirrors bilby's `set_waveform_dictionary` for the options we support: the four PN
 # orders, zero tidal deformabilities, and an optional mode array.
@@ -129,13 +151,4 @@ function new_dict(
         end
     end
     return handle
-end
-
-function Base.show(io::IO, s::WaveformSettings)
-    return print(
-        io, "WaveformSettings(", repr(s.approximant_name),
-        "; reference_frequency=", s.reference_frequency,
-        ", minimum_frequency=", s.minimum_frequency,
-        ", maximum_frequency=", s.maximum_frequency, ")"
-    )
 end

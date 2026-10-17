@@ -12,9 +12,10 @@ versions, dependencies, and licenses.
 
 Julia packages live in `packages/`:
 
+- `AbstractGWWaveforms`: dependency-free interface owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
-- `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms`; tests use LAL as the oracle.
+- `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`); tests use LAL as the oracle.
 - `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
@@ -49,17 +50,17 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 ## Architecture
 
-`packages/LALWaveforms/src/LALWaveforms.jl` includes files in dependency order: `types` → `library` → `errors` → `settings` → `parameters` → `conversion` → `fd`.
+`packages/LALWaveforms/src/LALWaveforms.jl` includes files in dependency order: `types` → `library` → `errors` → `generator` → `parameters` → `conversion` → `fd`.
 
 - **`library.jl`** – lazy loading of `liblal`/`liblalsimulation`. `__init__` must never throw (the package must load and pass Aqua without LAL), so libraries are dlopen'd on first `lal()` call. Symbols are listed in `LIBLAL_SYMBOLS`/`LIBSIM_SYMBOLS` and expanded via `@eval` into the `LALFunctions` struct with one `Ptr{Cvoid}` field each, so `lal().XLALFoo` is a type-stable field read. **To call a new XLAL function, add its symbol to these tuples first.** The libdir comes from `LALWAVEFORMS_LIBDIR` (wins) or a saved Preferences entry.
-- **`settings.jl`** – `WaveformSettings` holds everything constant across draws (approximant, f_min/f_ref/f_max, PN orders) plus an owning `LALDictHandle` (finalizer calls `XLALDestroyDict`). Mirrors bilby's `set_waveform_dictionary`. Callers must `GC.@preserve` the settings across `ccall`s that use `dict.ptr`.
+- **`generator.jl`** – `LALWaveformGenerator <: AbstractWaveformGenerator` holds everything constant across draws (approximant, f_min/f_ref/f_max, PN orders) plus an owning `LALDictHandle` (finalizer calls `XLALDestroyDict`). Mirrors bilby's `set_waveform_dictionary`. Its `spin_support` comes from `XLALSimInspiralGetSpinSupportFromApproximant` once at construction. Callers must `GC.@preserve` the generator across `ccall`s that use `dict.ptr`.
 - **`parameters.jl` / `conversion.jl`** – `bilby_parameters` validates the NamedTuple (unknown keys throw), derives `mass_1`/`mass_2` from other mass parameters via `GWParameterConversion.convert_parameters`, and returns a plain `Float64` NamedTuple (no parameter struct); `bilby_to_lalsimulation_spins` ports bilby's conversion, short-circuiting to aligned spins and otherwise calling `XLALSimInspiralTransformPrecessingNewInitialConditions`.
 - **`fd.jl`** – `hphc_fd` dispatches to `XLALSimInspiralChooseFDWaveform` (native FD approximants) or `XLALSimInspiralFD` (time-domain approximants transformed to FD, followed by bilby's time shift). Output is copied into Julia arrays, zero-masked outside `[f_min, f_max]`, and LAL series are always destroyed in `finally`.
 - **`errors.jl`** – XLAL calls use a silent error handler; each call does `clear_errno!` → `ccall` → `check(rc, name, fns)`, which raises `LALError`.
 
 ## GWWaveforms
 
-`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; default tests check ForwardDiff against finite differences, and the local integration suite checks all three backends). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
+`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; default tests check ForwardDiff against finite differences, and the local integration suite checks all three backends). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `generators.jl` defines the generator types (`TaylorF2` and `IMRPhenomD`, each with only the fields it uses); `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
 
 ## GWDistributions
 
@@ -79,8 +80,8 @@ Adaptive QuadGK is test-only. Keep BackgroundCosmology external; do not add othe
 Conventional Commits; work on a non-`main` branch and open PRs.
 
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
-`GWParameterConversion` changes also test both waveform packages, and `LALWaveforms`
-changes also test `GWWaveforms`. Python tooling changes test all three conversion/waveform
+`GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
+changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
 packages. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.

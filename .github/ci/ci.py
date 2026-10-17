@@ -5,12 +5,14 @@ import os
 import sys
 
 PACKAGES = (
+    "AbstractGWWaveforms",
     "LALWaveforms",
     "GWParameterConversion",
     "GWWaveforms",
     "GWDistributions",
 )
 AFFECTED = {
+    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
     "LALWaveforms": {"LALWaveforms", "GWWaveforms"},
     "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms"},
     "GWWaveforms": {"GWWaveforms"},

@@ -1,20 +1,20 @@
 # GWWaveforms
 
 Pure-Julia frequency-domain compact-binary waveforms with the interface of
-[`LALWaveforms`](../LALWaveforms): `WaveformSettings`, `hphc_fd`, and [bilby](https://bilby-dev.github.io/bilby/)'s
+[`LALWaveforms`](../LALWaveforms): the generic `hphc_fd(f, params, generator)` of [`AbstractGWWaveforms`](../AbstractGWWaveforms), and [bilby](https://bilby-dev.github.io/bilby/)'s
 parameter names, units and mass conversions. The code is generic over `Real`, so it differentiates with
 [ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl), [Enzyme](https://github.com/EnzymeAD/Enzyme.jl) and
 [Mooncake](https://github.com/chalk-lab/Mooncake.jl), needs no LAL install, and the compiler can specialise it.
 
-| approximant  | model |
+| generator    | model |
 |--------------|-------|
-| `TaylorF2`   | post-Newtonian stationary-phase inspiral, aligned spins, optional SPA amplitude corrections |
-| `IMRPhenomD` | aligned-spin inspiral-merger-ringdown (Husa et al. 2016, Khan et al. 2016) |
+| `TaylorF2()` | post-Newtonian stationary-phase inspiral, aligned spins, optional SPA amplitude corrections |
+| `IMRPhenomD()` | aligned-spin inspiral-merger-ringdown (Husa et al. 2016, Khan et al. 2016) |
 
 ```julia
 using GWWaveforms
 
-settings = WaveformSettings("IMRPhenomD"; reference_frequency = 50.0, minimum_frequency = 20.0)
+generator = IMRPhenomD(; reference_frequency = 50.0, minimum_frequency = 20.0)
 f = range(0, 1024; step = 0.25)
 params = (
     chirp_mass = 28.0, mass_ratio = 0.8,   # or mass_1 and mass_2, detector-frame solar masses
@@ -22,15 +22,18 @@ params = (
     theta_jn = 0.4, phase = 1.3,
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),   # (anti-)aligned spins only
 )
-(; plus, cross) = hphc_fd(f, params, settings)
+(; plus, cross) = hphc_fd(f, params, generator)
 ```
+
+Each model is its own generator type with only the options it uses; the generators and `hphc_fd` are the
+ones `LALWaveforms` shares, so code can switch between the native and the LAL-backed implementation.
 
 The element type of the output follows the parameters, so dual numbers pass through:
 
 ```julia
 using ForwardDiff
 
-loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = x[2])), settings).plus)
+loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = x[2])), generator).plus)
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 
@@ -39,9 +42,9 @@ ForwardDiff.gradient(loss, [28.0, 0.8])
 - Frequency domain, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tidal parameters.
 - Both models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
   `eccentricity` zero, otherwise `ArgumentError` is thrown (LAL rejects such input too). Neither model has higher
-  modes, so `mode_array` is rejected.
-- `pn_spin_order`, `pn_phase_order` and `pn_amplitude_order` act as in LAL's TaylorF2 (`-1` selects the highest
-  order); IMRPhenomD ignores them apart from the start-frequency shift of `pn_amplitude_order`.
+  modes, so there is no `mode_array` option.
+- `TaylorF2` takes `pn_spin_order`, `pn_phase_order` and `pn_amplitude_order` as in LAL (`-1` selects the highest
+  order); `IMRPhenomD` only takes `pn_amplitude_order`, which shifts the start frequency.
 
 ## Fidelity
 

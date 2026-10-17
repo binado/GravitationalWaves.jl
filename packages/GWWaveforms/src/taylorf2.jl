@@ -280,18 +280,18 @@ function gps_time_shift(deltaF)
 end
 
 """
-    taylorf2_fd(T, nout, deltaF, p, settings, f_start, f_max)
+    taylorf2_fd(T, nout, deltaF, p, g, f_start, f_max)
 
 Frequency-domain TaylorF2 strain for the optimally oriented source (the inclination factors
 are applied by `hphc_fd`) on the grid `f_i = i deltaF`, `i = 0 … nout - 1`, zero outside
 `[f_start, f_max]`. Follows `XLALSimInspiralTaylorF2`: with `f_max == 0` the waveform stops at
 the Schwarzschild ISCO. `p` holds the output of `aligned_parameters`, converted to `T`.
 """
-function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, settings, f_start, f_max) where {T}
+function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
     m2 = p.mass_2
     r = p.luminosity_distance * 1.0e6 * PC_SI
-    f_ref = settings.reference_frequency
+    f_ref = g.reference_frequency
     (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     f_ref >= 0 || throw(ArgumentError("reference frequency must not be negative"))
@@ -314,10 +314,10 @@ function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, settings, f_start, f_m
     shft = gps_time_shift(deltaF)
 
     pn = truncate_phasing(
-        taylorf2_pn_phasing(m1, m2, p.chi_1, p.chi_2; spin_order = settings.pn_spin_order),
-        settings.pn_phase_order,
+        taylorf2_pn_phasing(m1, m2, p.chi_1, p.chi_2; spin_order = g.pn_spin_order),
+        g.pn_phase_order,
     )
-    amplitude = TaylorF2Amplitude(eta, settings.pn_amplitude_order)
+    amplitude = TaylorF2Amplitude(eta, g.pn_amplitude_order)
     amp0 = -4.0 * m1 * m2 / r * MRSUN_SI * MTSUN_SI * sqrt(Float64(π) / 12.0)
 
     ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(piM * f_ref)) : zero(T)

@@ -1,5 +1,5 @@
 """
-    hphc_fd(f::AbstractRange, params, settings::WaveformSettings) -> (; plus, cross)
+    hphc_fd(f::AbstractRange, params, generator::LALWaveformGenerator) -> (; plus, cross)
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz), following
 bilby's `lal_binary_black_hole`. `params` is a `NamedTuple` with bilby's names and
@@ -14,25 +14,22 @@ Throws [`LALError`](@ref) when LAL rejects the input, and `ArgumentError` for
 malformed `params` or `f`; mass parameters other than `mass_1`, `mass_2` are converted
 with `GWParameterConversion.convert_parameters`.
 """
-function hphc_fd(f::AbstractRange, params, settings::WaveformSettings)
+function hphc_fd(f::AbstractRange, params, g::LALWaveformGenerator)
     p = bilby_parameters(params)
-    first(f) == 0 || throw(ArgumentError("frequency grid must start at 0, got $(first(f))"))
+    check_frequency_grid(f)
     df = step(f)
-    df > 0 || throw(ArgumentError("frequency grid must have a positive step, got $df"))
-    length(f) >= 2 || throw(ArgumentError("frequency grid needs at least two points"))
 
     fns = lal()
     silent_errors!(fns)
 
-    f_min = settings.minimum_frequency
-    f_max = something(settings.maximum_frequency, Float64(last(f)))
-    f_ref = settings.reference_frequency
-    approx = settings.approximant
+    f_min, f_max = frequency_bounds(g, f)
+    f_ref = g.reference_frequency
+    approx = g.code
 
-    start_frequency = if settings.pn_amplitude_order != 0
+    start_frequency = if g.pn_amplitude_order != 0
         ccall(
             fns.XLALSimInspiralfLow2fStart, Float64, (Float64, Int32, Int32),
-            f_min, settings.pn_amplitude_order, approx,
+            f_min, g.pn_amplitude_order, approx,
         )
     else
         f_min
@@ -40,7 +37,7 @@ function hphc_fd(f::AbstractRange, params, settings::WaveformSettings)
 
     spins = bilby_to_lalsimulation_spins(p, f_ref)
 
-    fn = settings.fd_native ? fns.XLALSimInspiralChooseFDWaveform : fns.XLALSimInspiralFD
+    fn = g.fd_native ? fns.XLALSimInspiralChooseFDWaveform : fns.XLALSimInspiralFD
     hp = Ref{Ptr{COMPLEX16FrequencySeries}}(C_NULL)
     hc = Ref{Ptr{COMPLEX16FrequencySeries}}(C_NULL)
     try
@@ -60,13 +57,13 @@ function hphc_fd(f::AbstractRange, params, settings::WaveformSettings)
             p.luminosity_distance * 1.0e6 * PC_SI, spins.iota, p.phase,
             0.0, p.eccentricity, 0.0,
             df, start_frequency, f_max, f_ref,
-            settings.dict.ptr, approx,
+            g.dict.ptr, approx,
         )
-        check(rc, settings.fd_native ? :XLALSimInspiralChooseFDWaveform : :XLALSimInspiralFD, fns)
+        check(rc, g.fd_native ? :XLALSimInspiralChooseFDWaveform : :XLALSimInspiralFD, fns)
 
         plus = copy_masked(hp[], f, f_min, f_max)
         cross = copy_masked(hc[], f, f_min, f_max)
-        if !settings.fd_native
+        if !g.fd_native
             # SimInspiralFD returns a series whose time origin is shifted; undo it as bilby does.
             ts = unsafe_load(hp[])
             dt = 1 / ts.deltaF + (ts.epoch.gpsSeconds + ts.epoch.gpsNanoSeconds * 1.0e-9)
@@ -81,8 +78,8 @@ function hphc_fd(f::AbstractRange, params, settings::WaveformSettings)
                 (Ptr{COMPLEX16FrequencySeries},), h[],
             )
         end
-        # The settings own the dictionary; keep them alive across the ccall.
-        GC.@preserve settings nothing
+        # The generator owns the dictionary; keep it alive across the ccall.
+        GC.@preserve g nothing
     end
 end
 

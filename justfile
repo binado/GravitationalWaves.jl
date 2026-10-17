@@ -8,6 +8,10 @@ default:
 resolve:
     {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.resolve()'
 
+# Run Pkg.test() for every workspace member.
+test:
+    for pkg in packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+
 # Run both heavy AD integration suites locally (no LAL or Python setup needed).
 test-integration: test-integration-conversion test-integration-waveforms
 

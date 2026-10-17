@@ -240,11 +240,10 @@ end
 
 # Frequency of the peak of the merger-ringdown amplitude (eq. 20 of arXiv:1508.07253).
 function fmax_calc(fRD, fDM, gamma2, gamma3)
-    if !(gamma2 > 1)
-        return abs(fRD + (fDM * (-1 + sqrt(1 - pow_2_of(gamma2))) * gamma3) / gamma2)
-    else
-        return abs(fRD + (-fDM * gamma3) / gamma2)
-    end
+    below = !(gamma2 > 1)
+    # The square root is only real for `gamma2 ≤ 1`; give it a safe argument otherwise.
+    root = sqrt(ifelse(below, 1 - pow_2_of(gamma2), zero(gamma2)))
+    return abs(fRD + ifelse(below, (fDM * (-1 + root) * gamma3) / gamma2, (-fDM * gamma3) / gamma2))
 end
 
 function amp_int_col_fit_coeff(eta, eta2, chi)
@@ -506,30 +505,35 @@ struct PhenomDModel{A, P, N, PF, C, T}
     MfRef::T
 end
 
+# Order the components so that `m1 ≥ m2`, carrying the spins along.
+function order_by_mass(m1, m2, chi1, chi2)
+    keep = m1 >= m2
+    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
+end
+
+# Symmetric mass ratio with `PhenomInternal_nudge`: eta is snapped to 1/4 if it exceeds it only
+# through rounding. Larger values are rejected by `check_waveform_inputs`.
+function nudged_eta(m1, m2)
+    M = m1 + m2
+    eta = m1 * m2 / (M * M)
+    return ifelse(eta > 0.25, oftype(eta, 0.25), eta)
+end
+
 """
     phenomd_model(m1, m2, chi1, chi2, f_ref, phi0) -> PhenomDModel
 
 Set up IMRPhenomD for component masses `m1`, `m2` (solar masses, any order) with aligned
 spins `chi1`, `chi2`, fixing the orbital phase `phi0` at the reference frequency `f_ref`
-(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`.
+(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`. The inputs are trusted and
+nothing here branches or throws; [`check_waveform_inputs`](@ref) checks eta and the final spin.
 """
 function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
-    if m1_in >= m2_in
-        m1, m2, chi1, chi2 = m1_in, m2_in, chi1_in, chi2_in
-    else
-        m1, m2, chi1, chi2 = m2_in, m1_in, chi2_in, chi1_in
-    end
+    m1, m2, chi1, chi2 = order_by_mass(m1_in, m2_in, chi1_in, chi2_in)
     M = m1 + m2
-    eta = m1 * m2 / (M * M)
-    # `PhenomInternal_nudge`: snap eta to 1/4 if it exceeds it only through rounding.
-    if eta > 0.25
-        eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-        eta = oftype(eta, 0.25)
-    end
+    eta = nudged_eta(m1, m2)
     M_sec = M * MTSUN_SI
 
     finspin = final_spin_0815(eta, chi1, chi2)
-    finspin > 1.0 && throw(ArgumentError("final spin > 1.0 is not supported"))
 
     amp = phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
     phi = phenomd_phase_fits(eta, chi1, chi2, finspin)
@@ -584,8 +588,7 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 `min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 
-The inputs are trusted (see [`validate_parameters`](@ref)), except that [`phenomd_model`](@ref)
-still checks the symmetric mass ratio and the final spin.
+The inputs are trusted (see [`validate_parameters`](@ref)).
 TODO: make the PhenomD kernels branch free so they can be traced by Reactant, like TaylorF2.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
@@ -632,13 +635,16 @@ function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
         throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
 
-    fRef = fRef_in == 0.0 ? f_start : fRef_in
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
     fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))
     f_max_prime = f_max == 0 ? fCut : f_max
     f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
     f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
-    # The model setup checks the symmetric mass ratio and the final spin.
-    phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
+
+    a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)
+    eta = a * b / ((a + b) * (a + b))
+    eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
+    final_spin_0815(nudged_eta(a, b), chi1, chi2) > 1.0 &&
+        throw(ArgumentError("final spin > 1.0 is not supported"))
     return nothing
 end

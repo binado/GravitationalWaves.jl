@@ -4,6 +4,10 @@ julia := env_var_or_default("JULIA", "julia")
 default:
     @just --list
 
+# Resolve the workspace (root + all members) into a single manifest.
+resolve:
+    {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.resolve()'
+
 # Run both heavy AD integration suites locally (no LAL or Python setup needed).
 test-integration: test-integration-conversion test-integration-waveforms
 

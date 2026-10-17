@@ -12,6 +12,28 @@ resolve:
 test:
     for pkg in packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
+# Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
+test-pkg pkg:
+    {{ julia }} --startup-file=no --project=packages/{{ pkg }} -e 'using Pkg; Pkg.test()'
+
+# Install the exact versions recorded in the shared workspace manifest.
+instantiate:
+    {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.instantiate()'
+
+# Bump versions across the whole workspace into a new shared manifest.
+update:
+    {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.update()'
+
+# Format everything in place (CI enforces Runic).
+format:
+    runic --inplace .
+
+# Generate bilby reference fixtures (gitignored) and print the LAL libdir export.
+fixtures:
+    uv sync --project python
+    uv run --project python python python/generate.py
+    @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
+
 # Run both heavy AD integration suites locally (no LAL or Python setup needed).
 test-integration: test-integration-conversion test-integration-waveforms
 

@@ -87,10 +87,12 @@ The factors are `Fplus = A[1, 1] - A[2, 2]` and
 ## Differentiation and Reactant CPU
 
 ForwardDiff, Enzyme, Mooncake, and compiled Enzyme through Reactant are tested.
-Constructors, GMST, antenna/delay methods, and projection accept static
-`check=false` to bypass value checks inside compiled calls. Validate domains
-and geometry with ordinary calls before entering this path; sizes and axes are
-still checked. GPS derivatives are tested away from integer-second rounding
+Response, timing, and projection functions assume the argument domains documented
+in their docstrings and do not validate values. Projection checks polarization
+vector types and matching axes. Geometry constructors accept `check=false` to
+bypass numerical geometry validation inside compiled calls with prevalidated
+inputs; vector sizes and numeric element types are still checked. GPS derivatives
+are tested away from integer-second rounding
 boundaries and leap transitions. Scalar geometry uses StaticArrays; projection uses
 broadcast so device arrays stay in compiled execution.
 
@@ -103,7 +105,7 @@ function projected(angles, f, hp, hc)
         source = (; ra = angles[1], dec = angles[2], psi = angles[3],
                     geocent_time = angles[4])
         project_fd(f, (; plus = hp, cross = hc), source, Detector("H1");
-                   start_time = 1126259460.0, check = false)
+                   start_time = 1126259460.0)
     end
 end
 angles = Reactant.to_rarray([sky.ra, sky.dec, sky.psi, sky.geocent_time])

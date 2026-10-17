@@ -22,7 +22,7 @@ function geometry_loss(x)
 end
 
 function antenna_loss(x)
-    a = antenna_pattern(x[1], x[2], x[3], x[5], ad_detector(x); check = false)
+    a = antenna_pattern(x[1], x[2], x[3], x[5], ad_detector(x))
     return a.plus + 0.3a.cross
 end
 
@@ -30,16 +30,16 @@ function timing_loss(x)
     d = ad_detector(x)
     sky = (; ra = x[1], dec = x[2], geocent_time = 1126259462 + x[4])
     other = Detector("L1")
-    return 10time_delay_from_geocenter(sky, d; check = false) +
-        2time_delay(sky, d, other; check = false) + light_travel_time(d, other) +
-        0.001greenwich_mean_sidereal_time(sky.geocent_time; check = false)
+    return 10time_delay_from_geocenter(sky, d) +
+        2time_delay(sky, d, other) + light_travel_time(d, other) +
+        0.001greenwich_mean_sidereal_time(sky.geocent_time)
 end
 
 function projection_loss(x)
     sky = (; ra = x[1], dec = x[2], psi = x[3], geocent_time = 1126259462 + x[4])
     h = project_fd(
         AD_F, AD_POL, sky, ad_detector(x); start_time = 1126259462.0,
-        reference_time = 1126259462 + x[5], check = false
+        reference_time = 1126259462 + x[5]
     )
     return sum(real.(h) .+ 0.3 .* imag.(h))
 end

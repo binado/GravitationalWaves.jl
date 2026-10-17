@@ -5,15 +5,15 @@ function numerical_api(x, f, hp, hc)
     sky = (; ra = x[1], dec = x[2], psi = x[3], geocent_time = 1126259462 + x[4])
     return (
         detector_tensor(d), d.vertex, d.xarm, d.yarm,
-        greenwich_mean_sidereal_time(sky.geocent_time; check = false),
-        antenna_pattern(sky, d; check = false),
-        antenna_pattern(x[1], x[2], x[3], x[5], d; check = false),
-        time_delay_from_geocenter(sky, d; check = false),
-        time_delay_from_geocenter(x[1], x[2], x[5], d; check = false),
-        time_delay(sky, d, other; check = false), light_travel_time(d, other),
+        greenwich_mean_sidereal_time(sky.geocent_time),
+        antenna_pattern(sky, d),
+        antenna_pattern(x[1], x[2], x[3], x[5], d),
+        time_delay_from_geocenter(sky, d),
+        time_delay_from_geocenter(x[1], x[2], x[5], d),
+        time_delay(sky, d, other), light_travel_time(d, other),
         project_fd(
             f, (; plus = hp, cross = hc), sky, d; start_time = 1126259462.0,
-            reference_time = 1126259462 + x[5], check = false
+            reference_time = 1126259462 + x[5]
         ),
     )
 end
@@ -49,7 +49,7 @@ function cartesian_loss(x)
     v = (zero(x[2]), cos(x[2]), sin(x[2]))
     d = Detector("cartesian", (x[3], x[4], x[5]), u, v, (3000, 4000); check = false)
     D = detector_tensor(d)
-    return D[1, 2] + D[2, 3] + time_delay_from_geocenter(1.0, -0.3, 2.0, d; check = false)
+    return D[1, 2] + D[2, 3] + time_delay_from_geocenter(1.0, -0.3, 2.0, d)
 end
 
 @testset "Cartesian geometry gradients" begin
@@ -64,7 +64,7 @@ end
 end
 
 @testset "reused GMST executable across leap-table intervals" begin
-    objective(x) = Reactant.@allowscalar greenwich_mean_sidereal_time(x[1]; check = false)
+    objective(x) = Reactant.@allowscalar greenwich_mean_sidereal_time(x[1])
     epochs = (
         0.25, 46828799.25, 46828801.25, 1119744015.25,
         1119744017.25, 1167264016.25, 1167264018.25, 1400000000.25,

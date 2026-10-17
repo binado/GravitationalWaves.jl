@@ -21,11 +21,6 @@
         @test light_travel_time(a, b) == light_travel_time(b, a)
         @test light_travel_time(a, a) == 0
     end
-    @test_throws ArgumentError antenna_pattern(0, 2, 0, 0, d)
-    @test_throws ArgumentError time_delay_from_geocenter(NaN, 0, 0, d)
-    @test_throws ArgumentError greenwich_mean_sidereal_time(-1)
-    @test_throws ArgumentError greenwich_mean_sidereal_time(Inf)
-    @test_throws ArgumentError greenwich_mean_sidereal_time(2147483648)
     for t in (Float32(1126259462), Float16(100))
         @test greenwich_mean_sidereal_time(t) == greenwich_mean_sidereal_time(Float64(t))
     end

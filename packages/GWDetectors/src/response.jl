@@ -1,9 +1,3 @@
-function _check_sky(ra, dec, angles...)
-    all(_finite_real, (ra, dec, angles...)) || throw(ArgumentError("sky angles must be finite and real"))
-    abs(dec) <= π / 2 || throw(ArgumentError("declination must be in [-π/2, π/2]"))
-    return nothing
-end
-
 function _antenna(ra, dec, psi, gmst, D)
     sg, cg = sincos(gmst - ra)
     sd, cd = sincos(dec)
@@ -18,21 +12,25 @@ function _antenna(ra, dec, psi, gmst, D)
 end
 
 """
-    antenna_pattern(sky, detector; check=true)
-    antenna_pattern(ra, dec, psi, gmst, detector; check=true)
+    antenna_pattern(sky, detector)
+    antenna_pattern(ra, dec, psi, gmst, detector)
 
-Return `(; plus, cross)` in LAL's polarization convention. `sky` supplies `ra`,
-`dec`, `psi` (radians), and `geocent_time` (GPS seconds). The explicit form takes
-GMST in radians. Both use a fixed, long-wavelength detector response.
+Return `(; plus, cross)` in LAL's polarization convention using a fixed,
+long-wavelength detector response. `ra` is right ascension (radians, conventionally
+in `[0, 2π)`), `dec` is declination (radians, in `[-π/2, π/2]`), and `psi` is the
+polarization angle (radians, periodic modulo `π`). `gmst` is the Greenwich mean
+sidereal angle in radians and may be unwrapped. The `sky` form supplies `ra`,
+`dec`, `psi`, and `geocent_time` in GPS seconds, including fractions; its epoch
+follows the conventions of [`greenwich_mean_sidereal_time`](@ref).
+Inputs are assumed finite and real; argument values are not validated.
 """
-function antenna_pattern(ra, dec, psi, gmst, d::Detector; check = true)
-    check && _check_sky(ra, dec, psi, gmst)
+function antenna_pattern(ra, dec, psi, gmst, d::Detector)
     return _antenna(ra, dec, psi, gmst, detector_tensor(d))
 end
 
-function antenna_pattern(sky, d::Detector; check = true)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time; check)
-    return antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d; check)
+function antenna_pattern(sky, d::Detector)
+    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
+    return antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d)
 end
 
 function _delay(ra, dec, gmst, vertex)
@@ -43,30 +41,37 @@ function _delay(ra, dec, gmst, vertex)
 end
 
 """
-    time_delay_from_geocenter(sky, detector; check=true)
-    time_delay_from_geocenter(ra, dec, gmst, detector; check=true)
+    time_delay_from_geocenter(sky, detector)
+    time_delay_from_geocenter(ra, dec, gmst, detector)
 
 Arrival time at the detector minus arrival time at Earth's center, in seconds:
-`-dot(vertex, direction_to_source)/c`. `sky` needs only `ra`, `dec`, `geocent_time`.
+`-dot(vertex, direction_to_source)/c`. `ra` is right ascension in radians
+(conventionally `[0, 2π)`), `dec` is declination in radians (`[-π/2, π/2]`), and
+`gmst` is the Greenwich mean sidereal angle in radians, optionally unwrapped.
+`sky` supplies `ra`, `dec`, and `geocent_time` in GPS seconds, including fractions;
+its epoch follows [`greenwich_mean_sidereal_time`](@ref). Inputs are assumed finite
+and real; argument values are not validated.
 """
-function time_delay_from_geocenter(ra, dec, gmst, d::Detector; check = true)
-    check && _check_sky(ra, dec, gmst)
+function time_delay_from_geocenter(ra, dec, gmst, d::Detector)
     return _delay(ra, dec, gmst, d.vertex)
 end
 
-function time_delay_from_geocenter(sky, d::Detector; check = true)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time; check)
-    return time_delay_from_geocenter(sky.ra, sky.dec, gmst, d; check)
+function time_delay_from_geocenter(sky, d::Detector)
+    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
+    return time_delay_from_geocenter(sky.ra, sky.dec, gmst, d)
 end
 
 """
-    time_delay(sky, detector1, detector2; check=true)
+    time_delay(sky, detector1, detector2)
 
 Arrival time at detector 1 minus arrival time at detector 2, in seconds.
+`sky` supplies right ascension `ra` (radians, conventionally `[0, 2π)`), declination
+`dec` (radians, `[-π/2, π/2]`), and `geocent_time` (GPS seconds, including fractions,
+following [`greenwich_mean_sidereal_time`](@ref)). Inputs are assumed finite and
+real; argument values are not validated.
 """
-function time_delay(sky, d1::Detector, d2::Detector; check = true)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time; check)
-    check && _check_sky(sky.ra, sky.dec)
+function time_delay(sky, d1::Detector, d2::Detector)
+    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
     baseline = d1.vertex .- d2.vertex
     return _delay(sky.ra, sky.dec, gmst, baseline)
 end
@@ -83,7 +88,7 @@ end
 
 """
     project_fd(f, polarizations, sky, detector;
-               start_time, reference_time=sky.geocent_time, check=true)
+               start_time, reference_time=sky.geocent_time)
 
 Allocate `(Fplus*hplus + Fcross*hcross) * exp(-2π*im*f*dt)`, with
 `dt = (sky.geocent_time - start_time) + time_delay_from_geocenter(sky, detector)`.
@@ -93,24 +98,25 @@ Epochs are subtracted before adding the delay to preserve timing precision.
 Accept any finite nonnegative frequency vector, including ranges, irregular or
 empty grids, in input order. Both polarization vectors must have the same axes as
 `f`; no frequency mask is applied. `sky` provides `ra`, `dec`, `psi`, `geocent_time`.
-`check=false` skips value validation for prevalidated compiled inputs, retaining
-vector and axes checks. Broadcast preserves compiled array execution.
+Frequencies are in Hz; polarizations are finite complex Fourier-domain strains in LAL's
+convention. `ra` is right ascension (radians, conventionally `[0, 2π)`), `dec` is
+declination (radians, `[-π/2, π/2]`), and `psi` is the polarization angle (radians,
+periodic modulo `π`). `geocent_time`, `start_time`, and `reference_time` are finite,
+real GPS seconds, including fractions; epochs used to evaluate GMST follow
+[`greenwich_mean_sidereal_time`](@ref). Argument values are not validated;
+polarization vector types and matching axes are checked. Broadcast preserves
+compiled array execution.
 """
 function project_fd(
         f::AbstractVector, polarizations, sky, d::Detector;
-        start_time, reference_time = sky.geocent_time, check = true
+        start_time, reference_time = sky.geocent_time
     )
     hp, hc = polarizations.plus, polarizations.cross
     hp isa AbstractVector && hc isa AbstractVector || throw(ArgumentError("polarizations must be vectors"))
     axes(f) == axes(hp) == axes(hc) || throw(DimensionMismatch("frequency and polarization axes must match"))
-    if check
-        all(x -> _finite_real(x) && x >= 0, f) || throw(ArgumentError("frequencies must be finite, real and nonnegative"))
-        all(isfinite, hp) && all(isfinite, hc) || throw(ArgumentError("polarizations must be finite"))
-        _finite_real(start_time) || throw(ArgumentError("start_time must be finite and real"))
-    end
-    gmst = greenwich_mean_sidereal_time(reference_time; check)
-    factors = antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d; check)
-    delay = time_delay_from_geocenter(sky, d; check)
+    gmst = greenwich_mean_sidereal_time(reference_time)
+    factors = antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d)
+    delay = time_delay_from_geocenter(sky, d)
     dt = (sky.geocent_time - start_time) + delay
     phase_scale = ((-2 * Float64(π)) * dt) * im
     return @. (factors.plus * hp + factors.cross * hc) * exp(phase_scale * f)

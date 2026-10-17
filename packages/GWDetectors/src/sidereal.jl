@@ -6,7 +6,7 @@ const LEAP_SECONDS = (
 )
 
 """
-    greenwich_mean_sidereal_time(gps_time; check=true)
+    greenwich_mean_sidereal_time(gps_time)
 
 LAL-compatible, unwrapped Greenwich mean sidereal angle in radians relative to
 J2000. GPS input is in seconds, including fractions. Supports GPS epochs from 0
@@ -14,14 +14,10 @@ through 2147483647 inclusive. The pinned leap table ends at 2017-01-01; subseque
 epochs assume GPS−UTC remains 18 seconds. No UT1 or equation-of-equinoxes correction.
 
 Whole and fractional seconds are kept separate. Derivatives are meaningful away
-from integer-second rounding boundaries and leap transitions. Use `check=false`
-inside compiled calls only after validating input domains on the host.
+from integer-second rounding boundaries and leap transitions. Input is assumed
+finite and real, in the supported epoch range; argument values are not validated.
 """
-function greenwich_mean_sidereal_time(gps_time; check = true)
-    if check
-        _finite_real(gps_time) && 0 <= gps_time <= 2147483647 ||
-            throw(ArgumentError("GPS time must be finite, real, and in [0, 2147483647]"))
-    end
+function greenwich_mean_sidereal_time(gps_time)
     # LAL uses double precision even when the supplied epoch has a narrower
     # storage type. Arithmetic promotion preserves dual and traced values.
     gps = gps_time + 0.0

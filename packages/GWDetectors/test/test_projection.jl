@@ -22,7 +22,6 @@ Base.getindex(v::ShiftedVector, i::Int) = v.data[i + 1]
         @test h !== hp
         @test eltype(h) <: Complex
         @test project_fd(f, (; plus = 2hp, cross = 2hc), sky, d; start_time) ≈ 2h
-        @test h == project_fd(f, p, sky, d; start_time, check = false)
         isempty(f) || @test h[1] ≈ a.plus * hp[1] + a.cross * hc[1]
         ref = sky.geocent_time + 1000
         refsky = merge(sky, (; geocent_time = ref))
@@ -31,14 +30,7 @@ Base.getindex(v::ShiftedVector, i::Int) = v.data[i + 1]
         @test project_fd(f, p, sky, d; start_time, reference_time = ref) ≈ expected_ref atol = 1.0e-13
     end
     f = [0.0, 20.0]
-    p = (; plus = ones(ComplexF64, 2), cross = zeros(ComplexF64, 2))
-    @test_throws DimensionMismatch project_fd(f, (; plus = ones(1), cross = ones(2)), sky, d; start_time, check = false)
-    @test_throws DimensionMismatch project_fd(f, (; plus = ShiftedVector(ones(2)), cross = ones(2)), sky, d; start_time, check = false)
-    @test_throws ArgumentError project_fd(f, (; plus = 1, cross = 1), sky, d; start_time, check = false)
-    for bad in ([-1.0, 20], [NaN, 20], [Inf, 20])
-        @test_throws ArgumentError project_fd(bad, p, sky, d; start_time)
-    end
-    @test_throws ArgumentError project_fd(f, p, sky, d; start_time = NaN)
-    @test_throws ArgumentError project_fd(f, p, sky, d; start_time, reference_time = Inf)
-    @test_throws ArgumentError project_fd(f, (; plus = [NaN, 1], cross = ones(2)), sky, d; start_time)
+    @test_throws DimensionMismatch project_fd(f, (; plus = ones(1), cross = ones(2)), sky, d; start_time)
+    @test_throws DimensionMismatch project_fd(f, (; plus = ShiftedVector(ones(2)), cross = ones(2)), sky, d; start_time)
+    @test_throws ArgumentError project_fd(f, (; plus = 1, cross = 1), sky, d; start_time)
 end

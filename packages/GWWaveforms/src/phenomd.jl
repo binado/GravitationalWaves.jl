@@ -603,7 +603,7 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 
 The inputs are trusted (see [`validate_parameters`](@ref)).
-TODO: make the PhenomD kernels branch free so they can be traced by Reactant, like TaylorF2.
+This is the host reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref), which Reactant can also trace.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
@@ -634,6 +634,45 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
     return h
 end
 
+"""
+    phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
+
+The same strain as [`phenomd_fd`](@ref), but evaluated on the static index slice `lo:hi` of the
+grid (from [`taylorf2_slice`](@ref)) and padded with zeros, so that Reactant can trace it with
+tracked scalars in `p`. Both edges of the slice are static: it starts at
+`ceil(f_start / deltaF) ≥ 1`, so `f = 0` never reaches the kernels, and ends at the grid or
+`f_max`, whichever comes first. The only edge that depends on the masses is `fCut = 0.2 / M`, which
+is applied as a mask: sample `i` is kept iff `i < floor(min(fCut, f_max) / deltaF)`, so the sample at
+the upper end itself stays zero, as in LAL's loop. Masked samples are evaluated at an in-band
+frequency (the kernels are finite for any `Mf > 0`, but not worth evaluating far past the merger)
+and then zeroed, which also zeroes their gradients.
+"""
+function phenomd_fd_slice(
+        ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
+    ) where {T}
+    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
+    m1 = p.mass_1
+    m2 = p.mass_2
+    distance = p.luminosity_distance * 1.0e6 * PC_SI
+    fRef_in = g.reference_frequency
+    fRef = fRef_in == 0.0 ? f_start : fRef_in
+    M = m1 + m2
+    fCut = F_CUT / (M * MTSUN_SI)
+    f_max_eff = ifelse(fCut < f_max, fCut, f_max)
+
+    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
+    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+
+    index = collect(lo:hi)
+    keep = Float64.(index) .< floor(f_max_eff / deltaF)
+    Mf = ifelse.(keep, model.M_sec .* (index .* deltaF), model.M_sec * f_start)
+    amp = amp0 .* phenomd_amplitude.(Ref(model), Mf)
+    phi = phenomd_phase.(Ref(model), Mf) .- (model.t0 .* (Mf .- model.MfRef) .+ model.phi_precalc)
+    re = ifelse.(keep, amp .* cos.(phi), 0.0)
+    im = ifelse.(keep, .-(amp .* sin.(phi)), 0.0)
+    return complex.(vcat(zeros(T, lo), re, zeros(T, nout - hi - 1)), vcat(zeros(T, lo), im, zeros(T, nout - hi - 1)))
+end
+
 # Inputs `phenomd_fd` does not check; run by `validate_parameters`.
 function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     m1 = p.mass_1
@@ -644,15 +683,14 @@ function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
     (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
-    f_max >= 0 || throw(ArgumentError("maximum frequency must not be negative"))
+    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
     distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
     (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
         throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
 
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
     fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))
-    f_max_prime = f_max == 0 ? fCut : f_max
-    f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
+    f_max_prime = f_max > fCut ? fCut : f_max
     f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
 
     a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)

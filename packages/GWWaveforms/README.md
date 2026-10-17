@@ -59,8 +59,19 @@ export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'
 ```
 
-Without them the comparison warns and is skipped (with `CI=true` it fails). The AD tests differentiate a scalar loss
-with all three backends through DifferentiationInterface and compare against finite differences and each other.
+Without them the comparison warns and is skipped (with `CI=true` it fails). The default
+AD tests differentiate a scalar loss with ForwardDiff through DifferentiationInterface
+and compare against finite differences.
+
+Run the separate integration suite from the repository root to check ForwardDiff,
+Enzyme and Mooncake against finite differences and each other:
+
+```sh
+just test-integration-waveforms
+```
+
+This installs its own dependencies on first use and runs locally, outside CI. It
+needs no LAL libraries.
 
 ## License
 

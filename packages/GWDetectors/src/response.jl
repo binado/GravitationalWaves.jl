@@ -41,39 +41,39 @@ function _delay(ra, dec, gmst, vertex)
 end
 
 """
-    time_delay_from_geocenter(sky, detector)
-    time_delay_from_geocenter(ra, dec, gmst, detector)
+    time_delay_from_geocenter(params::NamedTuple, detector)
+    time_delay_from_geocenter(ra::Number, dec::Number, gmst::Number, detector)
 
 Arrival time at the detector minus arrival time at Earth's center, in seconds:
 `-dot(vertex, direction_to_source)/c`. `ra` is right ascension in radians
 (conventionally `[0, 2π)`), `dec` is declination in radians (`[-π/2, π/2]`), and
 `gmst` is the Greenwich mean sidereal angle in radians, optionally unwrapped.
-`sky` supplies `ra`, `dec`, and `geocent_time` in GPS seconds, including fractions;
+`params` supplies `ra`, `dec`, and `geocent_time` in GPS seconds, including fractions;
 its epoch follows [`greenwich_mean_sidereal_time`](@ref). Inputs are assumed finite
 and real; argument values are not validated.
 """
-function time_delay_from_geocenter(ra, dec, gmst, d::Detector)
+function time_delay_from_geocenter(ra::Number, dec::Number, gmst::Number, d::Detector)
     return _delay(ra, dec, gmst, d.vertex)
 end
 
-function time_delay_from_geocenter(sky, d::Detector)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
-    return time_delay_from_geocenter(sky.ra, sky.dec, gmst, d)
+function time_delay_from_geocenter(params::NamedTuple, d::Detector)
+    gmst = greenwich_mean_sidereal_time(params.geocent_time)
+    return time_delay_from_geocenter(params.ra, params.dec, gmst, d)
 end
 
 """
-    time_delay(sky, detector1, detector2)
+    time_delay(params::NamedTuple, detector1, detector2)
 
 Arrival time at detector 1 minus arrival time at detector 2, in seconds.
-`sky` supplies right ascension `ra` (radians, conventionally `[0, 2π)`), declination
+`params` supplies right ascension `ra` (radians, conventionally `[0, 2π)`), declination
 `dec` (radians, `[-π/2, π/2]`), and `geocent_time` (GPS seconds, including fractions,
 following [`greenwich_mean_sidereal_time`](@ref)). Inputs are assumed finite and
 real; argument values are not validated.
 """
-function time_delay(sky, d1::Detector, d2::Detector)
-    gmst = greenwich_mean_sidereal_time(sky.geocent_time)
+function time_delay(params::NamedTuple, d1::Detector, d2::Detector)
+    gmst = greenwich_mean_sidereal_time(params.geocent_time)
     baseline = d1.vertex .- d2.vertex
-    return _delay(sky.ra, sky.dec, gmst, baseline)
+    return _delay(params.ra, params.dec, gmst, baseline)
 end
 
 """

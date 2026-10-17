@@ -8,5 +8,4 @@ using GWParameterConversion
     include("test_mass_coordinates.jl")
     include("test_reference.jl")
     include("test_quality.jl")
-    include("test_reactant.jl")
 end

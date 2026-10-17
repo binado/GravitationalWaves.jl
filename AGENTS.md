@@ -38,6 +38,9 @@ julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAVEFORMS_LIBDIR for the LAL comparison
 runic --inplace .                              # format (Runic; CI enforces it)
+just test-integration                         # heavy AD integration suites, local only
+just test-integration-conversion              # Reactant CPU + Enzyme, no LAL/Python needed
+just test-integration-waveforms               # ForwardDiff + Enzyme + Mooncake
 ```
 
 Single test file: `julia --project=packages/LALWaveforms -e 'using Test, LALWaveforms; include("packages/LALWaveforms/test/test_fd.jl")'` (the `test/` extras like JSON/NPZ/JET are only resolved under `Pkg.test()`, so for reference/quality tests use `Pkg.test()` or activate `test/`'s target env).
@@ -56,7 +59,7 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 ## GWWaveforms
 
-`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; `test_ad.jl` checks them against finite differences). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
+`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; default tests check ForwardDiff against finite differences, and the local integration suite checks all three backends). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
 
 ## GWDistributions
 
@@ -83,6 +86,11 @@ packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, a
 `LICENSE` skip package tests; package-local documentation still selects its package.
 Formatting runs on every workflow, coverage collection is disabled, and newer PR commits
 cancel superseded runs. `CI passed` aggregates detection, test, and formatting results.
+
+Heavy AD checks live in standalone `integration/` environments, outside the root workspace
+and default test targets. Run `just test-integration` locally before submitting changes
+to numerical kernels or the AD integrations; individual package recipes are listed above.
+CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
 Pushes to `main` and manual CI runs test all four packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.

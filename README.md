@@ -104,6 +104,21 @@ julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'
 
 The waveform tests require the reference setup below for full coverage.
 
+The default suites include ForwardDiff checks. Heavy Reactant/Enzyme conversion tests
+and Enzyme/Mooncake waveform tests run separately, locally, rather than in CI:
+
+```sh
+just test-integration              # both suites; installs their dependencies on first use
+just test-integration-conversion   # Reactant CPU compilation and Enzyme gradients
+just test-integration-waveforms    # all three waveform AD backends
+```
+
+These recipes require Julia 1.12 or newer and `just`, and need no LAL or Python setup.
+Set `JULIA='julia +1.12'` to select a Julia version. Their standalone environments live
+under `integration/`, outside the root workspace; ordinary `Pkg.test()` does not
+install or precompile Enzyme, Reactant, or Mooncake. Run the affected integration
+suite before submitting changes to the numerical kernels or AD integration tests.
+
 The reference tests compare against bilby output generated locally (not committed):
 
 ```sh

@@ -12,3 +12,5 @@ test_waveform_gradients(
         "Enzyme" => AutoEnzyme(; function_annotation = Enzyme.Const),
     ]
 )
+
+include("test_reactant.jl")

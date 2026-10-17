@@ -110,3 +110,16 @@ function time_shift!(h, f, f_min, f_max, dt)
     end
     return h
 end
+
+"""
+    validate_parameters(f::AbstractRange, params::NamedTuple, generator::LALWaveformGenerator) -> nothing
+
+Check the grid and the parameter names and redundant mass parameters, as [`hphc_fd`](@ref) does
+before calling LAL (which itself rejects unphysical values with a [`LALError`](@ref)). Provided
+so generic code can validate with any backend.
+"""
+function validate_parameters(f::AbstractRange, params::NamedTuple, ::LALWaveformGenerator)
+    check_frequency_grid(f)
+    bilby_parameters(params)
+    return nothing
+end

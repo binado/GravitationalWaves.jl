@@ -84,7 +84,10 @@ generator = IMRPhenomD()
 
 Both packages implement the interface of [`AbstractGWWaveforms`](packages/AbstractGWWaveforms): a concrete
 `AbstractWaveformGenerator` (`TaylorF2()`, `IMRPhenomD()`, `LALWaveformGenerator("...")`) and the one generic
-`hphc_fd(f, params, generator)`. Loading both with `using` is unambiguous, and generic code can take any backend.
+`hphc_fd(f, params, generator)`, plus `validate_parameters(f, params, generator)` for the parameter
+checks. `GWWaveforms.hphc_fd` does not check parameter values, so that it can be compiled with Reactant (see its
+[README](packages/GWWaveforms)); run `validate_parameters` on the host first. `LALWaveforms.hphc_fd` still validates.
+Loading both with `using` is unambiguous, and generic code can take any backend.
 
 ## Detector projection
 

@@ -15,13 +15,13 @@ module LALWaveforms
 using GWParameterConversion: MSUN_SI, PC_SI, MASS_KEYS, convert_parameters, is_aligned,
     aligned_spins_to_lal_frame
 using AbstractGWWaveforms: AbstractWaveformGenerator, check_frequency_grid, frequency_bounds
-import AbstractGWWaveforms: hphc_fd, approximant, reference_frequency, minimum_frequency,
+import AbstractGWWaveforms: hphc_fd, validate_parameters, approximant, reference_frequency, minimum_frequency,
     maximum_frequency, spin_support, supports_mode_array, is_differentiable
 using Libdl
 using Preferences
 
 export LALWaveformGenerator, LALError, set_libdir!, set_libdir_from_python!
-export AbstractWaveformGenerator, hphc_fd
+export AbstractWaveformGenerator, hphc_fd, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 

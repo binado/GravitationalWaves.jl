@@ -1,3 +1,5 @@
+import ForwardDiff as FD
+
 @testset "model building blocks" begin
     G = GWWaveforms
 
@@ -41,8 +43,55 @@
         @test peak > G.amp_mrd_ansatz(0.99 * m.amp.fmaxCalc, m.amp)
         @test peak > G.amp_mrd_ansatz(1.01 * m.amp.fmaxCalc, m.amp)
 
+        # Swapping the components is a branch-free `ifelse`, and eta is snapped only by rounding.
+        @test G.order_by_mass(1.0, 2.0, 0.1, 0.2) == (2.0, 1.0, 0.2, 0.1)
+        @test G.order_by_mass(2.0, 1.0, 0.1, 0.2) == (2.0, 1.0, 0.1, 0.2)
+        @test G.nudged_eta(1.0, 1.0) == 0.25
+        @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
+        @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
+        # `fmax_calc` takes the second branch for gamma2 > 1 without evaluating a NaN square root.
+        @test G.fmax_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
+        @test G.fmax_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
+
         # Equal masses sit at the upper limit of eta.
         @test isfinite(G.phenomd_amplitude(G.phenomd_model(30.0, 30.0, 0.0, 0.0, 50.0, 0.0), 0.01))
+    end
+
+    @testset "all regions stay finite where they are not selected" begin
+        # The kernels evaluate the inspiral, intermediate and merger-ringdown pieces everywhere and
+        # select one, so each must be finite (value and derivative) for every Mf > 0 it may see.
+        for (m1, m2) in ((36.0, 29.0), (10.0, 1.4), (200.0, 150.0), (3000.0, 3000.0), (50.0, 1.0)),
+                (chi1, chi2) in ((0.0, 0.0), (0.99, 0.99), (-0.99, -0.99), (0.9, -0.7), (-0.5, 0.95))
+
+            m = G.phenomd_model(m1, m2, chi1, chi2, 20.0, 0.3)
+            pieces = (
+                Mf -> G.amp_ins_ansatz(Mf, G.useful_powers(Mf), m.amp.pre),
+                Mf -> G.amp_int_ansatz(Mf, m.amp),
+                Mf -> G.amp_mrd_ansatz(Mf, m.amp),
+                Mf -> G.phi_ins_ansatz_int(Mf, G.useful_powers(Mf), m.phi_pre, m.phi),
+                Mf -> m.phi.etaInv * G.phi_int_ansatz(Mf, m.phi) + m.conn.C1Int + m.conn.C2Int * Mf,
+                Mf -> m.phi.etaInv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.C1MRD + m.conn.C2MRD * Mf,
+            )
+            for piece in pieces, Mf in exp10.(range(-4, log10(10.0); length = 60))
+                @test isfinite(piece(Mf))
+                @test isfinite(FD.derivative(piece, Mf))
+            end
+        end
+    end
+
+    @testset "gradients across the region boundaries" begin
+        m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
+        ε = 1.0e-7
+        for edge in (G.AMP_FJOIN_INS, m.amp.fmaxCalc), Mf in (edge - ε, edge, edge + ε)
+            @test isfinite(FD.derivative(x -> G.phenomd_amplitude(m, x), Mf))
+        end
+        # The phase is C¹ across both joins.
+        for edge in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+            left = FD.derivative(x -> G.phenomd_phase(m, x), edge - ε)
+            right = FD.derivative(x -> G.phenomd_phase(m, x), edge + ε)
+            @test isfinite(left) && isfinite(right)
+            @test left ≈ right rtol = 1.0e-3
+        end
     end
 
     @testset "natural cubic spline" begin
@@ -54,4 +103,103 @@
         # The QNM tables: M ω = 0.37367 for the (2,2) mode of a Schwarzschild black hole.
         @test G.spline_eval(G.FRING_SPLINE, 0.0) ≈ 0.37367 / 2π atol = 1.0e-6
     end
+
+    @testset "spline evaluation is bit-identical to the searchsorted form" begin
+        # The previous implementation: binary search, then the coefficients from the raw arrays.
+        # A natural spline has c[n] = 0, so the full coefficient vector is recovered from the segments.
+        function reference_eval(x_knots, y_knots, c, x)
+            n = length(x_knots)
+            i = clamp(searchsortedlast(x_knots, x), 1, n - 1)
+            x_lo = x_knots[i]
+            dx = x_knots[i + 1] - x_lo
+            y_lo = y_knots[i]
+            dy = y_knots[i + 1] - y_lo
+            delx = x - x_lo
+            c_i = c[i]
+            c_ip1 = c[i + 1]
+            b_i = (dy / dx) - dx * (c_ip1 + 2.0 * c_i) / 3.0
+            d_i = (c_ip1 - c_i) / (3.0 * dx)
+            return y_lo + delx * (b_i + delx * (c_i + delx * d_i))
+        end
+        for (spline, y) in ((G.FRING_SPLINE, G.QNM_FRING), (G.FDAMP_SPLINE, G.QNM_FDAMP))
+            knots = spline.x
+            c = vcat(spline.c, 0.0)
+            mids = (knots[1:(end - 1)] .+ knots[2:end]) ./ 2
+            rng = range(-1.2, 1.2; length = 97)
+            for x in Iterators.flatten((knots, mids, rng, (-1.0, 1.0)))
+                @test G.spline_eval(spline, x) == reference_eval(knots, y, c, x)
+            end
+        end
+    end
+end
+
+@testset "TaylorF2 static slice against the loop" begin
+    f = range(0, 256; step = 0.25)
+    params = (
+        mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
+        a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
+    )
+    p = GWWaveforms.aligned_parameters(params)
+    df = Float64(step(f))
+    for g in (
+            TaylorF2(; minimum_frequency = 25.0),
+            TaylorF2(; minimum_frequency = 25.0, maximum_frequency = 180.0, pn_amplitude_order = 3),
+            TaylorF2(; minimum_frequency = 20.0, pn_phase_order = 4, pn_spin_order = 3, reference_frequency = 0),
+        )
+        f_min, f_max = GWWaveforms.frequency_bounds(g, f)
+        f_start = g.pn_amplitude_order != 0 ?
+            GWWaveforms.f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
+        lo, hi = GWWaveforms.taylorf2_slice(f, f_start, f_min, f_max)
+        expected = GWWaveforms.taylorf2_fd(Float64, length(f), df, p, g, f_start, f_max)
+        expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
+        got = GWWaveforms.taylorf2_fd_slice(Float64, length(f), lo, hi, df, p, g)
+        @test got ≈ expected rtol = 1.0e-12
+        @test all(iszero, got[1:lo]) && all(iszero, got[(hi + 2):end])
+    end
+    # Nothing in band.
+    @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
+end
+
+@testset "IMRPhenomD is symmetric under swapping the components" begin
+    f = range(0, 512; step = 0.25)
+    g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
+    base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
+    a = hphc_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0, a_1 = 0.5, a_2 = 0.3)), g)
+    b = hphc_fd(f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g)
+    @test a.plus == b.plus
+    @test a.cross == b.cross
+end
+
+@testset "IMRPhenomD static slice against the loop" begin
+    f = range(0, 256; step = 0.25)
+    base = (
+        luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
+        a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
+    )
+    df = Float64(step(f))
+    fcut(m1, m2) = GWWaveforms.F_CUT / ((m1 + m2) * GWWaveforms.MTSUN_SI)
+    # The last pair puts fCut inside the grid; the second-last makes it an exact grid point.
+    for (m1, m2) in ((36.0, 29.0), (29.0, 36.0), (90.0, 85.0), (130.0, 100.0))
+        M = m1 + m2
+        # f_max such that f_max / df is an integer, below and above fCut.
+        for g in (
+                IMRPhenomD(; minimum_frequency = 25.0),
+                IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = 180.0),
+                IMRPhenomD(; minimum_frequency = 20.1, maximum_frequency = 200.3, reference_frequency = 0),
+                IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = fcut(m1, m2)),
+            )
+            p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
+            f_min, f_max = GWWaveforms.frequency_bounds(g, f)
+            fcut(m1, m2) > f_min || continue
+            lo, hi = GWWaveforms.taylorf2_slice(f, f_min, f_min, f_max)
+            expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
+            expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
+            got = GWWaveforms.phenomd_fd_slice(Float64, length(f), lo, hi, df, p, g, f_min, f_max)
+            @test maximum(abs, got .- expected) <= 1.0e-12 * maximum(abs, expected)
+            @test iszero.(got) == iszero.(expected)
+        end
+    end
+    # Nothing in band.
+    p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
+    @test all(iszero, GWWaveforms.phenomd_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0))
 end

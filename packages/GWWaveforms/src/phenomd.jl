@@ -63,12 +63,19 @@ const PI_POWERS = useful_powers(Float64(π))
 
 `gsl_interp_cspline`: the natural cubic spline through `(x, y)`, with the coefficients solved
 the way GSL does (Cholesky factorisation of the symmetric tridiagonal system). Evaluating it
-is plain arithmetic on the knots, so it is differentiable in the evaluation point.
+is plain arithmetic on the knots, so it is differentiable in the evaluation point, and it has
+no data-dependent branch or indexing (see [`spline_eval`](@ref)).
+
+`x` holds all knots; `xlo`, `ylo`, `c`, `b` and `d` are the left knot, value and the cubic
+coefficients of each of the `n - 1` segments, `y(t) = ylo + δ (b + δ (c + δ d))` with `δ = t - xlo`.
 """
 struct NaturalCubicSpline
     x::Vector{Float64}
-    y::Vector{Float64}
+    xlo::Vector{Float64}
+    ylo::Vector{Float64}
     c::Vector{Float64}
+    b::Vector{Float64}
+    d::Vector{Float64}
 end
 
 function NaturalCubicSpline(x::Vector{Float64}, y::Vector{Float64})
@@ -116,25 +123,31 @@ function NaturalCubicSpline(x::Vector{Float64}, y::Vector{Float64})
         sol[j] = cc[j] - gamma[j] * sol[j + 1]
     end
     c[2:(n - 1)] .= sol
-    return NaturalCubicSpline(x, y, c)
+    # The per-segment linear and cubic coefficients, with the expressions GSL evaluates.
+    segments = 1:max_index
+    dx = x[segments .+ 1] .- x[segments]
+    dy = y[segments .+ 1] .- y[segments]
+    b = (dy ./ dx) .- dx .* (c[segments .+ 1] .+ 2.0 .* c[segments]) ./ 3.0
+    d = (c[segments .+ 1] .- c[segments]) ./ (3.0 .* dx)
+    return NaturalCubicSpline(x, x[segments], y[segments], c[segments], b, d)
 end
 
+"""
+    spline_eval(s::NaturalCubicSpline, x)
+
+Evaluate the spline, extrapolating the first and last cubic outside the knots. The segment
+`x[i] ≤ t < x[i+1]` (`searchsortedlast`, clamped to the valid segments) is found by counting
+knots and its coefficients are selected by a one-hot sum, rather than by indexing with
+`i`: that keeps the evaluation free of branches and of scalar indexing, so Reactant can trace
+it with a tracked `x`. The sum has a single nonzero term, so the result is exact.
+"""
 function spline_eval(s::NaturalCubicSpline, x)
-    n = length(s.x)
-    # Segment with x[i] <= x < x[i+1]; the last knot belongs to the last segment.
-    i = clamp(searchsortedlast(s.x, x), 1, n - 1)
-    x_lo = s.x[i]
-    x_hi = s.x[i + 1]
-    dx = x_hi - x_lo
-    y_lo = s.y[i]
-    y_hi = s.y[i + 1]
-    dy = y_hi - y_lo
-    delx = x - x_lo
-    c_i = s.c[i]
-    c_ip1 = s.c[i + 1]
-    b_i = (dy / dx) - dx * (c_ip1 + 2.0 * c_i) / 3.0
-    d_i = (c_ip1 - c_i) / (3.0 * dx)
-    return y_lo + delx * (b_i + delx * (c_i + delx * d_i))
+    nseg = length(s.xlo)
+    i = clamp(sum(ifelse.(s.x .<= x, 1, 0)), 1, nseg)
+    onehot = (1:nseg) .== i
+    pick(v) = sum(ifelse.(onehot, v, zero(eltype(v))))
+    delx = x - pick(s.xlo)
+    return pick(s.ylo) + delx * (pick(s.b) + delx * (pick(s.c) + delx * pick(s.d)))
 end
 
 include("phenomd_qnm.jl")
@@ -240,11 +253,10 @@ end
 
 # Frequency of the peak of the merger-ringdown amplitude (eq. 20 of arXiv:1508.07253).
 function fmax_calc(fRD, fDM, gamma2, gamma3)
-    if !(gamma2 > 1)
-        return abs(fRD + (fDM * (-1 + sqrt(1 - pow_2_of(gamma2))) * gamma3) / gamma2)
-    else
-        return abs(fRD + (-fDM * gamma3) / gamma2)
-    end
+    below = !(gamma2 > 1)
+    # The square root is only real for `gamma2 ≤ 1`; give it a safe argument otherwise.
+    root = sqrt(ifelse(below, 1 - pow_2_of(gamma2), zero(gamma2)))
+    return abs(fRD + ifelse(below, (fDM * (-1 + root) * gamma3) / gamma2, (-fDM * gamma3) / gamma2))
 end
 
 function amp_int_col_fit_coeff(eta, eta2, chi)
@@ -325,15 +337,17 @@ function phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
     )
 end
 
+# All three regions are evaluated and one is selected, so the kernel has no data-dependent
+# branch (Reactant traces it with tracked parameters). Every piece is finite for `Mf > 0`, so the
+# unselected ones cannot poison the value or the gradient.
 function _phenomd_amplitude(a, Mf, pm)
     AmpPreFac = a.amp0 * pm.m_seven_sixths
-    if Mf < AMP_FJOIN_INS # inspiral
-        return AmpPreFac * amp_ins_ansatz(Mf, pm, a.pre)
-    elseif Mf >= a.fmaxCalc # merger-ringdown
-        return AmpPreFac * amp_mrd_ansatz(Mf, a)
-    else # intermediate
-        return AmpPreFac * amp_int_ansatz(Mf, a)
-    end
+    inspiral = amp_ins_ansatz(Mf, pm, a.pre)
+    intermediate = amp_int_ansatz(Mf, a)
+    merger_ringdown = amp_mrd_ansatz(Mf, a)
+    return AmpPreFac * ifelse(
+        Mf < AMP_FJOIN_INS, inspiral, ifelse(Mf >= a.fmaxCalc, merger_ringdown, intermediate)
+    )
 end
 
 # --- phase ------------------------------------------------------------------------------
@@ -469,13 +483,12 @@ end
 
 function _phenomd_phase(m, Mf, pm)
     p = m.phi
-    if Mf < PHI_FJOIN_INS # inspiral
-        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
-    elseif Mf >= m.conn.fMRDJoin # merger-ringdown
-        return p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
-    else # intermediate
-        return p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
-    end
+    inspiral = phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
+    intermediate = p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
+    merger_ringdown = p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
+    return ifelse(
+        Mf < PHI_FJOIN_INS, inspiral, ifelse(Mf >= m.conn.fMRDJoin, merger_ringdown, intermediate)
+    )
 end
 
 # 3PN spin-spin term that LAL's TaylorF2 has but PhenomD was tuned without.
@@ -506,30 +519,35 @@ struct PhenomDModel{A, P, N, PF, C, T}
     MfRef::T
 end
 
+# Order the components so that `m1 ≥ m2`, carrying the spins along.
+function order_by_mass(m1, m2, chi1, chi2)
+    keep = m1 >= m2
+    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
+end
+
+# Symmetric mass ratio with `PhenomInternal_nudge`: eta is snapped to 1/4 if it exceeds it only
+# through rounding. Larger values are rejected by `check_waveform_inputs`.
+function nudged_eta(m1, m2)
+    M = m1 + m2
+    eta = m1 * m2 / (M * M)
+    return ifelse(eta > 0.25, oftype(eta, 0.25), eta)
+end
+
 """
     phenomd_model(m1, m2, chi1, chi2, f_ref, phi0) -> PhenomDModel
 
 Set up IMRPhenomD for component masses `m1`, `m2` (solar masses, any order) with aligned
 spins `chi1`, `chi2`, fixing the orbital phase `phi0` at the reference frequency `f_ref`
-(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`.
+(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`. The inputs are trusted and
+nothing here branches or throws; [`check_waveform_inputs`](@ref) checks eta and the final spin.
 """
 function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
-    if m1_in >= m2_in
-        m1, m2, chi1, chi2 = m1_in, m2_in, chi1_in, chi2_in
-    else
-        m1, m2, chi1, chi2 = m2_in, m1_in, chi2_in, chi1_in
-    end
+    m1, m2, chi1, chi2 = order_by_mass(m1_in, m2_in, chi1_in, chi2_in)
     M = m1 + m2
-    eta = m1 * m2 / (M * M)
-    # `PhenomInternal_nudge`: snap eta to 1/4 if it exceeds it only through rounding.
-    if eta > 0.25
-        eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-        eta = oftype(eta, 0.25)
-    end
+    eta = nudged_eta(m1, m2)
     M_sec = M * MTSUN_SI
 
     finspin = final_spin_0815(eta, chi1, chi2)
-    finspin > 1.0 && throw(ArgumentError("final spin > 1.0 is not supported"))
 
     amp = phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
     phi = phenomd_phase_fits(eta, chi1, chi2, finspin)
@@ -583,27 +601,19 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 `i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
 `min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
+
+The inputs are trusted (see [`validate_parameters`](@ref)).
+This is the host reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref), which Reactant can also trace.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
     m2 = p.mass_2
     distance = p.luminosity_distance * 1.0e6 * PC_SI
     fRef_in = g.reference_frequency
-    fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
-    deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
-    (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
-    f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
-    f_max >= 0 || throw(ArgumentError("maximum frequency must not be negative"))
-    distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
-    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
-        throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
-
     fRef = fRef_in == 0.0 ? f_start : fRef_in
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
-    fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))
     f_max_prime = f_max == 0 ? fCut : f_max
     f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
-    f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
 
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
     M = m1 + m2
@@ -622,4 +632,71 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
         h[i + 1] = complex(a * cos(phi), -(a * sin(phi)))
     end
     return h
+end
+
+"""
+    phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
+
+The same strain as [`phenomd_fd`](@ref), but evaluated on the static index slice `lo:hi` of the
+grid (from [`taylorf2_slice`](@ref)) and padded with zeros, so that Reactant can trace it with
+tracked scalars in `p`. Both edges of the slice are static: it starts at
+`ceil(f_start / deltaF) ≥ 1`, so `f = 0` never reaches the kernels, and ends at the grid or
+`f_max`, whichever comes first. The only edge that depends on the masses is `fCut = 0.2 / M`, which
+is applied as a mask: sample `i` is kept iff `i < floor(min(fCut, f_max) / deltaF)`, so the sample at
+the upper end itself stays zero, as in LAL's loop. Masked samples are evaluated at an in-band
+frequency (the kernels are finite for any `Mf > 0`, but not worth evaluating far past the merger)
+and then zeroed, which also zeroes their gradients.
+"""
+function phenomd_fd_slice(
+        ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
+    ) where {T}
+    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
+    m1 = p.mass_1
+    m2 = p.mass_2
+    distance = p.luminosity_distance * 1.0e6 * PC_SI
+    fRef_in = g.reference_frequency
+    fRef = fRef_in == 0.0 ? f_start : fRef_in
+    M = m1 + m2
+    fCut = F_CUT / (M * MTSUN_SI)
+    f_max_eff = ifelse(fCut < f_max, fCut, f_max)
+
+    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
+    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+
+    index = collect(lo:hi)
+    keep = Float64.(index) .< floor(f_max_eff / deltaF)
+    Mf = ifelse.(keep, model.M_sec .* (index .* deltaF), model.M_sec * f_start)
+    amp = amp0 .* phenomd_amplitude.(Ref(model), Mf)
+    phi = phenomd_phase.(Ref(model), Mf) .- (model.t0 .* (Mf .- model.MfRef) .+ model.phi_precalc)
+    re = ifelse.(keep, amp .* cos.(phi), 0.0)
+    im = ifelse.(keep, .-(amp .* sin.(phi)), 0.0)
+    return complex.(vcat(zeros(T, lo), re, zeros(T, nout - hi - 1)), vcat(zeros(T, lo), im, zeros(T, nout - hi - 1)))
+end
+
+# Inputs `phenomd_fd` does not check; run by `validate_parameters`.
+function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
+    m1 = p.mass_1
+    m2 = p.mass_2
+    distance = p.luminosity_distance * 1.0e6 * PC_SI
+    fRef_in = g.reference_frequency
+    fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
+    deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
+    (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
+    f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
+    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
+    distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
+    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
+        throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
+
+    fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
+    fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))
+    f_max_prime = f_max > fCut ? fCut : f_max
+    f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
+
+    a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)
+    eta = a * b / ((a + b) * (a + b))
+    eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
+    final_spin_0815(nudged_eta(a, b), chi1, chi2) > 1.0 &&
+        throw(ArgumentError("final spin > 1.0 is not supported"))
+    return nothing
 end

@@ -29,11 +29,13 @@
 
     @testset "parameters" begin
         s = IMRPhenomD()
-        @test_throws ArgumentError hphc_fd(f, merge(base, (; foo = 1.0)), s)
-        @test_throws ArgumentError hphc_fd(f, Base.structdiff(base, (; phase = 0.0)), s)
+        @test validate_parameters(f, base, s) === nothing
+        @test_throws ArgumentError validate_parameters(f, merge(base, (; foo = 1.0)), s)
+        @test_throws ArgumentError validate_parameters(f, Base.structdiff(base, (; phase = 0.0)), s)
         # Precessing spins and eccentricity are outside both models.
-        @test_throws ArgumentError hphc_fd(f, merge(base, (; a_1 = 0.5, tilt_1 = 0.7)), s)
-        @test_throws ArgumentError hphc_fd(f, merge(base, (; eccentricity = 0.1)), s)
+        @test_throws ArgumentError validate_parameters(f, merge(base, (; a_1 = 0.5, tilt_1 = 0.7)), s)
+        @test_throws ArgumentError validate_parameters(f, merge(base, (; eccentricity = 0.1)), s)
+        @test validate_parameters(f, merge(base, (; a_1 = 0.5, tilt_1 = Float64(π))), s) === nothing
         # A spin of zero is aligned whatever its tilt.
         @test hphc_fd(f, merge(base, (; a_1 = 0.0, tilt_1 = 0.7)), s).plus ==
             hphc_fd(f, base, s).plus
@@ -44,6 +46,28 @@
             chirp_mass = mc, mass_ratio = q, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
         )
         @test hphc_fd(f, alt, s).plus ≈ hphc_fd(f, base, s).plus rtol = 1.0e-12
+    end
+
+    @testset "parameter values" begin
+        for G in (IMRPhenomD, TaylorF2)
+            g = G(; minimum_frequency = 30.0, maximum_frequency = 400.0)
+            @test validate_parameters(f, base, g) === nothing
+            @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_2 = -1.0)), g)
+            @test_throws ArgumentError validate_parameters(f, merge(base, (; luminosity_distance = 0.0)), g)
+            @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
+            # The compiled path has no checks; the host reference is `validate_parameters`.
+            @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 0.0))
+            @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 450.0, maximum_frequency = 400.0))
+            @test_throws ArgumentError validate_parameters(f, base, G(; reference_frequency = -1.0))
+        end
+        g = IMRPhenomD()
+        @test_throws ArgumentError validate_parameters(f, merge(base, (; a_1 = 1.5)), g)
+        @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_1 = 5000.0, mass_2 = 5000.0)), g)
+        # The default cutoff depends on the masses, which the static path does not support.
+        for z in (TaylorF2(; maximum_frequency = 0), IMRPhenomD(; maximum_frequency = 0))
+            @test_throws ArgumentError validate_parameters(f, base, z)
+            @test_throws ArgumentError hphc_fd(f, base, z)
+        end
     end
 
     @testset "grid" begin

@@ -63,12 +63,19 @@ const PI_POWERS = useful_powers(Float64(π))
 
 `gsl_interp_cspline`: the natural cubic spline through `(x, y)`, with the coefficients solved
 the way GSL does (Cholesky factorisation of the symmetric tridiagonal system). Evaluating it
-is plain arithmetic on the knots, so it is differentiable in the evaluation point.
+is plain arithmetic on the knots, so it is differentiable in the evaluation point, and it has
+no data-dependent branch or indexing (see [`spline_eval`](@ref)).
+
+`x` holds all knots; `xlo`, `ylo`, `c`, `b` and `d` are the left knot, value and the cubic
+coefficients of each of the `n - 1` segments, `y(t) = ylo + δ (b + δ (c + δ d))` with `δ = t - xlo`.
 """
 struct NaturalCubicSpline
     x::Vector{Float64}
-    y::Vector{Float64}
+    xlo::Vector{Float64}
+    ylo::Vector{Float64}
     c::Vector{Float64}
+    b::Vector{Float64}
+    d::Vector{Float64}
 end
 
 function NaturalCubicSpline(x::Vector{Float64}, y::Vector{Float64})
@@ -116,25 +123,31 @@ function NaturalCubicSpline(x::Vector{Float64}, y::Vector{Float64})
         sol[j] = cc[j] - gamma[j] * sol[j + 1]
     end
     c[2:(n - 1)] .= sol
-    return NaturalCubicSpline(x, y, c)
+    # The per-segment linear and cubic coefficients, with the expressions GSL evaluates.
+    segments = 1:max_index
+    dx = x[segments .+ 1] .- x[segments]
+    dy = y[segments .+ 1] .- y[segments]
+    b = (dy ./ dx) .- dx .* (c[segments .+ 1] .+ 2.0 .* c[segments]) ./ 3.0
+    d = (c[segments .+ 1] .- c[segments]) ./ (3.0 .* dx)
+    return NaturalCubicSpline(x, x[segments], y[segments], c[segments], b, d)
 end
 
+"""
+    spline_eval(s::NaturalCubicSpline, x)
+
+Evaluate the spline, extrapolating the first and last cubic outside the knots. The segment
+`x[i] ≤ t < x[i+1]` (`searchsortedlast`, clamped to the valid segments) is found by counting
+knots and its coefficients are selected by a one-hot sum, rather than by indexing with
+`i`: that keeps the evaluation free of branches and of scalar indexing, so Reactant can trace
+it with a tracked `x`. The sum has a single nonzero term, so the result is exact.
+"""
 function spline_eval(s::NaturalCubicSpline, x)
-    n = length(s.x)
-    # Segment with x[i] <= x < x[i+1]; the last knot belongs to the last segment.
-    i = clamp(searchsortedlast(s.x, x), 1, n - 1)
-    x_lo = s.x[i]
-    x_hi = s.x[i + 1]
-    dx = x_hi - x_lo
-    y_lo = s.y[i]
-    y_hi = s.y[i + 1]
-    dy = y_hi - y_lo
-    delx = x - x_lo
-    c_i = s.c[i]
-    c_ip1 = s.c[i + 1]
-    b_i = (dy / dx) - dx * (c_ip1 + 2.0 * c_i) / 3.0
-    d_i = (c_ip1 - c_i) / (3.0 * dx)
-    return y_lo + delx * (b_i + delx * (c_i + delx * d_i))
+    nseg = length(s.xlo)
+    i = clamp(sum(ifelse.(s.x .<= x, 1, 0)), 1, nseg)
+    onehot = (1:nseg) .== i
+    pick(v) = sum(ifelse.(onehot, v, zero(eltype(v))))
+    delx = x - pick(s.xlo)
+    return pick(s.ylo) + delx * (pick(s.b) + delx * (pick(s.c) + delx * pick(s.d)))
 end
 
 include("phenomd_qnm.jl")

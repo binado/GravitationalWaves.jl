@@ -64,6 +64,34 @@
         # The QNM tables: M ω = 0.37367 for the (2,2) mode of a Schwarzschild black hole.
         @test G.spline_eval(G.FRING_SPLINE, 0.0) ≈ 0.37367 / 2π atol = 1.0e-6
     end
+
+    @testset "spline evaluation is bit-identical to the searchsorted form" begin
+        # The previous implementation: binary search, then the coefficients from the raw arrays.
+        # A natural spline has c[n] = 0, so the full coefficient vector is recovered from the segments.
+        function reference_eval(x_knots, y_knots, c, x)
+            n = length(x_knots)
+            i = clamp(searchsortedlast(x_knots, x), 1, n - 1)
+            x_lo = x_knots[i]
+            dx = x_knots[i + 1] - x_lo
+            y_lo = y_knots[i]
+            dy = y_knots[i + 1] - y_lo
+            delx = x - x_lo
+            c_i = c[i]
+            c_ip1 = c[i + 1]
+            b_i = (dy / dx) - dx * (c_ip1 + 2.0 * c_i) / 3.0
+            d_i = (c_ip1 - c_i) / (3.0 * dx)
+            return y_lo + delx * (b_i + delx * (c_i + delx * d_i))
+        end
+        for (spline, y) in ((G.FRING_SPLINE, G.QNM_FRING), (G.FDAMP_SPLINE, G.QNM_FDAMP))
+            knots = spline.x
+            c = vcat(spline.c, 0.0)
+            mids = (knots[1:(end - 1)] .+ knots[2:end]) ./ 2
+            rng = range(-1.2, 1.2; length = 97)
+            for x in Iterators.flatten((knots, mids, rng, (-1.0, 1.0)))
+                @test G.spline_eval(spline, x) == reference_eval(knots, y, c, x)
+            end
+        end
+    end
 end
 
 @testset "TaylorF2 static slice against the loop" begin

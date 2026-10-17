@@ -44,7 +44,7 @@ and frequency ranges the model cannot produce, and returns `nothing` otherwise.
 
 ## Compiled inference with Reactant
 
-`hphc_fd(f, params, TaylorF2(...))` compiles with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
+`hphc_fd(f, params, generator)` compiles, for both `TaylorF2` and `IMRPhenomD`, with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
 on CPU, with scalar `params` tracked and the grid `f` and the generator static. One executable then
 serves every parameter draw, and Enzyme differentiates it:
 
@@ -57,11 +57,14 @@ compiled = Reactant.@compile hphc_fd(f, tracked, generator)
 compiled(f, Reactant.to_rarray(other_params; track_numbers = true), generator)
 ```
 
-This works because everything that shapes the TaylorF2 output (start and end indices, the in-band
+This works because everything that shapes the output (start and end indices, the in-band
 mask) comes from the grid and the generator, so the waveform is evaluated on a static slice of `f`
-and padded with zeros. The cost is that `maximum_frequency` must be positive: stopping at the ISCO
-depends on the masses and throws `ArgumentError`. `IMRPhenomD` does not compile yet (its region
-blending and spline lookup still branch on the parameters); it is planned.
+and padded with zeros. The slice starts at `ceil(minimum_frequency / Δf) ≥ 1`, so `f = 0` is never
+evaluated. `IMRPhenomD` has one more edge, its cutoff `0.2 / M`, which depends on the masses; it is
+applied as a mask inside the slice, and its region blending and spline lookup are branch free, so
+one executable serves draws on both sides of it. The cost is that `maximum_frequency` must be
+positive: stopping at the ISCO (`TaylorF2`) or at `0.2 / M` (`IMRPhenomD`) by default depends on the
+masses and throws `ArgumentError`. The compiled results match the host ones to about 1e-12 relative.
 
 ## Scope
 

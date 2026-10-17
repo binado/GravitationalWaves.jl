@@ -16,10 +16,14 @@ AbstractGWWaveforms.maximum_frequency(g::Dummy) = g.maximum
 
 function AbstractGWWaveforms.hphc_fd(f::AbstractRange, params::NamedTuple, g::Dummy)
     check_frequency_grid(f)
-    foreach(k -> k in (:mass_1, :mass_2) || throw(ArgumentError("unknown parameter $k")), keys(params))
     f_min, f_max = frequency_bounds(g, f)
     h = [f_min <= fi <= f_max ? complex(1.0, fi) : 0.0im for fi in f]
     return (; plus = h, cross = h)
+end
+
+function AbstractGWWaveforms.validate_parameters(f::AbstractRange, params::NamedTuple, ::Dummy)
+    foreach(k -> k in (:mass_1, :mass_2) || throw(ArgumentError("unknown parameter $k")), keys(params))
+    return nothing
 end
 
 @testset "AbstractGWWaveforms" begin

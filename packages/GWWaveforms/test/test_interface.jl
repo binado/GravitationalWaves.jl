@@ -13,6 +13,7 @@ using LALWaveforms
     if lal_available()
         @test AbstractWaveformGenerator === LALWaveforms.AbstractWaveformGenerator
         @test GWWaveforms.hphc_fd === LALWaveforms.hphc_fd
+        @test GWWaveforms.validate_parameters === LALWaveforms.validate_parameters
         native, lal = IMRPhenomD(), LALWaveformGenerator("IMRPhenomD")
         @test approximant(native) == approximant(lal)
         @test native isa AbstractWaveformGenerator && lal isa AbstractWaveformGenerator

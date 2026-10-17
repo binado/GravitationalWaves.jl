@@ -583,8 +583,42 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 `i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
 `min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
+
+The inputs are trusted (see [`validate_parameters`](@ref)), except that [`phenomd_model`](@ref)
+still checks the symmetric mass ratio and the final spin.
+TODO: make the PhenomD kernels branch free so they can be traced by Reactant, like TaylorF2.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
+    m1 = p.mass_1
+    m2 = p.mass_2
+    distance = p.luminosity_distance * 1.0e6 * PC_SI
+    fRef_in = g.reference_frequency
+    fRef = fRef_in == 0.0 ? f_start : fRef_in
+    fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
+    f_max_prime = f_max == 0 ? fCut : f_max
+    f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
+
+    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
+    M = m1 + m2
+    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+
+    i_start = trunc(Int, f_start / deltaF)
+    i_stop = trunc(Int, f_max_prime / deltaF)
+    h = zeros(Complex{T}, nout)
+    for i in i_start:(min(i_stop, nout) - 1)
+        Mf = model.M_sec * (i * deltaF)
+        pm = useful_powers(Mf)
+        amp = _phenomd_amplitude(model.amp, Mf, pm)
+        phi = _phenomd_phase(model, Mf, pm)
+        phi -= model.t0 * (Mf - model.MfRef) + model.phi_precalc
+        a = amp0 * amp
+        h[i + 1] = complex(a * cos(phi), -(a * sin(phi)))
+    end
+    return h
+end
+
+# Inputs `phenomd_fd` does not check; run by `validate_parameters`.
+function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     m1 = p.mass_1
     m2 = p.mass_2
     distance = p.luminosity_distance * 1.0e6 * PC_SI
@@ -604,22 +638,7 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
     f_max_prime = f_max == 0 ? fCut : f_max
     f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
     f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
-
-    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    M = m1 + m2
-    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
-
-    i_start = trunc(Int, f_start / deltaF)
-    i_stop = trunc(Int, f_max_prime / deltaF)
-    h = zeros(Complex{T}, nout)
-    for i in i_start:(min(i_stop, nout) - 1)
-        Mf = model.M_sec * (i * deltaF)
-        pm = useful_powers(Mf)
-        amp = _phenomd_amplitude(model.amp, Mf, pm)
-        phi = _phenomd_phase(model, Mf, pm)
-        phi -= model.t0 * (Mf - model.MfRef) + model.phi_precalc
-        a = amp0 * amp
-        h[i + 1] = complex(a * cos(phi), -(a * sin(phi)))
-    end
-    return h
+    # The model setup checks the symmetric mass ratio and the final spin.
+    phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
+    return nothing
 end

@@ -41,7 +41,7 @@ julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAV
 runic --inplace .                              # format (Runic; CI enforces it)
 just test-integration                         # heavy AD integration suites, local only
 just test-integration-conversion              # Reactant CPU + Enzyme, no LAL/Python needed
-just test-integration-waveforms               # ForwardDiff + Enzyme + Mooncake
+just test-integration-waveforms               # ForwardDiff + Enzyme + Mooncake + Reactant CPU (TaylorF2)
 ```
 
 Single test file: `julia --project=packages/LALWaveforms -e 'using Test, LALWaveforms; include("packages/LALWaveforms/test/test_fd.jl")'` (the `test/` extras like JSON/NPZ/JET are only resolved under `Pkg.test()`, so for reference/quality tests use `Pkg.test()` or activate `test/`'s target env).
@@ -60,7 +60,7 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 ## GWWaveforms
 
-`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; default tests check ForwardDiff against finite differences, and the local integration suite checks all three backends). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `generators.jl` defines the generator types (`TaylorF2` and `IMRPhenomD`, each with only the fields it uses); `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
+`packages/GWWaveforms/src/` is generic over `Real` (ForwardDiff, Enzyme and Mooncake all differentiate `hphc_fd`; default tests check ForwardDiff against finite differences, and the local integration suite checks all three backends). `taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`; `generators.jl` defines the generator types (`TaylorF2` and `IMRPhenomD`, each with only the fields it uses); `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with the calibrated fits in `phenomd_fits.jl` and the QNM tables in `phenomd_qnm.jl` (transcribed mechanically from LAL's C, keeping its operation order). LAL wins over ripple or the papers wherever they differ. Keep the kernels free of `try`/`catch` and runtime dispatch (JET and the AD backends need that); validation runs before them and may throw. `hphc_fd` does not check parameter values; `validate_parameters` (host, once) does, so `hphc_fd` has no branches on parameters. `hphc_fd(f, params, TaylorF2(...))` compiles under Reactant CPU via `taylorf2_fd_slice`, which evaluates a static index slice of `f` (`taylorf2_slice`) and pads with zeros; `taylorf2_fd` is the host reference loop. PhenomD still branches on parameters and is host-only. Avoid `findfirst`/`(i:j) .* x` on float ranges in kernels (Enzyme cannot differentiate `floatrange`). Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux.
 
 ## GWDistributions
 

@@ -54,12 +54,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms'
-      - name: Set up waveform reference environment
+      - name: Set up Python reference environment
         if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms'
         run: uv sync --project python --locked
       - name: Generate bilby reference fixtures
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWParameterConversion'
         run: uv run --project python python python/generate.py
+      - name: Generate detector reference fixtures
+        if: matrix.package == 'GWDetectors'
+        run: uv run --project python python python/generate_detectors.py
       - name: Locate LAL libraries
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWWaveforms'
         run: echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV

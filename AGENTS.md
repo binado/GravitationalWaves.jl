@@ -16,12 +16,13 @@ Julia packages live in `packages/`:
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
 - `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`); tests use LAL as the oracle.
+- `GWDetectors`: dependency-free, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and broadcasted FD projection. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
 - `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
 Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
-The waveform/conversion packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
+The waveform/conversion/detector packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands
@@ -32,16 +33,19 @@ LAL is not bundled; tests need `LALWAVEFORMS_LIBDIR` pointing at the `liblal`/`l
 # One-time: generate bilby reference fixtures (not committed) and locate LAL from the lalsuite wheel
 uv sync --project python
 uv run --project python python python/generate.py
+uv run --project python python python/generate_detectors.py
 export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suite (Aqua, JET, reference, etc.)
 julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAVEFORMS_LIBDIR for the LAL comparison
 runic --inplace .                              # format (Runic; CI enforces it)
 just test-integration                         # heavy AD integration suites, local only
 just test-integration-conversion              # Reactant CPU + Enzyme, no LAL/Python needed
 just test-integration-waveforms               # ForwardDiff + Enzyme + Mooncake
+just test-integration-detectors               # detector AD + Reactant CPU
 ```
 
 Single test file: `julia --project=packages/LALWaveforms -e 'using Test, LALWaveforms; include("packages/LALWaveforms/test/test_fd.jl")'` (the `test/` extras like JSON/NPZ/JET are only resolved under `Pkg.test()`, so for reference/quality tests use `Pkg.test()` or activate `test/`'s target env).
@@ -82,7 +86,7 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
 changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
-packages. CI configuration, root Julia environment files, and unfamiliar paths test all
+packages and `GWDetectors`. Detector changes select `GWDetectors`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.
 Formatting runs on every workflow, coverage collection is disabled, and newer PR commits
@@ -93,7 +97,7 @@ and default test targets. Run `just test-integration` locally before submitting 
 to numerical kernels or the AD integrations; individual package recipes are listed above.
 CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
-Pushes to `main` and manual CI runs test all four packages on Julia 1.12 and latest stable.
+Pushes to `main` and manual CI runs test all six packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
 Selection and status checks can be tested locally with
 `python3 -m unittest discover -s .github/ci -v`.

@@ -9,6 +9,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
+| [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
 
 ## Installation
@@ -23,6 +24,7 @@ repo = "https://github.com/binado/GravitationalWaves.jl"
 Pkg.add([
     PackageSpec(url = repo, subdir = "packages/GWParameterConversion"),
     PackageSpec(url = repo, subdir = "packages/GWWaveforms"),
+    PackageSpec(url = repo, subdir = "packages/GWDetectors"),
 ])
 ```
 
@@ -84,6 +86,27 @@ Both packages implement the interface of [`AbstractGWWaveforms`](packages/Abstra
 `AbstractWaveformGenerator` (`TaylorF2()`, `IMRPhenomD()`, `LALWaveformGenerator("...")`) and the one generic
 `hphc_fd(f, params, generator)`. Loading both with `using` is unambiguous, and generic code can take any backend.
 
+## Detector projection
+
+[`GWDetectors`](packages/GWDetectors) composes with both waveform backends:
+
+```julia
+using GWDetectors
+
+sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
+detector = Detector("H1")  # H1, L1, V1, K1 or custom Cartesian/geodetic geometry
+for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
+    polarizations = hphc_fd(f, params, generator)
+    strain = project_fd(f, polarizations, sky, detector; start_time = 1126259460.0)
+end
+```
+
+It uses a long-wavelength response evaluated at one reference time and supports
+arbitrary frequency vectors. The package has no runtime dependencies and supports
+ForwardDiff, Enzyme, Mooncake, and Reactant CPU compilation. See its
+[README](packages/GWDetectors/README.md) for timing conventions, custom tilted or
+nonorthogonal arms, compiled Reactant examples, and leap-table coverage.
+
 ## Pointing the package at LAL
 
 LAL is not bundled. Provide the directory holding `liblal` and `liblalsimulation` in one of two ways
@@ -106,17 +129,19 @@ julia --project=packages/AbstractGWWaveforms -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 ```
 
 The waveform tests require the reference setup below for full coverage.
 
 The default suites include ForwardDiff checks. Heavy Reactant/Enzyme conversion tests
-and Enzyme/Mooncake waveform tests run separately, locally, rather than in CI:
+and Enzyme/Mooncake waveform and detector tests run separately, locally, rather than in CI:
 
 ```sh
-just test-integration              # both suites; installs their dependencies on first use
+just test-integration              # all suites; installs their dependencies on first use
 just test-integration-conversion   # Reactant CPU compilation and Enzyme gradients
 just test-integration-waveforms    # all three waveform AD backends
+just test-integration-detectors    # detector gradients and Reactant CPU acceptance
 ```
 
 These recipes require Julia 1.12 or newer and `just`, and need no LAL or Python setup.
@@ -130,6 +155,7 @@ The reference tests compare against bilby output generated locally (not committe
 ```sh
 uv sync --project python
 uv run --project python python python/generate.py
+uv run --project python python python/generate_detectors.py
 export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'
 ```
@@ -155,5 +181,5 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and the waveform and conversion packages use GPL-2.0-or-later.
+The root [LICENSE](LICENSE) and the waveform, conversion, and detector packages use GPL-2.0-or-later.
 `GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).

@@ -11,6 +11,7 @@ class SelectionTests(unittest.TestCase):
     def test_package_dependencies(self):
         cases = {
             "GWDistributions": ["GWDistributions"],
+            "GWDetectors": ["GWDetectors"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
             "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],
@@ -46,6 +47,7 @@ class SelectionTests(unittest.TestCase):
     def test_python_tooling(self):
         for name in (
             "generate.py",
+            "generate_detectors.py",
             "libdir.py",
             "cases.json",
             "uv.lock",
@@ -53,7 +55,8 @@ class SelectionTests(unittest.TestCase):
         ):
             with self.subTest(name=name):
                 self.assertEqual(
-                    select_packages([f"python/{name}"]), CONVERSION_AFFECTED
+                    select_packages([f"python/{name}"]),
+                    CONVERSION_AFFECTED + ["GWDetectors"],
                 )
 
     def test_documentation_only_and_empty(self):

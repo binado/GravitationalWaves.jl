@@ -37,11 +37,37 @@ loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = 
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 
+Parameter values are not checked by `hphc_fd`, so that it can be compiled (below). Call
+`validate_parameters(f, params, generator)` once on the host: it throws `ArgumentError` for unknown
+keys, spins that are not (anti-)aligned, a nonzero `eccentricity`, non-positive masses or distance,
+and frequency ranges the model cannot produce, and returns `nothing` otherwise.
+
+## Compiled inference with Reactant
+
+`hphc_fd(f, params, TaylorF2(...))` compiles with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
+on CPU, with scalar `params` tracked and the grid `f` and the generator static. One executable then
+serves every parameter draw, and Enzyme differentiates it:
+
+```julia
+using Reactant, GWWaveforms
+
+validate_parameters(f, params, generator)   # on the host, once
+tracked = Reactant.to_rarray(params; track_numbers = true)
+compiled = Reactant.@compile hphc_fd(f, tracked, generator)
+compiled(f, Reactant.to_rarray(other_params; track_numbers = true), generator)
+```
+
+This works because everything that shapes the TaylorF2 output (start and end indices, the in-band
+mask) comes from the grid and the generator, so the waveform is evaluated on a static slice of `f`
+and padded with zeros. The cost is that `maximum_frequency` must be positive: stopping at the ISCO
+depends on the masses and throws `ArgumentError`. `IMRPhenomD` does not compile yet (its region
+blending and spline lookup still branch on the parameters); it is planned.
+
 ## Scope
 
 - Frequency domain, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tidal parameters.
 - Both models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
-  `eccentricity` zero, otherwise `ArgumentError` is thrown (LAL rejects such input too). Neither model has higher
+  `eccentricity` zero, otherwise `validate_parameters` throws `ArgumentError` (LAL rejects such input too). Neither model has higher
   modes, so there is no `mode_array` option.
 - `TaylorF2` takes `pn_spin_order`, `pn_phase_order` and `pn_amplitude_order` as in LAL (`-1` selects the highest
   order); `IMRPhenomD` only takes `pn_amplitude_order`, which shifts the start frequency.
@@ -67,7 +93,8 @@ AD tests differentiate a scalar loss with ForwardDiff through DifferentiationInt
 and compare against finite differences.
 
 Run the separate integration suite from the repository root to check ForwardDiff,
-Enzyme and Mooncake against finite differences and each other:
+Enzyme and Mooncake against finite differences and each other, and the Reactant CPU
+compilation of TaylorF2 against the host result:
 
 ```sh
 just test-integration-waveforms

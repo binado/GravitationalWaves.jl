@@ -55,3 +55,30 @@
         @test G.spline_eval(G.FRING_SPLINE, 0.0) ≈ 0.37367 / 2π atol = 1.0e-6
     end
 end
+
+@testset "TaylorF2 static slice against the loop" begin
+    f = range(0, 256; step = 0.25)
+    params = (
+        mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
+        a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
+    )
+    p = GWWaveforms.aligned_parameters(params)
+    df = Float64(step(f))
+    for g in (
+            TaylorF2(; minimum_frequency = 25.0),
+            TaylorF2(; minimum_frequency = 25.0, maximum_frequency = 180.0, pn_amplitude_order = 3),
+            TaylorF2(; minimum_frequency = 20.0, pn_phase_order = 4, pn_spin_order = 3, reference_frequency = 0),
+        )
+        f_min, f_max = GWWaveforms.frequency_bounds(g, f)
+        f_start = g.pn_amplitude_order != 0 ?
+            GWWaveforms.f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
+        lo, hi = GWWaveforms.taylorf2_slice(f, f_start, f_min, f_max)
+        expected = GWWaveforms.taylorf2_fd(Float64, length(f), df, p, g, f_start, f_max)
+        expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
+        got = GWWaveforms.taylorf2_fd_slice(Float64, length(f), lo, hi, df, p, g)
+        @test got ≈ expected rtol = 1.0e-12
+        @test all(iszero, got[1:lo]) && all(iszero, got[(hi + 2):end])
+    end
+    # Nothing in band.
+    @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
+end

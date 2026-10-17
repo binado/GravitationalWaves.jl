@@ -36,6 +36,9 @@
         @test_throws ArgumentError hphc_fd(range(1, 1024; step = 0.25), p, s)
         @test_throws ArgumentError hphc_fd(range(0, 1024; step = -0.25), p, s)
         @test_throws LALError hphc_fd(f, merge(p, (mass_2 = -1.0,)), s)
+        @test validate_parameters(f, p, s) === nothing
+        @test_throws ArgumentError validate_parameters(f, merge(p, (spin = 1.0,)), s)
+        @test_throws ArgumentError validate_parameters(range(1, 1024; step = 0.25), p, s)
         # A failure must not poison the next call.
         @test any(!iszero, hphc_fd(f, p, s).plus)
     end

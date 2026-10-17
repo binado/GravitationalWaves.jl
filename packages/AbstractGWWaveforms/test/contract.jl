@@ -25,7 +25,8 @@ function test_generator_contract(g; params, f)
         end
 
         @testset "parameter validation" begin
-            @test_throws ArgumentError hphc_fd(f, merge(params, (; not_a_parameter = 1.0)), g)
+            @test validate_parameters(f, params, g) === nothing
+            @test_throws ArgumentError validate_parameters(f, merge(params, (; not_a_parameter = 1.0)), g)
         end
 
         @testset "output" begin

@@ -1,6 +1,6 @@
 name = "GWWaveforms"
 uuid = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]
@@ -13,14 +13,14 @@ GWParameterConversion = {path = "../GWParameterConversion"}
 LALWaveforms = {path = "../LALWaveforms"}
 
 [compat]
-AbstractGWWaveforms = "0.1"
+AbstractGWWaveforms = "0.2"
 Aqua = "0.8"
 DifferentiationInterface = "0.7"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
 GWParameterConversion = "0.1"
 JET = "0.11, 0.12"
-LALWaveforms = "0.2"
+LALWaveforms = "0.3"
 Test = "1"
 julia = "1.12"
 

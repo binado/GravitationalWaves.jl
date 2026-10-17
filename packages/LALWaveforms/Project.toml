@@ -1,6 +1,6 @@
 name = "LALWaveforms"
 uuid = "46d55bfd-a6ec-4788-a7e2-8ddbff47c71c"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]
@@ -14,7 +14,7 @@ AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 
 [compat]
-AbstractGWWaveforms = "0.1"
+AbstractGWWaveforms = "0.2"
 Aqua = "0.8"
 GWParameterConversion = "0.1"
 JET = "0.11, 0.12"

@@ -23,46 +23,50 @@ parameters are converted by `GWParameterConversion.convert_parameters`),
 `tilt_2`, `phi_12`, `phi_jl`, `eccentricity`.
 
 `f` must start at 0 and have a positive step, as bilby assumes. The output is zero outside
-`minimum_frequency ≤ f ≤ maximum_frequency`. The spins must be (anti-)aligned with the orbital
-angular momentum and `eccentricity` zero, else `ArgumentError` is thrown.
+`minimum_frequency ≤ f ≤ maximum_frequency`.
+
+The parameter values are **not** checked: spins must be (anti-)aligned with the orbital angular
+momentum, `eccentricity` zero, masses and distance positive, and so on. Run
+[`validate_parameters`](@ref) first (once, on the host) for that. In exchange, `hphc_fd` is free of
+data-dependent branches and can be compiled by Reactant with tracked scalar parameters.
+Only `TaylorF2` is supported so far, and it needs a positive `maximum_frequency` (`ArgumentError`
+otherwise, as the ISCO cutoff depends on the masses).
 
 The element type is `Complex{T}` with `T` the floating-point type promoted from the
 parameters, so dual numbers (ForwardDiff) and Enzyme or Mooncake reverse mode pass through.
 """
 function hphc_fd(f::AbstractRange, params::NamedTuple, g::Approximant)
-    p0 = aligned_parameters(params)
     check_frequency_grid(f)
-    df = step(f)
-    T, p = promote_parameters(p0)
+    T, p = promote_parameters(aligned_parameters(params))
 
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
         f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
 
-    h = waveform_fd(g, T, length(f), Float64(df), p, f_start, f_max)
+    h = waveform_fd(g, T, f, p, f_start, f_min, f_max)
 
     # The models return h(f) for ι = 0; other orientations multiply by the inclination
     # dependence, hc ∝ -i hp (ChooseFDWaveform in LALSimInspiral).
     cfac = cos(p.inclination)
     pfac = 0.5 * (1.0 + cfac * cfac)
-    plus = similar(h)
-    cross = similar(h)
-    for i in eachindex(h)
-        fi = f[i]
-        if f_min <= fi <= f_max
-            x = h[i]
-            plus[i] = complex(pfac * real(x), pfac * imag(x))
-            cross[i] = complex(cfac * imag(x), -(cfac * real(x)))
-        else
-            plus[i] = zero(eltype(h))
-            cross[i] = zero(eltype(h))
-        end
-    end
+    re = real.(h)
+    im = imag.(h)
+    plus = complex.(pfac .* re, pfac .* im)
+    cross = complex.(cfac .* im, .-(cfac .* re))
     return (; plus, cross)
 end
 
-# The inclination-independent kernels, selected by the generator type.
-waveform_fd(g::TaylorF2, T, nout, deltaF, p, f_start, f_max) =
-    taylorf2_fd(T, nout, deltaF, p, g, f_start, f_max)
-waveform_fd(g::IMRPhenomD, T, nout, deltaF, p, f_start, f_max) =
-    phenomd_fd(T, nout, deltaF, p, g, f_start, f_max)
+# The inclination-independent kernels, selected by the generator type. They return zero outside
+# `[f_min, f_max]`.
+function waveform_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
+    lo, hi = taylorf2_slice(f, f_start, f_min, f_max)
+    return taylorf2_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g)
+end
+
+function waveform_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
+    h = phenomd_fd(T, length(f), Float64(step(f)), p, g, f_start, f_max)
+    for i in eachindex(h)
+        f_min <= f[i] <= f_max || (h[i] = zero(eltype(h)))
+    end
+    return h
+end

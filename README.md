@@ -97,7 +97,7 @@ Loading both with `using` is unambiguous, and generic code can take any backend.
 using GWDetectors
 
 sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
-detector = Detector("H1")  # H1, L1, V1, K1 or custom Cartesian/geodetic geometry
+detector = detectors.H1  # built-ins: H1, L1, V1, K1; use Detector(...) for custom geometry
 for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
     polarizations = hphc_fd(f, params, generator)
     strain = project_fd(f, polarizations, sky, detector; start_time = 1126259460.0)

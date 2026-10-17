@@ -1,7 +1,7 @@
 # Exercise array inputs and every numerical public API with dynamic geometry.
 function numerical_api(x, f, hp, hc)
     d = ad_detector(x)
-    other = Detector("L1")
+    other = detectors.L1
     sky = (; ra = x[1], dec = x[2], psi = x[3], geocent_time = 1126259462 + x[4])
     return (
         detector_tensor(d), d.vertex, d.xarm, d.yarm,

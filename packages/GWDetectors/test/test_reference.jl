@@ -11,7 +11,7 @@ using JSON
         fixtures = JSON.parsefile(path)
         matrix(x) = SMatrix{3, 3}(reduce(vcat, permutedims.(x)))
         for g in fixtures["detectors"]
-            d = Detector(g["name"])
+            d = detectors[Symbol(g["name"])]
             @test d.vertex == SVector{3}(g["vertex"])
             @test d.xarm == SVector{3}(g["xarm"])
             @test d.yarm == SVector{3}(g["yarm"])
@@ -29,7 +29,7 @@ using JSON
         for c in fixtures["responses"]
             args = (c["ra"], c["dec"], c["psi"], c["gmst"])
             lal = GWDetectors._antenna(args..., matrix(c["rounded_tensor"]))
-            native = antenna_pattern(args..., Detector(c["name"]))
+            native = antenna_pattern(args..., detectors[Symbol(c["name"])])
             @test collect(values(lal)) ≈ c["lal"] atol = 5.0e-16
             @test collect(values(native)) ≈ c["native"] atol = 8.0e-16
             g = only(filter(g -> g["name"] == c["name"], fixtures["detectors"]))
@@ -43,7 +43,7 @@ using JSON
         for c in fixtures["projections"]
             s = c["sky"]
             sky = (; ra = s["ra"], dec = s["dec"], psi = s["psi"], geocent_time = s["geocent_time"])
-            d = Detector(c["name"])
+            d = detectors[Symbol(c["name"])]
             p = (; plus = complex_vector(c["plus"]), cross = complex_vector(c["cross"]))
             actual = project_fd(c["f"], p, sky, d; start_time = c["start_time"], reference_time = c["reference_time"])
             expected = complex_vector(c["strain"])

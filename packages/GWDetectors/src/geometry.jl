@@ -15,7 +15,6 @@ end
     Detector(name, vertex, xarm, yarm, arm_lengths; check=true)
     Detector(name; latitude, longitude, elevation=0, xarm_azimuth,
              yarm_azimuth, xarm_tilt=0, yarm_tilt=0, arm_lengths, check=true)
-    Detector(name)  # H1, L1, V1, K1
 
 Immutable Earth-fixed interferometer geometry stored in `SVector`s. Cartesian
 vectors have three components;
@@ -24,6 +23,7 @@ metres. Nonorthogonal arms are supported. Geodetic coordinates use WGS-84, radia
 and metres; azimuth is clockwise from north and tilt positive above the horizontal.
 Numeric inputs are promoted together without forcing Float64. Published built-in
 directions retain their precision without normalization.
+Access predefined detector instances through [`detectors`](@ref).
 
 `check=false` bypasses numerical validation for AD/compiled calls with prevalidated
 inputs. Vector sizes and numeric element types are always checked. Geometry is
@@ -59,11 +59,6 @@ function Detector(
         xarm_tilt = nothing, yarm_tilt = nothing, check = true
     )
     coordinates = (latitude, longitude, xarm_azimuth, yarm_azimuth, arm_lengths)
-    if all(isnothing, (coordinates..., elevation, xarm_tilt, yarm_tilt))
-        key = Symbol(name)
-        hasproperty(BUILTIN_GEOMETRY, key) || throw(ArgumentError("unknown detector: $name (choose H1, L1, V1, K1)"))
-        return Detector(name, getproperty(BUILTIN_GEOMETRY, key)...; check)
-    end
     any(isnothing, coordinates) && throw(ArgumentError("supply latitude, longitude, both azimuths, and arm_lengths"))
     elevation = something(elevation, 0)
     xarm_tilt = something(xarm_tilt, 0)

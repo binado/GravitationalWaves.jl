@@ -1,6 +1,9 @@
 @testset "geometry" begin
-    for name in ("H1", "L1", "V1", "K1")
-        d = Detector(name)
+    @test keys(detectors) == (:H1, :L1, :V1, :K1)
+    for (key, d) in pairs(detectors)
+        name = String(key)
+        @test d isa Detector
+        @test detectors[key] === d
         @test d.name == name
         @test all(>(0), d.arm_lengths)
         D = detector_tensor(d)
@@ -8,9 +11,10 @@
         @test all(D[i, j] == D[j, i] for i in 1:3, j in 1:3)
         @test abs(sum(D[i, i] for i in 1:3)) < 1.0e-6
     end
-    @test Detector("H1").vertex == SVector(-2161414.92636, -3834695.17889, 4600350.22664)
-    @test Detector("H1").arm_lengths == SVector(3995.084, 3995.044)
+    @test detectors.H1.vertex == SVector(-2161414.92636, -3834695.17889, 4600350.22664)
+    @test detectors.H1.arm_lengths == SVector(3995.084, 3995.044)
     @test_throws ArgumentError Detector("unknown")
+    @test_throws ArgumentError Detector("H1")
     args = ((0, 0, 0), (1, 0, 0), (0, 1, 0), (1000, 1000))
     d = Detector("test", args...)
     @test detector_tensor(d) == @SMatrix [0.5 0 0; 0 -0.5 0; 0 0 0]

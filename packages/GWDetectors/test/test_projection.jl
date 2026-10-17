@@ -7,7 +7,7 @@ Base.axes(v::ShiftedVector) = (0:(length(v.data) - 1),)
 Base.getindex(v::ShiftedVector, i::Int) = v.data[i + 1]
 
 @testset "projection" begin
-    d = Detector("H1")
+    d = detectors.H1
     sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
     start_time = sky.geocent_time - 0.125
     for f in (range(0, 100; length = 11), [0.0, 12.3, 1.2, 90.0], Float64[])

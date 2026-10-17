@@ -7,13 +7,17 @@ The response uses the long-wavelength approximation at one reference time.
 ```julia
 using GWDetectors
 
-detector = Detector("H1")                 # also L1, V1, K1
+detector = detectors.H1                   # also detectors.L1, detectors.V1, detectors.K1
 sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
 factors = antenna_pattern(sky, detector)    # (; plus, cross)
 delay = time_delay_from_geocenter(sky, detector)  # detector minus geocenter, seconds
-baseline_delay = time_delay(sky, detector, Detector("L1")) # H1 minus L1
-maximum_delay = light_travel_time(detector, Detector("L1")) # seconds
+baseline_delay = time_delay(sky, detector, detectors.L1) # H1 minus L1
+maximum_delay = light_travel_time(detector, detectors.L1) # seconds
 ```
+
+`detectors` is an immutable named tuple of predefined `Detector` instances;
+use `detectors.H1` or `detectors[:H1]`. Construct custom geometry with `Detector`
+as shown below.
 
 Angles are radians, distances metres, times GPS seconds. Right ascension and
 polarization angles are periodic; declination and latitude lie in `[-π/2, π/2]`.
@@ -104,7 +108,7 @@ function projected(angles, f, hp, hc)
     Reactant.@allowscalar begin
         source = (; ra = angles[1], dec = angles[2], psi = angles[3],
                     geocent_time = angles[4])
-        project_fd(f, (; plus = hp, cross = hc), source, Detector("H1");
+        project_fd(f, (; plus = hp, cross = hc), source, detectors.H1;
                    start_time = 1126259460.0)
     end
 end

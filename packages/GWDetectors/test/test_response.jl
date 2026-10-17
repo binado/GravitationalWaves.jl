@@ -14,7 +14,7 @@
         @test collect(values(f)) ≈ -collect(values(exchange)) atol = 2.0e-15
         @test sum(abs2, values(f)) <= 1 + 1.0e-14
         sky = (; ra, dec, geocent_time = 1126259462.25)
-        a, b = Detector("H1"), Detector("L1")
+        a, b = detectors.H1, detectors.L1
         @test time_delay(sky, a, b) ≈ -time_delay(sky, b, a)
         @test time_delay(sky, a, b) ≈ time_delay_from_geocenter(sky, a) - time_delay_from_geocenter(sky, b) atol = 1.0e-17
         @test abs(time_delay(sky, a, b)) <= light_travel_time(a, b)

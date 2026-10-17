@@ -29,7 +29,7 @@ end
 function timing_loss(x)
     d = ad_detector(x)
     sky = (; ra = x[1], dec = x[2], geocent_time = 1126259462 + x[4])
-    other = Detector("L1")
+    other = detectors.L1
     return 10time_delay_from_geocenter(sky, d) +
         2time_delay(sky, d, other) + light_travel_time(d, other) +
         0.001greenwich_mean_sidereal_time(sky.geocent_time)

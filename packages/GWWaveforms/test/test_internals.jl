@@ -41,6 +41,16 @@
         @test peak > G.amp_mrd_ansatz(0.99 * m.amp.fmaxCalc, m.amp)
         @test peak > G.amp_mrd_ansatz(1.01 * m.amp.fmaxCalc, m.amp)
 
+        # Swapping the components is a branch-free `ifelse`, and eta is snapped only by rounding.
+        @test G.order_by_mass(1.0, 2.0, 0.1, 0.2) == (2.0, 1.0, 0.2, 0.1)
+        @test G.order_by_mass(2.0, 1.0, 0.1, 0.2) == (2.0, 1.0, 0.1, 0.2)
+        @test G.nudged_eta(1.0, 1.0) == 0.25
+        @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
+        @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
+        # `fmax_calc` takes the second branch for gamma2 > 1 without evaluating a NaN square root.
+        @test G.fmax_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
+        @test G.fmax_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
+
         # Equal masses sit at the upper limit of eta.
         @test isfinite(G.phenomd_amplitude(G.phenomd_model(30.0, 30.0, 0.0, 0.0, 50.0, 0.0), 0.01))
     end
@@ -81,4 +91,14 @@ end
     end
     # Nothing in band.
     @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
+end
+
+@testset "IMRPhenomD is symmetric under swapping the components" begin
+    f = range(0, 512; step = 0.25)
+    g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
+    base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
+    a = hphc_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0, a_1 = 0.5, a_2 = 0.3)), g)
+    b = hphc_fd(f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g)
+    @test a.plus == b.plus
+    @test a.cross == b.cross
 end

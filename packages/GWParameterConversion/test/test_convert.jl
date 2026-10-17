@@ -70,6 +70,14 @@ to_masses(nt) = convert_parameters(nt, (:mass_1, :mass_2))
         @test convert_parameters((a_1 = 0.5, tilt_1 = π / 2, spin_1z = 0.0), (:spin_1z,)).spin_1z == 0.0
     end
 
+    @testset "checks can be explicitly omitted" begin
+        # Even invalid redundant routes must not be evaluated with checks off.
+        nt = (; mass_1 = 36.0, mass_2 = 29.0, chirp_mass = -1.0, mass_ratio = 0.8)
+        out = convert_parameters(nt, (:total_mass,); check_consistency = false)
+        @test out == merge(nt, (; total_mass = 65.0))
+        @test_throws ArgumentError convert_parameters((; mass_1 = 36.0), (:redshift,); check_consistency = false)
+    end
+
     @testset "underdetermined targets" begin
         err = try
             convert_parameters((chirp_mass = mc,), masses)

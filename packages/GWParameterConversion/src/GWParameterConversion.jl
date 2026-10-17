@@ -2,8 +2,9 @@
     GWParameterConversion
 
 Conversions between gravitational-wave source parameters (masses, spins, frames),
-following bilby's names and conventions. Everything is generic over `Real`, so the
+following bilby's names and conventions. Everything is generic over `Number`, so the
 functions work with automatic differentiation, and the package has no dependencies.
+Physical inputs must be real-valued; accepting Number accommodates traced real scalars.
 
 Masses follow bilby's convention `mass_1 ≥ mass_2` and `mass_ratio = mass_2 / mass_1 ≤ 1`.
 """

@@ -4,12 +4,11 @@ function _check_sky(ra, dec, angles...)
     return nothing
 end
 
-# Columns of Q are the polarization basis at psi = 0 and its normal,
-# in Earth-fixed coordinates (LAL's polarization convention).
 function _antenna(ra, dec, psi, gmst, D)
     sg, cg = sincos(gmst - ra)
     sd, cd = sincos(dec)
     sp, cp = sincos(psi)
+    # Q maps the zero-polarization basis to Earth-fixed coordinates; P rotates that basis by psi.
     Q = @SMatrix [-sg -cg * sd -cg * cd; -cg sg * sd sg * cd; 0 cd -sd]
     P = @SMatrix [cp -sp 0; sp cp 0; 0 0 1]
     R = Q * P

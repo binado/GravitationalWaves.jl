@@ -4,22 +4,18 @@ function _check_sky(ra, dec, angles...)
     return nothing
 end
 
-# XLALComputeDetAMResponse: keep both contractions in one traversal.
+# Columns of Q are the polarization basis at psi = 0 and its normal,
+# in Earth-fixed coordinates (LAL's polarization convention).
 function _antenna(ra, dec, psi, gmst, D)
     sg, cg = sincos(gmst - ra)
     sd, cd = sincos(dec)
     sp, cp = sincos(psi)
-    X = (-cp * sg - sp * cg * sd, -cp * cg + sp * sg * sd, sp * cd)
-    Y = (sp * sg - cp * cg * sd, sp * cg + cp * sg * sd, cp * cd)
-    plus = zero(X[1] * D[1][1])
-    cross = plus
-    for i in 1:3
-        DX = _dot(D[i], X)
-        DY = _dot(D[i], Y)
-        plus += X[i] * DX - Y[i] * DY
-        cross += X[i] * DY + Y[i] * DX
-    end
-    return (; plus, cross)
+    Q = @SMatrix [-sg -cg * sd -cg * cd; -cg sg * sd sg * cd; 0 cd -sd]
+    P = @SMatrix [cp -sp 0; sp cp 0; 0 0 1]
+    R = Q * P
+    # Express the detector tensor in the rotated polarization basis.
+    response = R' * D * R
+    return (; plus = response[1, 1] - response[2, 2], cross = response[1, 2] + response[2, 1])
 end
 
 """
@@ -43,7 +39,8 @@ end
 function _delay(ra, dec, gmst, vertex)
     sg, cg = sincos(gmst - ra)
     sd, cd = sincos(dec)
-    return -_dot(vertex, (cd * cg, -cd * sg, sd)) / C_SI
+    # Reactant's dot overlay does not accept SVector{<:TracedRNumber}.
+    return -sum(vertex .* SVector(cd * cg, -cd * sg, sd)) / C_SI
 end
 
 """
@@ -71,7 +68,7 @@ Arrival time at detector 1 minus arrival time at detector 2, in seconds.
 function time_delay(sky, d1::Detector, d2::Detector; check = true)
     gmst = greenwich_mean_sidereal_time(sky.geocent_time; check)
     check && _check_sky(sky.ra, sky.dec)
-    baseline = ntuple(i -> d1.vertex[i] - d2.vertex[i], 3)
+    baseline = d1.vertex .- d2.vertex
     return _delay(sky.ra, sky.dec, gmst, baseline)
 end
 
@@ -81,8 +78,8 @@ end
 Euclidean baseline length divided by the speed of light, in seconds.
 """
 function light_travel_time(d1::Detector, d2::Detector)
-    baseline = ntuple(i -> d1.vertex[i] - d2.vertex[i], 3)
-    return sqrt(_dot(baseline, baseline)) / C_SI
+    baseline = d1.vertex .- d2.vertex
+    return sqrt(sum(baseline .* baseline)) / C_SI
 end
 
 """

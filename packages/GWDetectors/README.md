@@ -1,7 +1,7 @@
 # GWDetectors
 
 Native Julia geometry, antenna factors, arrival delays, and frequency-domain projection
-for ground-based interferometers. Requires Julia 1.12; has no runtime dependencies.
+for ground-based interferometers. Requires Julia 1.12 and StaticArrays.jl.
 The response uses the long-wavelength approximation at one reference time.
 
 ```julia
@@ -65,7 +65,7 @@ custom = Detector("custom"; latitude = 0.6, longitude = -1.1, elevation = 50.0,
     xarm_azimuth = 0.2, yarm_azimuth = 0.2 + π/3,
     xarm_tilt = 0.001, yarm_tilt = -0.002, arm_lengths = (3000.0, 3000.0))
 cartesian = Detector("copy", custom.vertex, custom.xarm, custom.yarm, custom.arm_lengths)
-D = detector_tensor(custom)  # tuple of three row tuples
+D = detector_tensor(custom)  # 3×3 SMatrix
 ```
 
 Geodetic construction uses WGS-84 (radius 6378137 m, inverse flattening
@@ -76,7 +76,13 @@ published precision. Cartesian directions are never renormalized. Arm lengths
 are full lengths, stored as metadata; they do not enter the long-wavelength
 response tensor `(xarm ⊗ xarm - yarm ⊗ yarm)/2`. Input types are promoted without
 forcing Float64. Geometry is real-valued; `Detector{T<:Number}` also accommodates
-Reactant scalar tracing.
+Reactant scalar tracing. Cartesian vectors and arm lengths are stored as
+`SVector`s; `detector_tensor` returns an `SMatrix`, indexed as `D[i, j]`.
+
+The antenna response uses `A = R' * D * R`, where `R` rotates the polarization
+basis into Earth-fixed coordinates, including the polarization angle `psi`.
+The factors are `Fplus = A[1, 1] - A[2, 2]` and
+`Fcross = A[1, 2] + A[2, 1]`, in LAL's convention.
 
 ## Differentiation and Reactant CPU
 
@@ -85,7 +91,7 @@ Constructors, GMST, antenna/delay methods, and projection accept static
 `check=false` to bypass value checks inside compiled calls. Validate domains
 and geometry with ordinary calls before entering this path; sizes and axes are
 still checked. GPS derivatives are tested away from integer-second rounding
-boundaries and leap transitions. Scalar geometry uses tuples; projection uses
+boundaries and leap transitions. Scalar geometry uses StaticArrays; projection uses
 broadcast so device arrays stay in compiled execution.
 
 ```julia

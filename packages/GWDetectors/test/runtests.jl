@@ -1,6 +1,8 @@
 using Test
 using GWDetectors
 using ForwardDiff
+using LinearAlgebra
+using StaticArrays
 
 @testset "GWDetectors" begin
     include("test_geometry.jl")

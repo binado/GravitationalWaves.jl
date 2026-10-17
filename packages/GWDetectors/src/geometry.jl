@@ -1,18 +1,12 @@
-_dot(a, b) = a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
 _finite_real(x) = x isa Real && isfinite(x)
 
 function _check_geometry(vertex, xarm, yarm, lengths)
     all(_finite_real, (vertex..., xarm..., yarm..., lengths...)) ||
         throw(ArgumentError("geometry must be finite and real"))
     # KAGRA's published directions carry only seven decimal places.
-    all(u -> isapprox(_dot(u, u), 1; atol = 1.0e-6, rtol = 0), (xarm, yarm)) ||
+    all(u -> isapprox(dot(u, u), 1; atol = 1.0e-6, rtol = 0), (xarm, yarm)) ||
         throw(ArgumentError("arm directions must be unit vectors (tolerance 1e-6)"))
-    cross = (
-        xarm[2] * yarm[3] - xarm[3] * yarm[2],
-        xarm[3] * yarm[1] - xarm[1] * yarm[3],
-        xarm[1] * yarm[2] - xarm[2] * yarm[1],
-    )
-    any(!iszero, cross) || throw(ArgumentError("arm directions must not be parallel"))
+    any(!iszero, cross(xarm, yarm)) || throw(ArgumentError("arm directions must not be parallel"))
     all(>(0), lengths) || throw(ArgumentError("full arm lengths must be positive"))
     return nothing
 end
@@ -23,7 +17,8 @@ end
              yarm_azimuth, xarm_tilt=0, yarm_tilt=0, arm_lengths, check=true)
     Detector(name)  # H1, L1, V1, K1
 
-Immutable Earth-fixed interferometer geometry. Cartesian vectors have three components;
+Immutable Earth-fixed interferometer geometry stored in `SVector`s. Cartesian
+vectors have three components;
 `xarm` and `yarm` are unit directions, and `arm_lengths` contains two full lengths in
 metres. Nonorthogonal arms are supported. Geodetic coordinates use WGS-84, radians,
 and metres; azimuth is clockwise from north and tilt positive above the horizontal.
@@ -36,14 +31,14 @@ physically real; the `Number` bound also permits Reactant's traced scalar types.
 """
 struct Detector{T <: Number}
     name::String
-    vertex::NTuple{3, T}
-    xarm::NTuple{3, T}
-    yarm::NTuple{3, T}
-    arm_lengths::NTuple{2, T}
+    vertex::SVector{3, T}
+    xarm::SVector{3, T}
+    yarm::SVector{3, T}
+    arm_lengths::SVector{2, T}
 
     function Detector{T}(
-            name::String, vertex::NTuple{3, T}, xarm::NTuple{3, T},
-            yarm::NTuple{3, T}, arm_lengths::NTuple{2, T}; check = true
+            name::String, vertex::SVector{3, T}, xarm::SVector{3, T},
+            yarm::SVector{3, T}, arm_lengths::SVector{2, T}; check = true
         ) where {T <: Number}
         check && _check_geometry(vertex, xarm, yarm, arm_lengths)
         return new{T}(name, vertex, xarm, yarm, arm_lengths)
@@ -55,7 +50,7 @@ function Detector(name::AbstractString, vertex, xarm, yarm, arm_lengths; check =
         throw(DimensionMismatch("Cartesian vectors must have three components"))
     length(arm_lengths) == 2 || throw(DimensionMismatch("arm_lengths must have two components"))
     p = promote(vertex..., xarm..., yarm..., arm_lengths...)
-    return Detector{typeof(p[1])}(String(name), p[1:3], p[4:6], p[7:9], p[10:11]; check)
+    return Detector{typeof(p[1])}(String(name), SVector(p[1:3]), SVector(p[4:6]), SVector(p[7:9]), SVector(p[10:11]); check)
 end
 
 function Detector(
@@ -106,9 +101,9 @@ end
 """
     detector_tensor(detector)
 
-Return the symmetric response `(xarm ⊗ xarm - yarm ⊗ yarm)/2` as a tuple of
-three row tuples. Arm lengths do not enter the long-wavelength response.
+Return the symmetric response `(xarm ⊗ xarm - yarm ⊗ yarm)/2` as a 3×3 `SMatrix`.
+Arm lengths do not enter the long-wavelength response.
 """
 function detector_tensor(d::Detector)
-    return ntuple(i -> ntuple(j -> (d.xarm[i] * d.xarm[j] - d.yarm[i] * d.yarm[j]) / 2, 3), 3)
+    return (d.xarm * d.xarm' - d.yarm * d.yarm') / 2
 end

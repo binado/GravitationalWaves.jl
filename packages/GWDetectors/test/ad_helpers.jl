@@ -18,7 +18,7 @@ end
 function geometry_loss(x)
     d = ad_detector(x)
     D = detector_tensor(d)
-    return sum(d.vertex) / 6378137 + sum(d.xarm) + sum(d.yarm) + D[1][2] + 2D[2][3]
+    return sum(d.vertex) / 6378137 + sum(d.xarm) + sum(d.yarm) + D[1, 2] + 2D[2, 3]
 end
 
 function antenna_loss(x)

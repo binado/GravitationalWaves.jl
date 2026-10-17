@@ -22,7 +22,8 @@ function compare_host(actual, expected)
     if expected isa Union{Tuple, NamedTuple}
         foreach(compare_host, values(actual), values(expected))
     elseif expected isa AbstractArray
-        @test Array(actual) ≈ expected rtol = 2.0e-10 atol = 2.0e-10
+        # StaticArrays return concrete device scalars; device arrays materialize as numbers.
+        @test Reactant.to_number.(Array(actual)) ≈ expected rtol = 2.0e-10 atol = 2.0e-10
     else
         @test Reactant.to_number(actual) ≈ expected rtol = 2.0e-10 atol = 2.0e-10
     end
@@ -48,7 +49,7 @@ function cartesian_loss(x)
     v = (zero(x[2]), cos(x[2]), sin(x[2]))
     d = Detector("cartesian", (x[3], x[4], x[5]), u, v, (3000, 4000); check = false)
     D = detector_tensor(d)
-    return D[1][2] + D[2][3] + time_delay_from_geocenter(1.0, -0.3, 2.0, d; check = false)
+    return D[1, 2] + D[2, 3] + time_delay_from_geocenter(1.0, -0.3, 2.0, d; check = false)
 end
 
 @testset "Cartesian geometry gradients" begin

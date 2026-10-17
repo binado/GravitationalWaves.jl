@@ -105,7 +105,7 @@ end
 ```
 
 It uses a long-wavelength response evaluated at one reference time and supports
-arbitrary frequency vectors. The package has no runtime dependencies and supports
+arbitrary frequency vectors. The package uses StaticArrays.jl and supports
 ForwardDiff, Enzyme, Mooncake, and Reactant CPU compilation. See its
 [README](packages/GWDetectors/README.md) for timing conventions, custom tilted or
 nonorthogonal arms, compiled Reactant examples, and leap-table coverage.

@@ -9,14 +9,14 @@ using JSON
         @warn "Skipping detector references; run uv run --project python python python/generate_detectors.py"
     else
         fixtures = JSON.parsefile(path)
-        rows(x) = Tuple(Tuple(row) for row in x)
+        matrix(x) = SMatrix{3, 3}(reduce(vcat, permutedims.(x)))
         for g in fixtures["detectors"]
             d = Detector(g["name"])
-            @test d.vertex == Tuple(g["vertex"])
-            @test d.xarm == Tuple(g["xarm"])
-            @test d.yarm == Tuple(g["yarm"])
-            @test d.arm_lengths == Tuple(g["arm_lengths"])
-            @test all(isapprox.(collect(Iterators.flatten(detector_tensor(d))), collect(Iterators.flatten(g["native_tensor"])); atol = 2.0e-16))
+            @test d.vertex == SVector{3}(g["vertex"])
+            @test d.xarm == SVector{3}(g["xarm"])
+            @test d.yarm == SVector{3}(g["yarm"])
+            @test d.arm_lengths == SVector{2}(g["arm_lengths"])
+            @test all(isapprox.(detector_tensor(d), matrix(g["native_tensor"]); atol = 2.0e-16))
         end
         for g in fixtures["geodetic"]
             names = (:latitude, :longitude, :elevation, :xarm_azimuth, :yarm_azimuth, :xarm_tilt, :yarm_tilt, :arm_lengths)
@@ -28,12 +28,12 @@ using JSON
         end
         for c in fixtures["responses"]
             args = (c["ra"], c["dec"], c["psi"], c["gmst"])
-            lal = GWDetectors._antenna(args..., rows(c["rounded_tensor"]))
+            lal = GWDetectors._antenna(args..., matrix(c["rounded_tensor"]))
             native = antenna_pattern(args..., Detector(c["name"]))
             @test collect(values(lal)) ≈ c["lal"] atol = 5.0e-16
             @test collect(values(native)) ≈ c["native"] atol = 8.0e-16
             g = only(filter(g -> g["name"] == c["name"], fixtures["detectors"]))
-            cached = GWDetectors._antenna(args..., rows(g["cached_tensor"]))
+            cached = GWDetectors._antenna(args..., matrix(g["cached_tensor"]))
             @test collect(values(cached)) ≈ c["cached"] atol = 5.0e-16
         end
         for c in fixtures["gmst"]

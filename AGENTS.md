@@ -16,7 +16,7 @@ Julia packages live in `packages/`:
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
 - `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`); tests use LAL as the oracle.
-- `GWDetectors`: dependency-free, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and broadcasted FD projection. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
+- `GWDetectors`: StaticArrays-based, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and broadcasted FD projection. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
 - `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.

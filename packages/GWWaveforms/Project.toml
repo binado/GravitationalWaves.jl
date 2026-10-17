@@ -1,6 +1,6 @@
 name = "GWWaveforms"
 uuid = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]

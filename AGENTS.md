@@ -12,6 +12,7 @@ versions, dependencies, and licenses.
 
 Julia packages live in `packages/`:
 
+- `GWNoise`: native one-sided PSD/ASD text readers, tabulated interpolation and finite Gaussian noise segments. Independent of LAL/Python; tests cover physical Fourier normalization. PSD estimation and streaming remain out of scope.
 - `AbstractGWWaveforms`: dependency-free interface owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.

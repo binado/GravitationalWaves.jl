@@ -11,6 +11,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
+| [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
 
 ## Installation
 

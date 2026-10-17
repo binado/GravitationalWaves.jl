@@ -8,8 +8,8 @@ const AD_POL = (;
 )
 
 function ad_detector(x)
-    return Detector(
-        "custom"; latitude = x[6], longitude = x[7],
+    return Detector(;
+        latitude = x[6], longitude = x[7],
         xarm_azimuth = x[8], yarm_azimuth = x[9], xarm_tilt = x[10],
         yarm_tilt = x[11], elevation = x[12], arm_lengths = (3000, 4000), check = false
     )

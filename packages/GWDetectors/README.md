@@ -65,10 +65,10 @@ For fixed GMST, use `antenna_pattern(ra, dec, psi, gmst, detector)` and
 ## Custom geometry
 
 ```julia
-custom = Detector("custom"; latitude = 0.6, longitude = -1.1, elevation = 50.0,
+custom = Detector(; latitude = 0.6, longitude = -1.1, elevation = 50.0,
     xarm_azimuth = 0.2, yarm_azimuth = 0.2 + π/3,
     xarm_tilt = 0.001, yarm_tilt = -0.002, arm_lengths = (3000.0, 3000.0))
-cartesian = Detector("copy", custom.vertex, custom.xarm, custom.yarm, custom.arm_lengths)
+cartesian = Detector(custom.vertex, custom.xarm, custom.yarm, custom.arm_lengths)
 D = detector_tensor(custom)  # 3×3 SMatrix
 ```
 

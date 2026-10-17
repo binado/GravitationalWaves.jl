@@ -12,8 +12,8 @@ function _check_geometry(vertex, xarm, yarm, lengths)
 end
 
 """
-    Detector(name, vertex, xarm, yarm, arm_lengths; check=true)
-    Detector(name; latitude, longitude, elevation=0, xarm_azimuth,
+    Detector(vertex, xarm, yarm, arm_lengths; check=true)
+    Detector(; latitude, longitude, elevation=0, xarm_azimuth,
              yarm_azimuth, xarm_tilt=0, yarm_tilt=0, arm_lengths, check=true)
 
 Immutable Earth-fixed interferometer geometry stored in `SVector`s. Cartesian
@@ -23,38 +23,38 @@ metres. Nonorthogonal arms are supported. Geodetic coordinates use WGS-84, radia
 and metres; azimuth is clockwise from north and tilt positive above the horizontal.
 Numeric inputs are promoted together without forcing Float64. Published built-in
 directions retain their precision without normalization.
-Access predefined detector instances through [`detectors`](@ref).
+Detectors carry no name; name them by where you store them, as [`detectors`](@ref) does
+with named-tuple keys.
 
 `check=false` bypasses numerical validation for AD/compiled calls with prevalidated
 inputs. Vector sizes and numeric element types are always checked. Geometry is
 physically real; the `Number` bound also permits Reactant's traced scalar types.
 """
 struct Detector{T <: Number}
-    name::String
     vertex::SVector{3, T}
     xarm::SVector{3, T}
     yarm::SVector{3, T}
     arm_lengths::SVector{2, T}
 
     function Detector{T}(
-            name::String, vertex::SVector{3, T}, xarm::SVector{3, T},
-            yarm::SVector{3, T}, arm_lengths::SVector{2, T}; check = true
+            vertex::SVector{3, T}, xarm::SVector{3, T}, yarm::SVector{3, T},
+            arm_lengths::SVector{2, T}; check = true
         ) where {T <: Number}
         check && _check_geometry(vertex, xarm, yarm, arm_lengths)
-        return new{T}(name, vertex, xarm, yarm, arm_lengths)
+        return new{T}(vertex, xarm, yarm, arm_lengths)
     end
 end
 
-function Detector(name::AbstractString, vertex, xarm, yarm, arm_lengths; check = true)
+function Detector(vertex, xarm, yarm, arm_lengths; check = true)
     length(vertex) == length(xarm) == length(yarm) == 3 ||
         throw(DimensionMismatch("Cartesian vectors must have three components"))
     length(arm_lengths) == 2 || throw(DimensionMismatch("arm_lengths must have two components"))
     p = promote(vertex..., xarm..., yarm..., arm_lengths...)
-    return Detector{typeof(p[1])}(String(name), SVector(p[1:3]), SVector(p[4:6]), SVector(p[7:9]), SVector(p[10:11]); check)
+    return Detector{typeof(p[1])}(SVector(p[1:3]), SVector(p[4:6]), SVector(p[7:9]), SVector(p[10:11]); check)
 end
 
 function Detector(
-        name::AbstractString; latitude, longitude, xarm_azimuth,
+        ; latitude, longitude, xarm_azimuth,
         yarm_azimuth, arm_lengths, elevation = 0,
         xarm_tilt = 0, yarm_tilt = 0, check = true
     )
@@ -85,7 +85,7 @@ function Detector(
     east = (-slon, clon, zero(clat))
     up = (clat * clon, clat * slon, slat)
     arm(az, tilt) = ntuple(i -> cos(tilt) * (cos(az) * north[i] + sin(az) * east[i]) + sin(tilt) * up[i], 3)
-    return Detector(name, vertex, arm(xarm_azimuth, xarm_tilt), arm(yarm_azimuth, yarm_tilt), arm_lengths; check)
+    return Detector(vertex, arm(xarm_azimuth, xarm_tilt), arm(yarm_azimuth, yarm_tilt), arm_lengths; check)
 end
 
 """

@@ -21,7 +21,7 @@ using JSON
         for g in fixtures["geodetic"]
             names = (:latitude, :longitude, :elevation, :xarm_azimuth, :yarm_azimuth, :xarm_tilt, :yarm_tilt, :arm_lengths)
             kwargs = NamedTuple{names}(map(k -> g[String(k)], names))
-            d = Detector("geodetic"; kwargs...)
+            d = Detector(; kwargs...)
             @test collect(d.vertex) ≈ g["vertex"] rtol = 2.0e-15 atol = 2.0e-9
             @test collect(d.xarm) ≈ g["xarm"] atol = 4.0e-16
             @test collect(d.yarm) ≈ g["yarm"] atol = 4.0e-16

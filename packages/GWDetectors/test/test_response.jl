@@ -1,11 +1,11 @@
 @testset "response and timing" begin
-    d = Detector("test", (299792458, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1))
+    d = Detector((299792458, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1))
     # Source overhead: LAL basis X=-y, Y=-x at psi=0.
     @test antenna_pattern(0, π / 2, 0, 0, d).plus ≈ -1
     @test abs(antenna_pattern(0, π / 2, 0, 0, d).cross) < 1.0e-15
     @test time_delay_from_geocenter(0, 0, 0, d) == -1
     @test time_delay_from_geocenter(π, 0, 0, d) == 1
-    swapped = Detector("swapped", d.vertex, d.yarm, d.xarm, d.arm_lengths)
+    swapped = Detector(d.vertex, d.yarm, d.xarm, d.arm_lengths)
     for ra in (0.0, 1.1, 6.2), dec in (-1.4, 0.1, 1.5), psi in (-0.5, 0.0, 2.0)
         f = antenna_pattern(ra, dec, psi, 2.5, d)
         period = antenna_pattern(ra, dec, psi + π, 2.5, d)

@@ -47,7 +47,7 @@ end
 function cartesian_loss(x)
     u = (cos(x[1]), sin(x[1]), zero(x[1]))
     v = (zero(x[2]), cos(x[2]), sin(x[2]))
-    d = Detector("cartesian", (x[3], x[4], x[5]), u, v, (3000, 4000); check = false)
+    d = Detector((x[3], x[4], x[5]), u, v, (3000, 4000); check = false)
     D = detector_tensor(d)
     return D[1, 2] + D[2, 3] + time_delay_from_geocenter(1.0, -0.3, 2.0, d)
 end

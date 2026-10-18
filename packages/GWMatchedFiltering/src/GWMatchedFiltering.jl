@@ -1,5 +1,5 @@
 """Joint frequency-domain noise metrics, inner products, and SNR statistics."""
-module GWInference
+module GWMatchedFiltering
 
 using LinearAlgebra: Hermitian, I, cholesky, ishermitian
 using StaticArrays: SMatrix, SVector

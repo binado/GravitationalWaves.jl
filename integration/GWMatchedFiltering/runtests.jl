@@ -1,5 +1,5 @@
 using Test
-using GWInference
+using GWMatchedFiltering
 using GWDetectors
 using GWWaveforms
 using GWNoise
@@ -11,7 +11,7 @@ using Mooncake: Mooncake
 using Reactant
 
 Reactant.set_default_backend("cpu")
-include("../../packages/GWInference/test/ad_helpers.jl")
+include("../../packages/GWMatchedFiltering/test/ad_helpers.jl")
 
 const PIPE_F = 0.0:1.0:128.0
 # Projection accepts arbitrary vectors. Materialize its fixed grid once so AD
@@ -36,9 +36,9 @@ end
 const PIPE_DATA = pipeline_signal([36.0, 1.3])
 pipeline_loss(x) = log_likelihood_ratio(pipeline_signal(x), PIPE_DATA, PIPE_METRIC)
 
-@testset "GWInference AD integration" begin
+@testset "GWMatchedFiltering AD integration" begin
     for (loss, sample) in ((diagonal_loss, [0.8, 0.2]), (correlated_loss, [0.8, 0.2]), (statistics_loss, [0.8, 0.2]), (pipeline_loss, [35.8, 1.2]))
-        @info "Checking GWInference derivatives" objective = string(loss)
+        @info "Checking GWMatchedFiltering derivatives" objective = string(loss)
         flush(stderr)
         expected = ForwardDiff.gradient(loss, sample)
         @testset "Enzyme and Mooncake" begin

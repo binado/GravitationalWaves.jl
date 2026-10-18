@@ -63,7 +63,7 @@ end
     expected = dot(vec(permutedims(a[2:end, :])), G * vec(permutedims(b[2:end, :])))
     @test complex_inner_product(a, b, metric) ≈ expected rtol = 2.0e-14
     # Exercise the array-level kernel used by traced inputs as well as the host specialization.
-    fallback = invoke(GWInference.contraction, Tuple{Any, Any, BlockDiagonalMetric}, a[2:end, :], b[2:end, :], metric.metric)
+    fallback = invoke(GWMatchedFiltering.contraction, Tuple{Any, Any, BlockDiagonalMetric}, a[2:end, :], b[2:end, :], metric.metric)
     @test metric.normalization * fallback ≈ expected rtol = 2.0e-14
     @test complex_inner_product(a, b, metric) ≈ conj(complex_inner_product(b, a, metric))
     @test optimal_snr_squared(a, metric) > 0

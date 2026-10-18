@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWNoise packages/GWInference; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWNoise packages/GWMatchedFiltering; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:
@@ -53,9 +53,9 @@ test-integration-detectors:
 
 # Joint metric gradients and waveform/projection/likelihood composition.
 test-integration-inference:
-    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWInference -e 'using Pkg; Pkg.instantiate(); include("integration/GWInference/runtests.jl")'
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate(); include("integration/GWMatchedFiltering/runtests.jl")'
 
 # Layout comparison; output includes timings, allocations, CPU, and Julia version.
 benchmark-inference:
-    {{ julia }} --startup-file=no --project=benchmarks/GWInference -e 'using Pkg; Pkg.instantiate()'
-    {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWInference benchmarks/GWInference/layouts.jl
+    {{ julia }} --startup-file=no --project=benchmarks/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/layouts.jl

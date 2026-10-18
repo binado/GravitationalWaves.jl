@@ -2,7 +2,7 @@
 AbstractGWWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 GWDetectors = "925a6270-1375-4f25-9f91-47b2a6fb8ffd"
-GWInference = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 GWParameterConversion = "8025f710-d0ad-4738-9700-57195c00f751"
 GWWaveforms = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -13,7 +13,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 [sources]
 AbstractGWWaveforms = {path = "../../packages/AbstractGWWaveforms"}
 GWDetectors = {path = "../../packages/GWDetectors"}
-GWInference = {path = "../../packages/GWInference"}
+GWMatchedFiltering = {path = "../../packages/GWMatchedFiltering"}
 GWParameterConversion = {path = "../../packages/GWParameterConversion"}
 GWWaveforms = {path = "../../packages/GWWaveforms"}
 

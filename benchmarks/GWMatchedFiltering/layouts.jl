@@ -1,5 +1,5 @@
 using BenchmarkTools
-using GWInference
+using GWMatchedFiltering
 using GWDetectors
 using GWWaveforms
 using LinearAlgebra

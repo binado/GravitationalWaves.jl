@@ -44,3 +44,24 @@ Host construction validates metadata. Sample element and storage types remain
 generic. Validate/unwrap on the host before calling compiled or differentiated
 array kernels and reconstruct results with `with_data` outside compilation.
 Whole-series Reactant arguments and FFT differentiation are not supported contracts.
+
+## Fourier conversion
+
+Load `FFTW` to activate CPU Float32/Float64 array and array-view conversion:
+
+```julia
+using FFTW
+h = to_frequencyseries(x) # dt * rfft(parent(x), 1), even N >= 2
+x2 = to_timeseries(h)     # irfft(parent(h), N, 1) / dt
+```
+
+Transforms act along the first dimension and preserve epoch/channel labels. The
+phase origin is relative to the epoch; no absolute-GPS phase factor is applied.
+Inverse conversion requires at least two bins starting at exactly zero and
+infers `N = 2(M-1)`, `dt = 1/(N*df)`. Imaginary DC/Nyquist components are discarded
+by `irfft`. Odd time series may be stored but must be explicitly cropped/padded
+before forward conversion. Removing low bins prevents inversion until explicitly
+restored (for example with `pad`). Removing high bins lowers the inverse sampling
+frequency while keeping duration `1/df`; pad back to restore the earlier rate.
+Conversion allocates output storage. Unsupported devices/AD element types do not
+fall back to host materialization.

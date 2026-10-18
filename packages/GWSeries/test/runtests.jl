@@ -87,4 +87,5 @@ end
     @test_throws DimensionMismatch check_same_grid(x, TimeSeries(ones(7, 2); epoch = t0, sampling_frequency = 10, channels = (:H1, :L1)))
 end
 
+include("test_fourier.jl")
 include("test_quality.jl")

@@ -12,6 +12,7 @@ PACKAGES = (
     "GWDistributions",
     "GWDetectors",
     "GWNoise",
+    "GWInference",
 )
 AFFECTED = {
     "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
@@ -21,6 +22,7 @@ AFFECTED = {
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
+    "GWInference": {"GWInference"},
 }
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 
@@ -38,7 +40,7 @@ def select_packages(paths):
         if len(parts) >= 3 and parts[0] == "packages" and parts[1] in AFFECTED:
             selected.update(AFFECTED[parts[1]])
         elif path.startswith("python/"):
-            selected.update(AFFECTED["GWParameterConversion"] | {"GWDetectors"})
+            selected.update(AFFECTED["GWParameterConversion"] | {"GWDetectors", "GWInference"})
         else:
             # Shared configuration, new packages and unfamiliar inputs run everything.
             selected.update(PACKAGES)

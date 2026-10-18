@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWNoise; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWNoise packages/GWInference; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:
@@ -33,10 +33,11 @@ fixtures:
     uv sync --project python
     uv run --project python python python/generate.py
     uv run --project python python python/generate_detectors.py
+    uv run --project python python python/generate_inference.py
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -49,3 +50,12 @@ test-integration-waveforms:
 # Native and compiled geometry, timing, and phase-sensitive projection gradients.
 test-integration-detectors:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWDetectors -e 'using Pkg; Pkg.instantiate(); include("integration/GWDetectors/runtests.jl")'
+
+# Joint metric gradients and waveform/projection/likelihood composition.
+test-integration-inference:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWInference -e 'using Pkg; Pkg.instantiate(); include("integration/GWInference/runtests.jl")'
+
+# Layout comparison; output includes timings, allocations, CPU, and Julia version.
+benchmark-inference:
+    {{ julia }} --startup-file=no --project=benchmarks/GWInference -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWInference benchmarks/GWInference/layouts.jl

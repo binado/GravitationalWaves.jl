@@ -12,7 +12,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
-| [GWInference](packages/GWInference) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
+| [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
 
 ## Installation
 
@@ -113,11 +113,11 @@ ForwardDiff, Enzyme, Mooncake, and Reactant CPU compilation. See its
 nonorthogonal arms, compiled Reactant examples, and leap-table coverage.
 
 For noise-weighted comparisons of projected strains, see
-[GWInference](packages/GWInference/README.md). It accepts ordered multi-detector
+[GWMatchedFiltering](packages/GWMatchedFiltering/README.md). It accepts ordered multi-detector
 Fourier arrays and either independent PSDs or full Hermitian cross-spectral
 matrices. Metric preparation is separate from repeated inner products, SNRs,
 and fixed-PSD Gaussian likelihood ratios. Layout measurements have a standalone
-[benchmark harness](benchmarks/GWInference).
+[benchmark harness](benchmarks/GWMatchedFiltering).
 
 ## Pointing the package at LAL
 

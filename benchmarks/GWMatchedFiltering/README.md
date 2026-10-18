@@ -3,8 +3,8 @@
 Run from the repository root with Julia 1.12 or newer:
 
 ```sh
-julia --project=benchmarks/GWInference -e 'using Pkg; Pkg.instantiate()'
-julia --threads=1 --project=benchmarks/GWInference benchmarks/GWInference/layouts.jl > /tmp/gw-inference-layouts.csv
+julia --project=benchmarks/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate()'
+julia --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/layouts.jl > /tmp/gw-inference-layouts.csv
 ```
 
 The script checks numerical equivalence before measuring. It reports median

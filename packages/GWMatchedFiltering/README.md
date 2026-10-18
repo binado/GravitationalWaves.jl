@@ -1,4 +1,4 @@
-# GWInference
+# GWMatchedFiltering
 
 Joint frequency-domain noise metrics, inner products, and SNRs for Julia.
 Runtime dependencies: `LinearAlgebra` and `StaticArrays`. Inputs are already projected detector
@@ -6,7 +6,7 @@ strains; no waveform generator, detector geometry, sampler, Python or LAL is
 required.
 
 ```julia
-using GWInference
+using GWMatchedFiltering
 
 f = 0.0:0.25:1024.0
 channels = (:H1, :L1)
@@ -89,7 +89,7 @@ PSD/CSD preparation is outside scope. For compiled matched-filter SNR use
 `matched_filter_snr(h, d, metric; check=false)` after establishing a nonzero
 template on the host; the default throws for zero templates and has a
 value-dependent validation branch. Heavy backend acceptance tests are in
-`integration/GWInference`.
+`integration/GWMatchedFiltering`.
 
 CPU values and gradients have been checked with Reactant 0.2.295, Enzyme
 0.13.216 and Mooncake 0.5.54 on Julia 1.12.0, including waveform → projection →
@@ -98,7 +98,7 @@ integration example materializes the fixed projection frequency vector once to
 avoid differentiating Julia's range-broadcast machinery.
 
 Strain arrays use `(frequency, channel)` storage; internal whitening blocks use
-`(output_channel, input_channel, frequency)`. The [layout benchmark](../../benchmarks/GWInference)
+`(output_channel, input_channel, frequency)`. The [layout benchmark](../../benchmarks/GWMatchedFiltering)
 records the measured decision. Native host contractions use allocation-free
 StaticArrays kernels; traced arrays use frequency-wise broadcast/reductions.
 Both flattening orders are mathematically equivalent when the metric uses the
@@ -107,7 +107,7 @@ same permutation; evaluation never materializes the global flattened matrix.
 ## Development
 
 ```sh
-julia --project=packages/GWInference -e 'using Pkg; Pkg.test()'
+julia --project=packages/GWMatchedFiltering -e 'using Pkg; Pkg.test()'
 just test-integration-inference
 just benchmark-inference
 ```

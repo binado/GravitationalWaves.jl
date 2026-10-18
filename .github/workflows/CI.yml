@@ -64,7 +64,7 @@ jobs:
         if: matrix.package == 'GWDetectors'
         run: uv run --project python python python/generate_detectors.py
       - name: Generate inference reference fixtures
-        if: matrix.package == 'GWInference'
+        if: matrix.package == 'GWMatchedFiltering'
         run: uv run --project python python python/generate_inference.py
       - name: Locate LAL libraries
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWWaveforms'

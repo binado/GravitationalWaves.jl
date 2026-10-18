@@ -1,5 +1,5 @@
 using Test
-using GWInference
+using GWMatchedFiltering
 using LinearAlgebra
 using Random
 using ForwardDiff

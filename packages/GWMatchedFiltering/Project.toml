@@ -1,4 +1,4 @@
-name = "GWInference"
+name = "GWMatchedFiltering"
 uuid = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 version = "0.1.0"
 authors = ["binado <bernardopveronese@gmail.com>"]

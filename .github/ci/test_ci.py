@@ -12,6 +12,7 @@ class SelectionTests(unittest.TestCase):
         cases = {
             "GWDistributions": ["GWDistributions"],
             "GWDetectors": ["GWDetectors"],
+            "GWNoise": ["GWNoise"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
             "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],

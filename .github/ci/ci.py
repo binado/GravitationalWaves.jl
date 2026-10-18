@@ -11,6 +11,7 @@ PACKAGES = (
     "GWWaveforms",
     "GWDistributions",
     "GWDetectors",
+    "GWNoise",
 )
 AFFECTED = {
     "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
@@ -19,6 +20,7 @@ AFFECTED = {
     "GWWaveforms": {"GWWaveforms"},
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
+    "GWNoise": {"GWNoise"},
 }
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 

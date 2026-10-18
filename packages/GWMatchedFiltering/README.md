@@ -1,20 +1,21 @@
 # GWMatchedFiltering
 
 Joint frequency-domain noise metrics, inner products, and SNRs for Julia.
-Runtime dependencies: `LinearAlgebra` and `StaticArrays`. Inputs are already projected detector
+Runtime dependencies: `GWSeries`, `LinearAlgebra`, and `StaticArrays`. Inputs are already projected detector
 strains; no waveform generator, detector geometry, sampler, Python or LAL is
 required.
 
 ```julia
 using GWMatchedFiltering
+using GWSeries
 
 f = 0.0:0.25:1024.0
 channels = (:H1, :L1)
 S = fill(1.0e-46, length(f), 2)  # one-sided PSDs, strain²/Hz
 metric = FrequencyDomainMetric(f, channels, S; minimum_frequency=20.0, nsamples=8192)
 
-h = FrequencyDomainStrain(f, channels, hcat(h1, l1))  # projected Fourier templates
-d = FrequencyDomainStrain(f, channels, hcat(data_h1, data_l1))
+h = FrequencySeries(hcat(h1, l1); frequencies=f, epoch=1126259460.0, channels)  # projected Fourier templates
+d = FrequencySeries(hcat(data_h1, data_l1); frequencies=f, epoch=1126259460.0, channels)
 optimal_snr(h, metric)
 matched_filter_snr(h, d, metric)  # complex scalar at the supplied alignment
 noise_weighted_inner_product(h, d, metric)  # real scalar, summed over channels
@@ -117,3 +118,14 @@ Gaussian-noise normalization, ForwardDiff gradients and optional bilby fixtures.
 Run `uv run --project python python python/generate_inference.py` for fixtures;
 CI requires them. Heavy integration tests additionally exercise Enzyme, Mooncake,
 Reactant CPU and waveform → detector projection → likelihood gradients.
+
+## Migration to 0.2
+
+`FrequencyDomainStrain` has been removed. Use `GWSeries.FrequencySeries(values;
+frequencies=f, epoch=t0, channels=names)` with an explicit epoch. Access samples
+with `parent(h)` rather than `.values`. Series pairs must share epochs, grids,
+and channel order; stationary metrics have no epoch requirement. Mixed series/array
+statistics are rejected: explicitly wrap both operands or pass both backing arrays.
+All-array calls retain their existing behavior. For compiled execution validate
+series compatibility on the host, pass `parent` arrays to the existing kernel,
+and wrap any grid-preserving array results outside compilation.

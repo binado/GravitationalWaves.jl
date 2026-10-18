@@ -89,3 +89,27 @@ end
 
 include("test_fourier.jl")
 include("test_quality.jl")
+
+# A backend-like array with unsupported axes; no extra runtime dependency needed.
+struct ZeroBasedVector <: AbstractVector{Float64}
+    data::Vector{Float64}
+end
+Base.size(x::ZeroBasedVector) = size(x.data)
+Base.axes(x::ZeroBasedVector) = (0:(length(x.data) - 1),)
+Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
+@testset "Unsupported axes and storage views" begin
+    a = ZeroBasedVector(ones(4))
+    @test_throws ArgumentError TimeSeries(a; epoch = 0, sampling_frequency = 4, channels = (:H1,))
+    @test_throws ArgumentError FrequencySeries(a; frequencies = 0:1:3, epoch = 0, channels = (:H1,))
+    v = view(ones(8), 1:2:8)
+    x = TimeSeries(v; epoch = 0, sampling_frequency = 4, channels = (:H1,))
+    @test parent(x) === v
+    @test_throws ArgumentError with_data(x, a)
+    f = range(0.0; step = 0.5, length = 0)
+    empty = FrequencySeries(Float64[]; frequencies = f, epoch = 0, channels = (:H1,))
+    @test nsamples(empty) == 0
+    @test first(frequencies(empty)) == 0
+    @test frequency_spacing(empty) == 0.5
+    @test nsamples(pad(empty; after = 2)) == 2
+    @test check_same_grid(empty, copy(empty)) === nothing
+end

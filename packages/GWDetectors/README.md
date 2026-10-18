@@ -146,3 +146,17 @@ fixtures warn locally and fail when `CI=true`.
 
 Finite-arm transfer functions, rotating time-domain response, extra polarizations,
 noise, calibration, and a network container remain future work.
+
+## Series output
+
+```julia
+using GWSeries
+h = project_fd(FrequencySeries, f, polarizations, sky, detectors.H1;
+               start_time=1126259460.0, channels=(:H1,))
+```
+
+The type argument requests a `FrequencySeries` on a uniform nonnegative range.
+Its epoch is `start_time`; the explicit channel tuple must contain one name,
+including for custom detectors. Projection delegates to the existing array kernel
+with identical phase and reference-time conventions. Waveform generators continue
+to return raw polarization arrays.

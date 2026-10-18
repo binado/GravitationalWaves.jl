@@ -22,22 +22,22 @@
     @test_throws ArgumentError FrequencyDomainMetric(f, (:H1,), ones(9); minimum_frequency = -1)
     @test_throws ArgumentError FrequencyDomainMetric(f, (:H1,), ones(9); maximum_frequency = 3)
     @test_throws ArgumentError FrequencyDomainMetric(f, (:H1, "H1"), ones(9, 2))
-    @test_throws ArgumentError FrequencyDomainStrain(f, (), zeros(9, 0))
-    @test_throws DimensionMismatch FrequencyDomainStrain(f, names, zeros(3, 9))
+    @test_throws ArgumentError FrequencySeries(zeros(9, 0); frequencies = f, epoch = 0, channels = ())
+    @test_throws DimensionMismatch FrequencySeries(zeros(3, 9); frequencies = f, epoch = 0, channels = names)
     @test_throws DimensionMismatch FrequencyDomainMetric(f, names, ones(9))
     for invalid in (0.0, -1.0, Inf, NaN)
         s = ones(9)
         s[4] = invalid
         @test_throws ArgumentError FrequencyDomainMetric(f, (:H1,), s)
     end
-    @test_throws ArgumentError FrequencyDomainStrain(2.0:-0.25:0.0, (:H1,), zeros(9))
-    @test_throws ArgumentError FrequencyDomainStrain(range(0; length = 1), (:H1,), zeros(1))
+    @test_throws ArgumentError FrequencySeries(zeros(9); frequencies = 2.0:-0.25:0.0, epoch = 0, channels = (:H1,))
+    @test_throws ArgumentError FrequencySeries(zeros(1); frequencies = range(0; step = 0, length = 1), epoch = 0, channels = (:H1,))
 
-    a = FrequencyDomainStrain(f, ("H1", "L1", "V1"), ones(9, 3))
-    @test a.channels == names
+    a = FrequencySeries(ones(9, 3); frequencies = f, epoch = 0, channels = ("H1", "L1", "V1"))
+    @test channels(a) == names
     @test optimal_snr_squared(a, metric) == 7.5
-    @test_throws ArgumentError optimal_snr(FrequencyDomainStrain(f, reverse(names), a.values), metric)
-    @test_throws ArgumentError optimal_snr(FrequencyDomainStrain(0.0:0.5:4.0, names, a.values), metric)
+    @test_throws ArgumentError optimal_snr(FrequencySeries(parent(a); frequencies = f, epoch = 0, channels = reverse(names)), metric)
+    @test_throws ArgumentError optimal_snr(FrequencySeries(parent(a); frequencies = 0.0:0.5:4.0, epoch = 0, channels = names), metric)
     @test_throws DimensionMismatch optimal_snr(ones(8, 3), metric)
 end
 

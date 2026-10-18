@@ -121,3 +121,20 @@ function project_fd(
     phase_scale = ((-2 * Float64(π)) * dt) * im
     return @. (factors.plus * hp + factors.cross * hc) * exp(phase_scale * f)
 end
+
+"""
+    project_fd(FrequencySeries, f, polarizations, sky, detector; start_time, channels,
+               reference_time=sky.geocent_time)
+
+Project raw polarizations on a uniform grid, wrapping the result with epoch
+`start_time` and one explicit channel name. Phase conventions match the array API.
+"""
+function project_fd(
+        ::Type{FrequencySeries}, f::AbstractRange, polarizations, sky, d::Detector;
+        start_time, channels, reference_time = sky.geocent_time,
+    )
+    # Validate grid and metadata before entering the numerical projection kernel.
+    prototype = FrequencySeries(polarizations.plus; frequencies = f, epoch = start_time, channels)
+    values = project_fd(f, polarizations, sky, d; start_time, reference_time)
+    return GWSeries.with_data(prototype, values)
+end

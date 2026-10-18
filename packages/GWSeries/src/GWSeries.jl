@@ -106,14 +106,20 @@ function check_same_grid(a::AbstractSeries, b::AbstractSeries)
     nsamples(a) == nsamples(b) || throw(DimensionMismatch("sample counts differ"))
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
     fa, fb = coordinates(a), coordinates(b)
-    check_coordinate(step(fa), step(fb), min(step(fa), step(fb)), "spacings")
-    check_coordinate(first(fa), first(fb), step(fa), "origins")
-    # Compare accumulated grid drift, including the half-open endpoint.
-    check_coordinate(nsamples(a) * step(fa), nsamples(b) * step(fb), step(fa), "grid extents")
+    check_frequency_grid(fa, fb)
     epoch_spacing = a isa TimeSeries ? step(fa) : inv(max(2 * (nsamples(a) - 1), 1) * step(fa))
     check_coordinate(epoch(a), epoch(b), epoch_spacing, "epochs")
     return nothing
 end
+# Shared by stationary consumers, which deliberately have no epoch.
+function check_frequency_grid(a::AbstractRange, b::AbstractRange)
+    length(a) == length(b) || throw(DimensionMismatch("grid sample counts differ"))
+    check_coordinate(step(a), step(b), min(step(a), step(b)), "spacings")
+    check_coordinate(first(a), first(b), step(a), "origins")
+    check_coordinate(length(a) * step(a), length(b) * step(b), step(a), "grid extents")
+    return nothing
+end
+
 function boundary_index(x, boundary::Real)
     grid = coordinates(x)
     origin, spacing = first(grid), step(grid)
@@ -140,6 +146,8 @@ function pad(x::AbstractSeries; before::Integer = 0, after::Integer = 0)
     origin = first(coordinates(x)) - before * step(coordinates(x))
     isfinite(origin) || throw(ArgumentError("padded origin must be finite"))
     x isa FrequencySeries && origin < 0 && throw(ArgumentError("padding creates negative frequencies"))
+    isfinite(origin + max(n - 1, 0) * step(coordinates(x))) ||
+        throw(ArgumentError("padded coordinates must be finite"))
     dims = ndims(parent(x)) == 1 ? (n,) : (n, size(parent(x), 2))
     data = similar(parent(x), dims)
     fill!(data, zero(eltype(data)))

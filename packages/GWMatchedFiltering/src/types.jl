@@ -41,29 +41,3 @@ function channel_order(channels)
     allunique(canonical) || throw(ArgumentError("channel names must be unique"))
     return canonical
 end
-
-"""
-    FrequencyDomainStrain(f, channels, values)
-
-Complex physical Fourier strain (`rfft(strain)/sampling_frequency`) on a uniform
-nonnegative frequency range. `values` has shape `(frequency, channel)`; a vector
-is accepted for one channel. Channel names are canonicalized to symbols. Values
-are retained without copying or element conversion; do not resize their storage.
-This container holds already projected strain, not waveform polarizations.
-"""
-struct FrequencyDomainStrain{F, C, A <: AbstractMatrix}
-    frequencies::F
-    channels::C
-    values::A
-
-    function FrequencyDomainStrain(f::AbstractRange, channels, values::AbstractMatrix{<:Number})
-        check_grid(f)
-        names = channel_order(channels)
-        size(values) == (length(f), length(names)) ||
-            throw(DimensionMismatch("values must have shape (frequency, channel)"))
-        return new{typeof(f), typeof(names), typeof(values)}(f, names, values)
-    end
-end
-
-FrequencyDomainStrain(f::AbstractRange, channels, values::AbstractVector{<:Number}) =
-    FrequencyDomainStrain(f, channels, reshape(values, :, 1))

@@ -59,3 +59,19 @@ plans nor mutable scratch buffers are cached in the model.
 
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.
+
+## Sampling containers
+
+```julia
+using GWSeries
+h = noise_fd(FrequencySeries, model; epoch=1126259460.0, channels=(:H1,))
+x = noise_td(TimeSeries, model; epoch=1126259460.0, channels=(:H1,))
+noise_fd!(h, model)
+noise_td!(x, model)
+```
+
+An optional RNG precedes the series type or destination. These methods retain the
+array API's numerical convention. Destinations must hold single-channel vectors;
+the grid is checked before drawing or mutation. FD series require even noise-model
+lengths for the GWSeries inverse contract. Array draws and TD series retain odd
+length support. `frequencies` is shared with GWSeries.

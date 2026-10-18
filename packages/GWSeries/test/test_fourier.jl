@@ -19,6 +19,8 @@ using FFTW
     end
     x = TimeSeries(collect(1.0:16); epoch = 0, sampling_frequency = 16, channels = (:H1,))
     h = to_frequencyseries(x)
+    power = abs2.(parent(h))
+    @test sum(abs2, parent(x)) * sample_spacing(x) ≈ frequency_spacing(h) * (power[1] + power[end] + 2sum(power[2:(end - 1)]))
     @test_throws ArgumentError to_frequencyseries(crop(x; start = 0, stop = 15 / 16))
     @test_throws ArgumentError to_frequencyseries(crop(x; start = 0, stop = 0))
     low_removed = crop(h; start = 1, stop = 9)

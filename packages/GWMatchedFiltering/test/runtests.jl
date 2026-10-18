@@ -1,4 +1,5 @@
 using Test
+using GWSeries
 using GWMatchedFiltering
 using LinearAlgebra
 using Random
@@ -9,4 +10,5 @@ include("test_statistics.jl")
 include("ad_helpers.jl")
 include("test_ad.jl")
 include("test_reference.jl")
+include("test_series.jl")
 include("test_quality.jl")

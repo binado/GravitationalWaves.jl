@@ -1,5 +1,8 @@
 module GWDetectors
 
+import GWSeries
+using GWSeries: FrequencySeries
+
 using LinearAlgebra: cross, dot
 using StaticArrays: SVector, @SMatrix
 

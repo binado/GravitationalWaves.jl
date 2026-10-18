@@ -107,5 +107,6 @@ using GWNoise
         @test sum(abs2, td) / length(td) ≈ sum(psd(model)) * step(frequencies(model)) rtol = 0.02
     end
 
+    include("test_series.jl")
     include("test_quality.jl")
 end

@@ -1,3 +1,9 @@
+# Pairwise metadata checks happen before either operand is unwrapped.
+check_operands(a, b) = nothing
+check_operands(a::FrequencySeries, b::FrequencySeries) = check_same_grid(a, b)
+check_operands(a::FrequencySeries, b) = throw(ArgumentError("wrap both operands as series or unwrap both as arrays"))
+check_operands(a, b::FrequencySeries) = throw(ArgumentError("wrap both operands as series or unwrap both as arrays"))
+
 function check_array(a::AbstractMatrix, metric::FrequencyDomainMetric)
     size(a) == (length(metric.frequencies), length(metric.channels)) ||
         throw(DimensionMismatch("strain must have shape (frequency, channel) matching the metric"))
@@ -6,10 +12,10 @@ end
 
 check_array(a::AbstractVector, metric::FrequencyDomainMetric) = check_array(reshape(a, :, 1), metric)
 
-function check_array(a::FrequencyDomainStrain, metric::FrequencyDomainMetric)
-    a.frequencies == metric.frequencies || throw(ArgumentError("strain and metric frequency grids differ"))
-    a.channels == metric.channels || throw(ArgumentError("strain and metric channel orders differ"))
-    return check_array(a.values, metric)
+function check_array(a::FrequencySeries, metric::FrequencyDomainMetric)
+    GWSeries.check_frequency_grid(frequencies(a), metric.frequencies)
+    channels(a) == metric.channels || throw(ArgumentError("strain and metric channel orders differ"))
+    return check_array(parent(a), metric)
 end
 
 contraction(a, b, metric::DiagonalMetric) = sum(conj.(a) .* metric.weights .* b)
@@ -67,6 +73,7 @@ Accept strain containers or arrays; raw arrays implicitly use the metric's grid
 and channel order. A vector denotes one channel. The first argument is conjugated.
 """
 function complex_inner_product(a, b, metric::FrequencyDomainMetric)
+    check_operands(a, b)
     aa = check_array(a, metric)
     bb = check_array(b, metric)
     return metric.normalization * contraction(active_values(aa, metric.active_bins), active_values(bb, metric.active_bins), metric.metric)
@@ -98,6 +105,7 @@ end
 
 """Squared residual norm `(data-template|data-template)` on the active channels/bins."""
 function residual_squared(data, template, metric::FrequencyDomainMetric)
+    check_operands(data, template)
     residual = check_array(data, metric) .- check_array(template, metric)
     return optimal_snr_squared(residual, metric)
 end

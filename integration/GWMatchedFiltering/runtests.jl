@@ -1,5 +1,6 @@
 using Test
 using GWMatchedFiltering
+using GWSeries
 using GWDetectors
 using GWWaveforms
 using GWNoise
@@ -63,4 +64,39 @@ end
     noise = GaussianNoise(curve; sampling_frequency = 256.0, nsamples = 256, minimum_frequency = 20.0)
     metric = FrequencyDomainMetric(frequencies(noise), (:H1,), psd(noise); minimum_frequency = 20.0, nsamples = 256)
     @test isfinite(optimal_snr(noise_fd(noise), metric))
+end
+
+@testset "Series host boundary with AD array kernels" begin
+    epoch0 = 1126259460.0
+    signal = FrequencySeries(pipeline_signal([35.8, 1.2]); frequencies = PIPE_F, epoch = epoch0, channels = (:H1, :L1))
+    data = FrequencySeries(PIPE_DATA; frequencies = PIPE_F, epoch = epoch0, channels = (:H1, :L1))
+    check_same_grid(signal, data)
+    a = GWMatchedFiltering.check_array(signal, PIPE_METRIC)
+    b = GWMatchedFiltering.check_array(data, PIPE_METRIC)
+    @test a === parent(signal)
+    @test log_likelihood_ratio(signal, data, PIPE_METRIC) == log_likelihood_ratio(a, b, PIPE_METRIC)
+    # Metadata is validated once above. Each backend sees only arrays and a fixed metric.
+    loss(values) = log_likelihood_ratio(values .* a, b, PIPE_METRIC)
+    sample = ones(size(a))
+    expected = ForwardDiff.gradient(loss, sample)
+    for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
+        @test DifferentiationInterface.gradient(loss, backend, sample) ≈ expected rtol = 1.0e-7
+    end
+    objective(values) = Reactant.@allowscalar loss(values)
+    tracked = Reactant.to_rarray(sample)
+    executable = Reactant.@compile objective(tracked)
+    gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, objective, tracked)
+    @test Reactant.to_number(executable(tracked)) ≈ loss(sample) rtol = 1.0e-8
+    @test Array(only(gradient(Enzyme.Reverse, objective, tracked))) ≈ expected rtol = 1.0e-7
+    # Reconstruct an array result on the host, retaining the validated grid.
+    scale_signal(values) = values .* a
+    array_executable = Reactant.@compile scale_signal(tracked)
+    restored = with_data(signal, Array(array_executable(tracked)))
+    @test check_same_grid(restored, signal) === nothing
+    @test parent(restored) ≈ a
+    curve = TabulatedPSD([0.0, 128.0], [2.0, 2.0])
+    noise = GaussianNoise(curve; sampling_frequency = 256.0, nsamples = 256, minimum_frequency = 20.0)
+    draw = noise_fd(FrequencySeries, noise; epoch = epoch0, channels = (:H1,))
+    metric = FrequencyDomainMetric(frequencies(noise), (:H1,), psd(noise); minimum_frequency = 20.0, nsamples = 256)
+    @test optimal_snr(draw, metric) == optimal_snr(parent(draw), metric)
 end

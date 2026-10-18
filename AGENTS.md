@@ -12,8 +12,9 @@ versions, dependencies, and licenses.
 
 Julia packages live in `packages/`:
 
+- `GWSeries`: explicit time/frequency containers, channel and sampling metadata, grid operations, and optional FFTW conversion. Arrays remain the numerical kernel interface.
 - `GWNoise`: native one-sided PSD/ASD text readers, tabulated interpolation and finite Gaussian noise segments. Independent of LAL/Python; tests cover physical Fourier normalization. PSD estimation and streaming remain out of scope.
-- `GWMatchedFiltering`: joint frequency-domain metrics over ordered channels, real/complex inner products, SNRs and fixed-PSD Gaussian likelihood statistics. LinearAlgebra/StaticArrays runtime; independent PSDs use diagonal weights, correlated spectra use cached whitening factors per frequency. Shapes are `(frequency, channel)`; layout measurements live in `benchmarks/GWMatchedFiltering`. Native host matrices and views use allocation-free kernels; traced arrays use broadcast/reduction kernels. Heavy AD and waveform/projection composition live in `integration/GWMatchedFiltering`. Only strain parameters, not metric preparation, are in the initial AD contract. Compiled matched-filter SNR uses `check=false` after host validation of nonzero templates.
+- `GWMatchedFiltering`: joint frequency-domain metrics over ordered channels, real/complex inner products, SNRs and fixed-PSD Gaussian likelihood statistics. GWSeries/LinearAlgebra/StaticArrays runtime; independent PSDs use diagonal weights, correlated spectra use cached whitening factors per frequency. Shapes are `(frequency, channel)`; layout measurements live in `benchmarks/GWMatchedFiltering`. Native host matrices and views use allocation-free kernels; traced arrays use broadcast/reduction kernels. Heavy AD and waveform/projection composition live in `integration/GWMatchedFiltering`. Only strain parameters, not metric preparation, are in the initial AD contract. Compiled matched-filter SNR uses `check=false` after host validation of nonzero templates.
 - `AbstractGWWaveforms`: dependency-free interface owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
@@ -87,6 +88,8 @@ Adaptive QuadGK is test-only. Keep BackgroundCosmology external; do not add othe
 
 Conventional Commits; work on a non-`main` branch and open PRs.
 
+`GWSeries` changes also test `GWNoise`, `GWDetectors`, and `GWMatchedFiltering`.
+
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
 changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
@@ -101,7 +104,7 @@ and default test targets. Run `just test-integration` locally before submitting 
 to numerical kernels or the AD integrations; individual package recipes are listed above.
 CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
-Pushes to `main` and manual CI runs test all eight packages on Julia 1.12 and latest stable.
+Pushes to `main` and manual CI runs test all nine packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
 Selection and status checks can be tested locally with
 `python3 -m unittest discover -s .github/ci -v`.

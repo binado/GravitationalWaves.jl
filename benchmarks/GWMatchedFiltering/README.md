@@ -57,3 +57,32 @@ measurements, not CI timing thresholds. Rerun on deployment hardware; compiled
 Reactant performance is a separate backend measurement. The initial allocating
 broadcast implementation was substantially slower on the host, motivating the
 native specialization and the StaticArrays runtime dependency.
+
+## GWSeries delegation
+
+The layout benchmark also records `series/blocks` and `series/diagonal` alongside
+production array calls. For a focused comparison, including native matrix views:
+
+```sh
+julia --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/series.jl
+```
+
+This validates equal numerical results before timing, with fixed epoch/channel
+metadata and three channels at 8,193 active frequencies. Metadata validation is
+included in series timings; metric preparation and series construction are
+excluded. FFTs, storage adaptation, and whole-series compilation are separate
+contracts. Rerun on deployment hardware; these measurements are not CI thresholds.
+
+Measured on Apple M4 with Julia 1.12.7, one Julia/BLAS thread and no competing
+Julia jobs. Median microseconds, with zero bytes and zero allocations throughout:
+
+| Metric | Storage | Arrays | Series |
+| --- | --- | --- | --- |
+| Diagonal | Matrix | 15.000 | 15.042 |
+| Diagonal | Matrix view | 15.041 | 15.042 |
+| Correlated blocks | Matrix | 26.417 | 26.459 |
+| Correlated blocks | Matrix view | 26.375 | 26.417 |
+
+Observed wrapper overhead was 0–0.3% in these cases. See
+[raw series results](series_results.csv). This establishes representative host
+behavior, not a guarantee for other storage, sizes, hardware, or compiled backends.

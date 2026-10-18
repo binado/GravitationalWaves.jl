@@ -1,5 +1,6 @@
 using BenchmarkTools
 using GWMatchedFiltering
+using GWSeries
 using GWDetectors
 using GWWaveforms
 using LinearAlgebra
@@ -85,6 +86,11 @@ function benchmark_layouts()
             record("$label/static", @benchmarkable static_blocks($aa, $bb, $ww, $layout, $(Val(D)), $nf))
             record("$label/diagonal", @benchmarkable diagonal($aa, $bb, $weights))
         end
+        series_a = FrequencySeries(full_a; frequencies = f, epoch = 1126259460.0, channels = names)
+        series_b = FrequencySeries(full_b; frequencies = f, epoch = 1126259460.0, channels = names)
+        @assert complex_inner_product(series_a, series_b, m) ≈ m.normalization * reference
+        record("D=$D/nf=$nf/series/blocks", @benchmarkable complex_inner_product($series_a, $series_b, $m))
+        record("D=$D/nf=$nf/series/diagonal", @benchmarkable complex_inner_product($series_a, $series_b, $md))
         record("D=$D/nf=$nf/production/blocks", @benchmarkable complex_inner_product($full_a, $full_b, $m))
         record("D=$D/nf=$nf/production/diagonal", @benchmarkable complex_inner_product($full_a, $full_b, $md))
         record("D=$D/nf=$nf/production/norm", @benchmarkable optimal_snr_squared($full_a, $m))

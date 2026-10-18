@@ -11,10 +11,12 @@ PACKAGES = (
     "GWWaveforms",
     "GWDistributions",
     "GWDetectors",
+    "GWSeries",
     "GWNoise",
     "GWMatchedFiltering",
 )
 AFFECTED = {
+    "GWSeries": {"GWSeries", "GWNoise", "GWDetectors", "GWMatchedFiltering"},
     "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
     "LALWaveforms": {"LALWaveforms", "GWWaveforms"},
     "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms"},

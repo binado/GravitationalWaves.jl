@@ -7,11 +7,13 @@ using FFTW
         names = nc == 1 ? (:H1,) : (:H1, :L1)
         x = TimeSeries(a; epoch = 1126259460.125, sampling_frequency = 32, channels = names)
         h = to_frequencyseries(x)
+        @test eltype(parent(h)) == Complex{T}
         @test parent(h) ≈ rfft(a, 1) ./ 32
         @test epoch(h) == epoch(x)
         @test channels(h) == names
         @test nsamples(h) == n ÷ 2 + 1
         y = to_timeseries(h)
+        @test eltype(parent(y)) == T
         @test parent(y) ≈ a rtol = (T == Float32 ? 1.0e-6 : 1.0e-14)
         @test check_same_grid(x, y) === nothing
         shifted = TimeSeries(a; epoch = 0, sampling_frequency = 32, channels = names)
@@ -32,6 +34,11 @@ using FFTW
     @test duration(to_timeseries(high_removed)) == 1
     @test sampling_frequency(to_timeseries(pad(high_removed; after = 4))) == 16
     @test_throws ArgumentError to_timeseries(crop(h; start = 0, stop = 1))
+    precise = TimeSeries(Float32[1, 2, 3, 4]; epoch = big"1126259460.123456789", sampling_frequency = big"32", channels = (:H1,))
+    @test epoch(to_timeseries(to_frequencyseries(precise))) == epoch(precise)
+    @test parent(to_timeseries(to_frequencyseries(precise))) ≈ parent(precise)
+    real_spectrum = FrequencySeries(ones(Float32, 5); frequencies = 0:1:4, epoch = 0, channels = (:H1,))
+    @test parent(to_timeseries(real_spectrum)) ≈ Float32[8, 0, 0, 0, 0, 0, 0, 0]
     dirty = copy(h)
     parent(dirty)[1] += 7im
     parent(dirty)[end] -= 9im

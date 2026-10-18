@@ -10,12 +10,12 @@ using GWMatchedFiltering
 using GWSeries
 
 f = 0.0:0.25:1024.0
-channels = (:H1, :L1)
+names = (:H1, :L1)
 S = fill(1.0e-46, length(f), 2)  # one-sided PSDs, strain²/Hz
-metric = FrequencyDomainMetric(f, channels, S; minimum_frequency=20.0, nsamples=8192)
+metric = FrequencyDomainMetric(f, names, S; minimum_frequency=20.0, nsamples=8192)
 
-h = FrequencySeries(hcat(h1, l1); frequencies=f, epoch=1126259460.0, channels)  # projected Fourier templates
-d = FrequencySeries(hcat(data_h1, data_l1); frequencies=f, epoch=1126259460.0, channels)
+h = FrequencySeries(hcat(h1, l1); frequencies=f, epoch=1126259460.0, channels=names)  # projected Fourier templates
+d = FrequencySeries(hcat(data_h1, data_l1); frequencies=f, epoch=1126259460.0, channels=names)
 optimal_snr(h, metric)
 matched_filter_snr(h, d, metric)  # complex scalar at the supplied alignment
 noise_weighted_inner_product(h, d, metric)  # real scalar, summed over channels
@@ -93,9 +93,10 @@ value-dependent validation branch. Heavy backend acceptance tests are in
 `integration/GWMatchedFiltering`.
 
 CPU values and gradients have been checked with Reactant 0.2.295, Enzyme
-0.13.216 and Mooncake 0.5.54 on Julia 1.12.0, including waveform → projection →
+0.13.216 and Mooncake 0.5.64 on Julia 1.12.7, including waveform → projection →
 correlated likelihood composition. GPU execution has not been tested. The
-integration example materializes the fixed projection frequency vector once to
+series host-boundary integration also checks ForwardDiff 1.4.6 and wrapping
+compiled array results outside compilation. The integration example materializes the fixed projection frequency vector once to
 avoid differentiating Julia's range-broadcast machinery.
 
 Strain arrays use `(frequency, channel)` storage; internal whitening blocks use

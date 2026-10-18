@@ -99,16 +99,17 @@ noise_fd(::Type{FrequencySeries}, model::GaussianNoise; kwargs...) =
 function noise_fd(rng::AbstractRNG, ::Type{FrequencySeries}, model::GaussianNoise; epoch, channels)
     iseven(model.nsamples) || throw(ArgumentError("FD series noise requires an even-length noise model"))
     # Validate metadata before drawing, including channel count.
-    prototype = FrequencySeries(Vector{ComplexF64}(undef, length(model.frequencies)); frequencies = model.frequencies, epoch, channels)
-    return noise_fd!(rng, prototype, model)
+    prototype = FrequencySeries(model.scales; frequencies = model.frequencies, epoch, channels)
+    return with_data(prototype, noise_fd(rng, model))
 end
 
 """Draw single-channel time series; odd-length segments remain supported."""
 noise_td(::Type{TimeSeries}, model::GaussianNoise; kwargs...) =
     noise_td(default_rng(), TimeSeries, model; kwargs...)
 function noise_td(rng::AbstractRNG, ::Type{TimeSeries}, model::GaussianNoise; epoch, channels)
-    prototype = TimeSeries(Vector{Float64}(undef, model.nsamples); sampling_frequency = model.sampling_frequency, epoch, channels)
-    return noise_td!(rng, prototype, model)
+    # A lazy range validates metadata/shape without allocating another sample buffer.
+    prototype = TimeSeries(1:model.nsamples; sampling_frequency = model.sampling_frequency, epoch, channels)
+    return with_data(prototype, noise_td(rng, model))
 end
 
 noise_fd!(destination::FrequencySeries, model::GaussianNoise) = noise_fd!(default_rng(), destination, model)

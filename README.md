@@ -11,6 +11,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
+| [GWSeries](packages/GWSeries) | Explicit sampling containers, grids, and optional physical FFT conversion | GPL-2.0-or-later |
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
 | [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
 
@@ -26,6 +27,7 @@ repo = "https://github.com/binado/GravitationalWaves.jl"
 Pkg.add([
     PackageSpec(url = repo, subdir = "packages/GWParameterConversion"),
     PackageSpec(url = repo, subdir = "packages/GWWaveforms"),
+    PackageSpec(url = repo, subdir = "packages/GWSeries"),
     PackageSpec(url = repo, subdir = "packages/GWDetectors"),
 ])
 ```

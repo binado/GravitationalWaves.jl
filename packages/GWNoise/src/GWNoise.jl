@@ -1,7 +1,7 @@
 """Read one-sided spectral densities and sample stationary Gaussian strain noise."""
 module GWNoise
 
-using GWSeries: TimeSeries, FrequencySeries, epoch, channels, check_same_grid
+using GWSeries: TimeSeries, FrequencySeries, epoch, channels, check_same_grid, with_data
 import GWSeries: frequencies
 
 using DelimitedFiles: readdlm

@@ -37,7 +37,7 @@ absolute coordinate plus eight ulps of the relative displacement and spacing.
 Coordinates whose tolerance reaches half a sample/bin are ambiguous and rejected.
 `check_same_grid` checks counts, spacing, accumulated drift, origins, epochs, and
 ordered channels. Frequency-series epoch comparison uses the inferred even FFT
-sample spacing; this does not give the container an observed duration. There is
+sample spacing; this does not give the container an observed duration. Cropping and padding are host operations; compiled support is not claimed. There is
 no implicit alignment, rephasing, resampling, or channel reordering.
 
 Host construction validates metadata. Sample element and storage types remain
@@ -63,5 +63,6 @@ by `irfft`. Odd time series may be stored but must be explicitly cropped/padded
 before forward conversion. Removing low bins prevents inversion until explicitly
 restored (for example with `pad`). Removing high bins lowers the inverse sampling
 frequency while keeping duration `1/df`; pad back to restore the earlier rate.
-Conversion allocates output storage. Unsupported devices/AD element types do not
+Conversion allocates output storage and retains FFTW sample precision (Float32 or
+Float64); metadata precision remains independent. Unsupported devices/AD element types do not
 fall back to host materialization.

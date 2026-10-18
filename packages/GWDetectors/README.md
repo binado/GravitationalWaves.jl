@@ -1,7 +1,7 @@
 # GWDetectors
 
 Native Julia geometry, antenna factors, arrival delays, and frequency-domain projection
-for ground-based interferometers. Requires Julia 1.12 and StaticArrays.jl.
+for ground-based interferometers. Requires Julia 1.12, StaticArrays.jl, and GWSeries.
 The response uses the long-wavelength approximation at one reference time.
 
 ```julia

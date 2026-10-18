@@ -13,6 +13,7 @@ versions, dependencies, and licenses.
 Julia packages live in `packages/`:
 
 - `GWNoise`: native one-sided PSD/ASD text readers, tabulated interpolation and finite Gaussian noise segments. Independent of LAL/Python; tests cover physical Fourier normalization. PSD estimation and streaming remain out of scope.
+- `GWInference`: joint frequency-domain metrics over ordered channels, real/complex inner products, SNRs and fixed-PSD Gaussian likelihood statistics. LinearAlgebra/StaticArrays runtime; independent PSDs use diagonal weights, correlated spectra use cached whitening factors per frequency. Shapes are `(frequency, channel)`; layout measurements live in `benchmarks/GWInference`. Native host matrices and views use allocation-free kernels; traced arrays use broadcast/reduction kernels. Heavy AD and waveform/projection composition live in `integration/GWInference`. Only strain parameters, not metric preparation, are in the initial AD contract. Compiled matched-filter SNR uses `check=false` after host validation of nonzero templates.
 - `AbstractGWWaveforms`: dependency-free interface owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
@@ -47,6 +48,8 @@ just test-integration                         # heavy AD integration suites, loc
 just test-integration-conversion              # Reactant CPU + Enzyme, no LAL/Python needed
 just test-integration-waveforms               # ForwardDiff + Enzyme + Mooncake + Reactant CPU (TaylorF2)
 just test-integration-detectors               # detector AD + Reactant CPU
+just test-integration-inference               # metric AD + waveform/projection/likelihood
+just benchmark-inference                      # compare frequency/channel storage layouts
 ```
 
 Single test file: `julia --project=packages/LALWaveforms -e 'using Test, LALWaveforms; include("packages/LALWaveforms/test/test_fd.jl")'` (the `test/` extras like JSON/NPZ/JET are only resolved under `Pkg.test()`, so for reference/quality tests use `Pkg.test()` or activate `test/`'s target env).
@@ -87,7 +90,7 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
 changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
-packages and `GWDetectors`. Detector changes select `GWDetectors`. CI configuration, root Julia environment files, and unfamiliar paths test all
+packages, `GWDetectors`, and `GWInference`. Detector changes select `GWDetectors`. Inference changes select `GWInference`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.
 Formatting runs on every workflow, coverage collection is disabled, and newer PR commits
@@ -98,7 +101,7 @@ and default test targets. Run `just test-integration` locally before submitting 
 to numerical kernels or the AD integrations; individual package recipes are listed above.
 CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
-Pushes to `main` and manual CI runs test all six packages on Julia 1.12 and latest stable.
+Pushes to `main` and manual CI runs test all eight packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
 Selection and status checks can be tested locally with
 `python3 -m unittest discover -s .github/ci -v`.

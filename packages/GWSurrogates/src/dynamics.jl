@@ -38,6 +38,12 @@ output_times(s::DynamicsSurrogate) = s.tds
 
 const State = SVector{11}
 
+# Common element type of a tuple or array. `eltype` of a tuple mixing, say, dual numbers and plain
+# floats is an abstract union, which would make the state type abstract and slow by orders of
+# magnitude, so promote the element types instead.
+element_type(x::Tuple) = mapreduce(typeof, promote_type, x)
+element_type(x::AbstractArray) = eltype(x)
+
 # Fit inputs: q and the spins rotated into the coorbital frame by the orbital phase.
 @inline function ds_fit_x(q, y)
     sp = sin(y[5])
@@ -108,14 +114,20 @@ end
     m2 = (r2 * a33 - h2 * r3) / det
     m3 = (a22 * r3 - h2 * r2) / det
     z = zero(m2)
-    seg = 1 + (x >= t2) + (x >= t3)
-    ts = (t1, t2, t3, t4)
-    us = (u1, u2, u3, u4)
-    ms = (z, m2, m3, z)
-    h = ts[seg + 1] - ts[seg]
-    a = (ts[seg + 1] - x) / h
-    b = (x - ts[seg]) / h
-    return a * us[seg] + b * us[seg + 1] + ((a^3 - a) * ms[seg] + (b^3 - b) * ms[seg + 1]) * (h^2 / 6)
+    # Select the segment's endpoints with ifelse instead of indexing tuples at a runtime
+    # position, which Enzyme cannot type.
+    in2 = x >= t2
+    in3 = x >= t3
+    tlo = ifelse(in3, t3, ifelse(in2, t2, t1))
+    thi = ifelse(in3, t4, ifelse(in2, t3, t2))
+    ulo = ifelse(in3, u3, ifelse(in2, u2, u1))
+    uhi = ifelse(in3, u4, ifelse(in2, u3, u2))
+    mlo = ifelse(in3, m3, ifelse(in2, m2, z))
+    mhi = ifelse(in3, z, ifelse(in2, m3, m2))
+    h = thi - tlo
+    a = (thi - x) / h
+    b = (x - tlo) / h
+    return a * ulo + b * uhi + ((a^3 - a) * mlo + (b^3 - b) * mhi) * (h^2 / 6)
 end
 
 """
@@ -263,7 +275,7 @@ function t_ref_from_omega(
     omega_ref <= s.omega_ref_max || throw(ArgumentError("omega_ref = $omega_ref exceeds the model limit $(s.omega_ref_max)"))
     a = rotate_spin(chiA0, -1 * init_orbphase)
     b = rotate_spin(chiB0, -1 * init_orbphase)
-    T = promote_type(typeof(q), eltype(a), eltype(b), typeof(init_orbphase), Float64)
+    T = promote_type(typeof(q), element_type(a), element_type(b), typeof(init_orbphase), element_type(init_quat), Float64)
     y0 = State{T}(init_quat[1], init_quat[2], init_quat[3], init_quat[4], init_orbphase, a..., b...)
     powers = Vector{T}(undef, n_fit_powers(s.settings))
     omega0 = node_omega(s, 0, q, y0, powers)
@@ -288,8 +300,10 @@ end
 
 Evolve the dynamics surrogate from the initial conditions at the reference time `t_ref`
 (default: the first node). `chiA0`, `chiB0` are the spin 3-vectors in the LAL source frame at
-the reference epoch. Returns a named tuple `(t, quat, orbphase, chiA, chiB)` sampled at
-[`output_times`](@ref): `quat` is `(n, 4)`, the spins are `(n, 3)` in the coprecessing frame.
+the reference epoch. Returns a named tuple `(quat, orbphase, chiA, chiB)` sampled at
+[`output_times`](@ref): `quat` is `(n, 4)`, the spins are `(n, 3)` in the coprecessing frame. (The
+times are not returned: mixing the model's constant time vector with the differentiated outputs
+makes Enzyme's static activity analysis fail.)
 
 If `t_ref` is not a node, one forward-Euler step to the nearest node is taken first. Magnitudes
 of the spins are preserved by the per-step renormalization.
@@ -304,7 +318,7 @@ function dynamics(
     normB = sqrt(b[1]^2 + b[2]^2 + b[3]^2)
     max(normA, normB) <= 1.001 || throw(ArgumentError("spin magnitude $(max(normA, normB)) exceeds 1"))
     T = promote_type(
-        typeof(q), eltype(a), eltype(b), typeof(init_orbphase), eltype(init_quat), typeof(something(t_ref, 0.0)), Float64,
+        typeof(q), element_type(a), element_type(b), typeof(init_orbphase), element_type(init_quat), typeof(something(t_ref, 0.0)), Float64,
     )
     if t_ref !== nothing
         s.t[1] <= t_ref <= s.t[end] || throw(ArgumentError("t_ref outside the time domain"))
@@ -372,7 +386,6 @@ function dynamics(
 
     n = length(y)
     return (
-        t = s.tds,
         quat = T[y[r][c] for r in 1:n, c in 1:4],
         orbphase = T[y[r][5] for r in 1:n],
         chiA = T[y[r][5 + c] for r in 1:n, c in 1:3],

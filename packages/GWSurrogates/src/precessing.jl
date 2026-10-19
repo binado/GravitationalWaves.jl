@@ -44,12 +44,14 @@ end
 
 # Natural cubic spline of every column of `Y` (knots `t_in`), evaluated at `t_out`.
 function spline_columns(t_out, t_in, Y::AbstractMatrix)
+    issorted(t_in; lt = <=) || throw(ArgumentError("knots must be strictly increasing"))
     T = promote_type(eltype(Y), typeof(float(first(t_out))))
     out = Matrix{T}(undef, length(t_out), size(Y, 2))
     for j in axes(Y, 2)
-        spline = NaturalCubicSpline(t_in, Y[:, j])
+        u = Y[:, j]
+        m = spline_second_derivatives(t_in, u)
         for (i, x) in enumerate(t_out)
-            out[i, j] = spline_eval(spline, x)
+            out[i, j] = spline_eval(t_in, u, m, x)
         end
     end
     return out
@@ -126,8 +128,8 @@ function inertial_modes(
 
     # Interpolate to the coorbital time grid, where the coorbital spins oscillate faster than the
     # coprecessing ones, and rebuild the frame quantities.
-    chiA_copr = spline_columns(t_coorb, d.t, d.chiA)
-    chiB_copr = spline_columns(t_coorb, d.t, d.chiB)
+    chiA_copr = spline_columns(t_coorb, dyn.tds, d.chiA)
+    chiB_copr = spline_columns(t_coorb, dyn.tds, d.chiB)
     n = length(t_coorb)
     for k in 1:n
         a = rescale_to_norm((chiA_copr[k, 1], chiA_copr[k, 2], chiA_copr[k, 3]), chiA_norm)
@@ -135,8 +137,8 @@ function inertial_modes(
         chiA_copr[k, :] .= a
         chiB_copr[k, :] .= b
     end
-    orbphase = vec(spline_columns(t_coorb, d.t, reshape(d.orbphase, :, 1)))
-    quat = spline_columns(t_coorb, d.t, d.quat)
+    orbphase = vec(spline_columns(t_coorb, dyn.tds, reshape(d.orbphase, :, 1)))
+    quat = spline_columns(t_coorb, dyn.tds, d.quat)
     for k in 1:n
         nq = sqrt(quat[k, 1]^2 + quat[k, 2]^2 + quat[k, 3]^2 + quat[k, 4]^2)
         quat[k, :] ./= nq
@@ -173,7 +175,13 @@ function inertial_modes(
         collect(times)
     else
         t0 = t_low === nothing ? t_coorb[1] : t_low
-        t0 .+ dt .* (0:(ceil(Int, (t_coorb[end] - t0) / dt) - 1))
+        # A plain loop: Enzyme cannot differentiate the float range `t0 .+ dt .* (0:N-1)`.
+        nt = ceil(Int, (t_coorb[end] - t0) / dt)
+        grid = Vector{typeof(t0 + dt)}(undef, nt)
+        for k in 1:nt
+            grid[k] = t0 + dt * (k - 1)
+        end
+        grid
     end
     t_out[end] <= t_coorb[end] + 0.01 || throw(ArgumentError("times extend beyond the end of the model"))
     t_out[1] >= t_coorb[1] || throw(ArgumentError("times start before the start of the model"))

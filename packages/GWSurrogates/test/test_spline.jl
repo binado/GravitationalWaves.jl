@@ -25,6 +25,15 @@ using ForwardDiff
         @test s.m[1] == 0 && s.m[end] == 0
     end
 
+    @testset "functional kernels match the struct" begin
+        u = @. cos(t) + 0.05t^3
+        m = GWSurrogates.spline_second_derivatives(t, u)
+        s = GWSurrogates.NaturalCubicSpline(t, u)
+        @test m == s.m
+        @test m[1] == 0 && m[end] == 0
+        @test all(x -> GWSurrogates.spline_eval(t, u, m, x) == GWSurrogates.spline_eval(s, x), xs)
+    end
+
     @testset "reproduces a line and rejects bad input" begin
         s = GWSurrogates.NaturalCubicSpline(t, 2 .* t .+ 1)
         @test all(x -> GWSurrogates.spline_eval(s, x) ≈ 2x + 1, xs)

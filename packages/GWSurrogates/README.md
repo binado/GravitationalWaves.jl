@@ -20,7 +20,7 @@ h = GWSurrogates.coorbital_modes(sur, q, chiA, chiB)   # (n_times, n_modes), (2,
 dyn = GWSurrogates.load_dynamics(:NRSur7dq4)
 # Evolve from the reference time t_ref (default: first node) to the full time grid.
 out = GWSurrogates.dynamics(dyn, q, chiA0, chiB0; t_ref = -100.0)
-out.t, out.quat, out.orbphase, out.chiA, out.chiB   # coprecessing frame, sampled at output_times(dyn)
+out.quat, out.orbphase, out.chiA, out.chiB   # coprecessing frame, sampled at output_times(dyn)
 ```
 
 Set `GWSURROGATES_DATA_DIR` to a directory holding `NRSur7dq4.h5` / `NRSur7dq4v2.h5` to skip the
@@ -41,13 +41,42 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 
 `SphericalFunctions.jl` and `DataInterpolations.jl` are test oracles only.
 
-## Differentiation notes
+## Differentiation
 
-- Exactly-zero spin is not a regular point: the renormalisation target `|chi|` has a cone-shaped
-  kink there. `rescale_to_norm` returns a zero vector unchanged instead of `NaN`.
-- Model data is stored in flat integer-indexed vectors (CSR-style fit sets) and read with plain
-  loops: Enzyme fails on `Dict` lookups with runtime keys and on closures over arrays loaded from
-  the model. Enzyme and Mooncake acceptance of the coorbital surrogate is still to be checked.
+ForwardDiff, Mooncake and Enzyme (reverse mode, static activity) all differentiate the kernels,
+the coorbital surrogate, the dynamics integration and the full strain for both models, and agree
+with finite differences (`just test-integration-surrogates`, a local suite in
+`integration/GWSurrogates`; CI does not run it). Reactant is out of scope.
+
+Cost of the gradient of a scalar functional of `hphc_td` (`ell_max = 4`, about 2600 samples at
+2048 Hz, 8 parameters: mass, mass ratio, six spin/orientation parameters), Apple M-series CPU,
+Julia 1.12:
+
+| | primal | ForwardDiff | Mooncake | Enzyme | Enzyme, runtime activity |
+|---|---|---|---|---|---|
+| NRSur7dq4 | 7 ms | 70 ms | 133 ms | 147 ms | 147 ms |
+| NRSur7dq4v2 | 9 ms | 76 ms | 214 ms | 157 ms | 160 ms |
+| first-call compile | – | ≈ 0.1 s | ≈ 42 s | ≈ 50 s | ≈ 41 s |
+
+Runtime activity costs nothing measurable here, so it is a safe fallback if a future change
+upsets Enzyme's static analysis. With 8 parameters ForwardDiff is competitive; the reverse modes
+pay off with more parameters (e.g. adding the initial frame or several `ell_max` studies).
+
+Rules the implementation follows (each was a real failure while porting):
+
+- Model data lives in flat integer-indexed vectors read with plain loops; no `Dict`, no
+  closures or generators over arrays loaded from the model.
+- Exactly-zero spin is not a regular point (the renormalisation target `|chi|` has a cone-shaped
+  kink there); `rescale_to_norm` returns a zero vector unchanged instead of `NaN`.
+- No branches on differentiated values inside a recurrence (the Thomas sweep of the spline starts
+  from zeroed buffers instead of special-casing its first row).
+- Functions do not return a struct that mixes constant model data with differentiated data
+  (`spline_second_derivatives` returns a plain array; `dynamics` does not return the time grid).
+- Never index a tuple of vectors at a runtime position (`interp4` selects the segment with
+  `ifelse`), and build uniform grids with a loop rather than a float `range`.
+- Derive the element type of a spin tuple with `element_type`: `eltype` of a tuple that mixes dual
+  numbers and floats is an abstract union and slows everything down by orders of magnitude.
+- `t_ref_from_omega` (used when you pass `f_ref`) is only C⁰, so pass `t_ref` when differentiating.
 
 ## Differences from gwsurrogate
 

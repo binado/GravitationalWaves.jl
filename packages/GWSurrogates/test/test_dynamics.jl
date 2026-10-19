@@ -32,6 +32,16 @@ using StaticArrays
         end
     end
 
+    @testset "element_type promotes mixed tuples" begin
+        D = ForwardDiff.Dual{Nothing, Float64, 1}
+        d = D(1.0, ForwardDiff.Partials((1.0,)))
+        # eltype of a tuple mixing duals and floats is an abstract union; element_type is concrete.
+        @test !isconcretetype(eltype((d, 0.5, -0.3)))
+        @test GWSurrogates.element_type((d, 0.5, -0.3)) === D
+        @test GWSurrogates.element_type((1, 2.0)) === Float64
+        @test GWSurrogates.element_type([1.0, 2.0]) === Float64
+    end
+
     @testset "normalize_state" begin
         y = SVector(0.5, 1.0, -1.0, 2.0, 3.0, 0.3, 0.4, 0.0, -0.6, 0.0, 0.8)
         n = GWSurrogates.normalize_state(y, 0.25, 2.0)
@@ -91,7 +101,6 @@ end
                     init_quat = ref["case$(i)_quat0"], init_orbphase = ref["case$(i)_orbphase0"],
                     t_ref = isnan(tr) ? nothing : tr,
                 )
-                @test out.t == GWSurrogates.output_times(sur)
                 @test maximum(abs, out.quat - ref["case$(i)_quat"]') < 1.0e-12
                 @test maximum(abs, out.orbphase - ref["case$(i)_orbphase"]) < 1.0e-11
                 @test maximum(abs, out.chiA - ref["case$(i)_chiA"]) < 1.0e-12

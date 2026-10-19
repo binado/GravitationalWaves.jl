@@ -15,7 +15,7 @@ module GWSurrogates
 
 using StaticArrays: SVector
 
-public NaturalCubicSpline, spline_eval, wigner_D, wigner_D_element, guarded_sqrt, rescale_to_norm
+public NaturalCubicSpline, spline_eval, spline_second_derivatives, wigner_D, wigner_D_element, guarded_sqrt, rescale_to_norm
 public FitSettings, FitSet, fit_powers!, eval_fit, fit_params, NRSur7dq4Params, NRSur7dq4v2Params
 public CoorbitalSurrogate, coorbital_modes, load_coorbital, data_path
 public DynamicsSurrogate, dynamics, output_times, t_ref_from_omega, load_dynamics

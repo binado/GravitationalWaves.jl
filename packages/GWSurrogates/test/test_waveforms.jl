@@ -109,6 +109,19 @@ end
                 @test maximum(abs, h[keep] - expected[keep]) < 1.0e-11 * maximum(abs, expected)
             end
 
+            @testset "dt grid equals the explicit grid" begin
+                a = (0.3, 0.2, 0.4)
+                b = (-0.1, 0.5, -0.3)
+                by_dt = GWSurrogates.inertial_modes(sur, 2.0, a, b; ell_max = 2, t_ref = -100.0, dt = 7.0)
+                t0 = sur.coorbital.t[1]
+                @test by_dt.t[1] == t0
+                @test all(diff(by_dt.t) .≈ 7.0)
+                @test by_dt.t[end] < sur.coorbital.t[end]
+                @test by_dt.t[end] + 7.0 >= sur.coorbital.t[end]
+                by_times = GWSurrogates.inertial_modes(sur, 2.0, a, b; ell_max = 2, t_ref = -100.0, times = by_dt.t)
+                @test by_times.modes == by_dt.modes
+            end
+
             @testset "argument checks" begin
                 a = (0.3, 0.2, 0.4)
                 @test_throws ArgumentError GWSurrogates.inertial_modes(sur, 2.0, a, a; ell_max = 1)

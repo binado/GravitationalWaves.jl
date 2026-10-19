@@ -6,6 +6,10 @@ increasing reals) with values `u` (real or complex). Mirrors `gwsurrogate`'s
 `_spline_interp.cpp`. The second derivatives are solved with the Thomas algorithm in buffers
 whose element type is promoted from the inputs, so the construction differentiates with respect
 to both `t` and `u`.
+
+For reverse-mode AD with Enzyme prefer the functional kernels [`spline_second_derivatives`](@ref) and
+`spline_eval(t, u, m, x)`: this struct returns the (constant) knots together with the differentiated
+data, which Enzyme's static activity analysis rejects.
 """
 struct NaturalCubicSpline{T <: AbstractVector, U <: AbstractVector, M <: AbstractVector}
     t::T
@@ -18,6 +22,21 @@ function NaturalCubicSpline(t::AbstractVector{<:Real}, u::AbstractVector{<:Numbe
     n == length(u) || throw(DimensionMismatch("t and u must have the same length"))
     n >= 3 || throw(ArgumentError("a natural cubic spline needs at least 3 knots"))
     issorted(t; lt = <=) || throw(ArgumentError("knots must be strictly increasing"))
+    return NaturalCubicSpline(t, u, spline_second_derivatives(t, u))
+end
+
+"""
+    spline_second_derivatives(t, u)
+
+Second derivatives at the knots of the natural cubic spline through `(t, u)` (zero at both ends),
+solved with the Thomas algorithm in buffers whose element type is promoted from the inputs. This
+and the four-argument [`spline_eval`](@ref) are the unchecked functional kernels behind
+[`NaturalCubicSpline`](@ref); they return plain arrays, which keeps the constant knots and the
+differentiated data from sharing one returned struct (Enzyme's static activity analysis rejects
+that).
+"""
+function spline_second_derivatives(t::AbstractVector, u::AbstractVector)
+    n = length(t)
     TT = float(eltype(t))
     TU = promote_type(eltype(u), TT)
     m = zeros(TU, n)
@@ -29,34 +48,37 @@ function NaturalCubicSpline(t::AbstractVector{<:Real}, u::AbstractVector{<:Numbe
         hl = t[i] - t[i - 1]
         hr = t[i + 1] - t[i]
         rhs = 6 * ((u[i + 1] - u[i]) / hr - (u[i] - u[i - 1]) / hl)
-        if i == 2
-            denom = 2 * (hl + hr)
-            cp[i] = hr / denom
-            dp[i] = rhs / denom
-        else
-            denom = 2 * (hl + hr) - hl * cp[i - 1]
-            cp[i] = hr / denom
-            dp[i] = (rhs - hl * dp[i - 1]) / denom
-        end
+        # cp[1] = dp[1] = 0 start the recursion, so the first row needs no special case (a branch
+        # here defeats Enzyme's static activity analysis).
+        denom = 2 * (hl + hr) - hl * cp[i - 1]
+        cp[i] = hr / denom
+        dp[i] = (rhs - hl * dp[i - 1]) / denom
     end
     m[n - 1] = dp[n - 1]
     for i in (n - 2):-1:2
         m[i] = dp[i] - cp[i] * m[i + 1]
     end
-    return NaturalCubicSpline(t, u, m)
+    return m
+end
+
+"""
+    spline_eval(t, u, m, x)
+
+Evaluate the natural cubic spline with knots `t`, values `u` and second derivatives `m` (from
+[`spline_second_derivatives`](@ref)) at `x`. Outside the knot range the cubic of the first or
+last segment is extended.
+"""
+function spline_eval(t::AbstractVector, u::AbstractVector, m::AbstractVector, x)
+    i = clamp(searchsortedlast(t, x), 1, length(t) - 1)
+    h = t[i + 1] - t[i]
+    a = (t[i + 1] - x) / h
+    b = (x - t[i]) / h
+    return a * u[i] + b * u[i + 1] + ((a^3 - a) * m[i] + (b^3 - b) * m[i + 1]) * (h^2 / 6)
 end
 
 """
     spline_eval(spline, x)
 
-Evaluate `spline` at `x`. Outside the knot range the cubic of the first or last segment is
-extended.
+Evaluate `spline` at `x`.
 """
-function spline_eval(s::NaturalCubicSpline, x)
-    t = s.t
-    i = clamp(searchsortedlast(t, x), 1, length(t) - 1)
-    h = t[i + 1] - t[i]
-    a = (t[i + 1] - x) / h
-    b = (x - t[i]) / h
-    return a * s.u[i] + b * s.u[i + 1] + ((a^3 - a) * s.m[i] + (b^3 - b) * s.m[i + 1]) * (h^2 / 6)
-end
+spline_eval(s::NaturalCubicSpline, x) = spline_eval(s.t, s.u, s.m, x)

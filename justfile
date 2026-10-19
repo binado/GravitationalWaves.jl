@@ -40,7 +40,7 @@ fixtures:
     @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -57,6 +57,10 @@ test-integration-detectors:
 # Joint metric gradients and waveform/projection/likelihood composition.
 test-integration-inference:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate(); include("integration/GWMatchedFiltering/runtests.jl")'
+
+# NRSur7dq4/v2 AD: ForwardDiff, Mooncake and Enzyme (static activity). Downloads the model data on first use (or set GWSURROGATES_DATA_DIR); the compile times are several minutes.
+test-integration-surrogates:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSurrogates -e 'using Pkg; Pkg.instantiate(); include("integration/GWSurrogates/runtests.jl")'
 
 # Layout comparison; output includes timings, allocations, CPU, and Julia version.
 benchmark-inference:

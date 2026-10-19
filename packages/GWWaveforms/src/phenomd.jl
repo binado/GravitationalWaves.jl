@@ -169,16 +169,14 @@ function final_spin_0815_s(eta, s)
 end
 
 """
-    final_spin_0815(eta, chi1, chi2)
+    final_spin_0815(eta, m1, m2, chi1, chi2)
 
 Dimensionless final spin of the remnant (eq. 3.6 of arXiv:1508.07250), for `m1 ≥ m2`.
 """
-function final_spin_0815(eta, chi1, chi2)
-    Seta = sqrt(1.0 - 4.0 * eta)
-    m1 = 0.5 * (1.0 + Seta)
-    m2 = 0.5 * (1.0 - Seta)
-    m1s = m1 * m1
-    m2s = m2 * m2
+function final_spin_0815(eta, m1, m2, chi1, chi2)
+    M = m1 + m2
+    m1s = (m1 / M)^2
+    m2s = (m2 / M)^2
     s = (m1s * chi1 + m2s * chi2)
     return final_spin_0815_s(eta, s)
 end
@@ -194,19 +192,17 @@ function erad_rational_0815_s(eta, s)
 end
 
 # Fraction of the initial mass radiated (eq. 3.7 and 3.8 of arXiv:1508.07250).
-function erad_rational_0815(eta, chi1, chi2)
-    Seta = sqrt(1.0 - 4.0 * eta)
-    m1 = 0.5 * (1.0 + Seta)
-    m2 = 0.5 * (1.0 - Seta)
-    m1s = m1 * m1
-    m2s = m2 * m2
+function erad_rational_0815(eta, m1, m2, chi1, chi2)
+    M = m1 + m2
+    m1s = (m1 / M)^2
+    m2s = (m2 / M)^2
     s = (m1s * chi1 + m2s * chi2) / (m1s + m2s)
     return erad_rational_0815_s(eta, s)
 end
 
 # Ringdown and damping frequencies, in units of the total initial mass.
-fring(eta, chi1, chi2, finspin) = spline_eval(FRING_SPLINE, finspin) / (1.0 - erad_rational_0815(eta, chi1, chi2))
-fdamp(eta, chi1, chi2, finspin) = spline_eval(FDAMP_SPLINE, finspin) / (1.0 - erad_rational_0815(eta, chi1, chi2))
+fring(erad, finspin) = spline_eval(FRING_SPLINE, finspin) / (1.0 - erad)
+fdamp(erad, finspin) = spline_eval(FDAMP_SPLINE, finspin) / (1.0 - erad)
 
 # PN reduced spin parameter, eq. 5.9 of arXiv:1107.1267.
 function chi_pn(Seta, eta, chi1, chi2)
@@ -269,18 +265,15 @@ end
 
 # Amplitude coefficients, `ComputeIMRPhenomDAmplitudeCoefficients`; masses are ordered
 # `m1 ≥ m2` and `chi1` is the spin on `m1`.
-function phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
+function phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, fRD, fDM)
     etaInv = 1.0 / eta
     chi12 = chi1 * chi1
     chi22 = chi2 * chi2
     eta2 = eta * eta
     eta3 = eta * eta2
-    Seta = sqrt(1.0 - 4.0 * eta)
     SetaPlus1 = 1.0 + Seta
     chi = chi_pn(Seta, eta, chi1, chi2)
     xi = -1.0 + chi
-    fRD = fring(eta, chi1, chi2, finspin)
-    fDM = fdamp(eta, chi1, chi2, finspin)
 
     gamma1 = gamma1_fun(eta, eta2, xi)
     gamma2 = gamma2_fun(eta, eta2, xi)
@@ -435,9 +428,8 @@ function dphi_ins_ansatz_int(Mf, p, pn::TaylorF2Phasing)
 end
 
 # Phase coefficients before the C¹ continuity constants (`ComputeIMRPhenomDPhaseCoefficients`).
-function phenomd_phase_fits(eta, chi1, chi2, finspin)
+function phenomd_phase_fits(eta, Seta, chi1, chi2, fRD, fDM)
     eta2 = eta * eta
-    Seta = sqrt(1.0 - 4.0 * eta)
     chi = chi_pn(Seta, eta, chi1, chi2)
     xi = -1.0 + chi
     return (;
@@ -448,7 +440,7 @@ function phenomd_phase_fits(eta, chi1, chi2, finspin)
         alpha1 = alpha1Fit(eta, eta2, xi), alpha2 = alpha2Fit(eta, eta2, xi),
         alpha3 = alpha3Fit(eta, eta2, xi), alpha4 = alpha4Fit(eta, eta2, xi),
         alpha5 = alpha5Fit(eta, eta2, xi),
-        fRD = fring(eta, chi1, chi2, finspin), fDM = fdamp(eta, chi1, chi2, finspin),
+        fRD, fDM,
     )
 end
 
@@ -540,10 +532,15 @@ function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
     eta = nudged_eta(m1, m2)
     M_sec = M * MTSUN_SI
 
-    finspin = final_spin_0815(eta, chi1, chi2)
+    # Carry the mass difference directly: sqrt(1 - 4eta) has singular AD at equal mass.
+    Seta = (m1 - m2) / M
+    finspin = final_spin_0815(eta, m1, m2, chi1, chi2)
+    erad = erad_rational_0815(eta, m1, m2, chi1, chi2)
+    fRD = fring(erad, finspin)
+    fDM = fdamp(erad, finspin)
 
-    amp = phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
-    phi = phenomd_phase_fits(eta, chi1, chi2, finspin)
+    amp = phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, fRD, fDM)
+    phi = phenomd_phase_fits(eta, Seta, chi1, chi2, fRD, fDM)
 
     # TaylorF2 phasing to 3.5PN spin order, minus the 3PN spin-spin term (see `subtract_3pn_ss`).
     pn0 = taylorf2_pn_phasing(m1, m2, chi1, chi2; spin_order = 7)
@@ -687,7 +684,7 @@ function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)
     eta = a * b / ((a + b) * (a + b))
     eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-    final_spin_0815(nudged_eta(a, b), chi1, chi2) > 1.0 &&
+    final_spin_0815(nudged_eta(a, b), a, b, chi1, chi2) > 1.0 &&
         throw(ArgumentError("final spin > 1.0 is not supported"))
     return nothing
 end

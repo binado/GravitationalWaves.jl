@@ -48,8 +48,8 @@ and frequency ranges the model cannot produce, and returns `nothing` otherwise.
 AD support is restricted to ForwardDiff and Mooncake. The frequency grid and generator
 are fixed configuration; masses, spins, distance, inclination and phase may be differentiated.
 Kernels use ordinary Julia loops, branches and small matrix solves.
-IMRPhenomD's reconstruction of `sqrt(1 - 4eta)` has singular derivatives at exact
-equal component masses; use unequal masses when differentiating that model.
+IMRPhenomD uses component masses directly for mass differences and remnant fits,
+keeping component-mass derivatives finite at exact equal masses.
 `maximum_frequency` must be positive; intrinsic mass-dependent cutoffs are applied within
 the configured frequency interval.
 

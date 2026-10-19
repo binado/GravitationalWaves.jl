@@ -22,12 +22,10 @@ test_waveform_gradients(
             h = hphc_fd(AD_GRID, p, generator)
             return 1.0e22 * (sum(real, h.plus) + sum(imag, h.cross))
         end
-        # PhenomD reconstructs sqrt(1 - 4eta), whose derivative is singular at equal mass.
-        m2 = G === IMRPhenomD ? 29.9 : 30.0
         # Cross component ordering, spline segments, waveform regions and cutoff bins.
         cache = Mooncake.prepare_gradient_cache(loss, [36.0, 29.0, 0.3, 0.2])
         for x in (
-                [36.0, 29.0, 0.3, 0.2], [30.0, m2, 0.6, 0.3],
+                [36.0, 29.0, 0.3, 0.2], [30.0, 30.0, 0.6, 0.3],
                 [29.0, 36.0, 0.2, 0.3], [180.0, 120.0, 0.3, 0.2],
             )
             expected = ForwardDiff.gradient(loss, x)

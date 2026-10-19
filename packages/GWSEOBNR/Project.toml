@@ -18,7 +18,14 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 
+[weakdeps]
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+
+[extensions]
+GWSEOBNREnzymeCoreExt = "EnzymeCore"
+
 [compat]
+EnzymeCore = "0.8.21"
 AbstractGWWaveforms = "0.2"
 FFTW = "1"
 ForwardDiff = "1"

@@ -31,3 +31,6 @@ outside the original tolerances. These failures are not skipped or relaxed.
 
 Exploratory native Enzyme reverse-mode results and reproduction instructions are
 in [ENZYME.md](ENZYME.md). These probes do not establish reverse-mode support.
+`just test-integration-seobnr-fft` tests the optional local FFT reverse rule
+without Python or oracle fixtures, including endpoint weighting and cotangent
+accumulation. The complete waveform/likelihood Enzyme probes remain exploratory.

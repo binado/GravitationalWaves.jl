@@ -24,8 +24,9 @@ through `1e-5`, applied separately to each input. The table reports the best
 agreement across those steps; all step errors and gradient vectors are saved.
 The tail test exercises native complex loggamma successfully.
 
-The following failures produce no Enzyme gradient, so a numerical gradient error
-cannot be assigned:
+The initial probes below predate the local FFT rule added in the follow-up
+described below. These failures produced no Enzyme gradient, so a numerical
+gradient error cannot be assigned:
 
 - Initial conditions: `EnzymeNoDerivativeError` for LAPACK `dgesdd_64_`, reached
   through the Newton solver's `cond(J)` check. Runtime activity has the same failure.
@@ -45,7 +46,49 @@ These are the first observed blockers, not proof that subsequent operations have
 working adjoints. In particular, implicit-root and continuous-time partials are
 currently attached through ForwardDiff-specific methods. Correct reverse support
 needs implicit pullbacks and validation after compilation barriers are resolved.
-No custom reverse rules or runtime model changes were introduced for these probes.
+No custom reverse rules or runtime model changes were present in the initial probes.
+
+## FFT reverse-rule follow-up
+
+`GWSEOBNREnzymeCoreExt` now provides a reverse rule for `GWSEOBNR.real_fft` on
+dense Float32/Float64 vectors, with one reverse lane. EnzymeCore is an optional
+weak dependency; Enzyme remains outside the runtime dependencies. The rule
+creates an ESTIMATE plan on scratch storage in the augmented primal, retains it
+as constant tape data, and applies its existing AbstractFFTs adjoint to the output
+cotangent. Input cotangents accumulate and the consumed output cotangent is
+cleared. No methods on FFTW or global inactive annotations are introduced.
+
+This follows the constant-plan/adjoint construction discussed in
+[NonlinearSolve #597](https://github.com/SciML/NonlinearSolve.jl/issues/597),
+restricted to our out-of-place real-vector wrapper. Planning is not differentiated.
+The local rule does not provide whole-waveform reverse-mode support.
+
+```sh
+just test-integration-seobnr-fft
+```
+
+`test_enzyme_fft.jl` checks lengths 1, 2, 7, 8, 15, and 16 for both scalar types,
+with analytic direct-DFT gradients, ForwardDiff, and five-point finite
+differences. Linear complex probes cover DC and the highest bin (Nyquist for
+even lengths). Repeated FFT calls, existing input cotangents, and the active
+physical-spectrum normalization/time-origin correction are also checked.
+For the quadratic direct-DFT objective the finite-difference step is `1e-2`;
+its five-point formula has no truncation error in exact arithmetic. The physical
+time-shift test uses `1e-6` and checks discretization independently.
+
+All 131 assertions pass on Julia 1.12.7 / Enzyme 0.13.216. Maximum relative
+analytic direct-DFT gradient errors are `1.27e-15` (Float64) and `7.40e-8`
+(Float32). Maximum five-point finite-difference errors are `6.50e-14` and
+`7.40e-8`, respectively. The original `sum(abs2, real_fft(x))` probe now passes
+with `1.56e-16` relative error against ForwardDiff and best finite-difference
+error `8.89e-14`. The committed follow-up measurements are in
+`packages/GWSEOBNR/diagnostics/enzyme-fft-2026-10-19.toml`; the initial record is
+retained as the pre-rule baseline.
+
+The complete waveform probe was rerun with the FFT extension loaded. It still
+returns `IllegalTypeAnalysisException` at the solver return-code equality check
+in `dynamics.jl:91`, before producing a gradient. The local FFT fix therefore
+does not remove the independent dynamics/root blockers.
 
 ## Reproduction
 
@@ -60,5 +103,5 @@ cause a nonzero driver exit status; they are recorded rather than asserted as
 expected successes. Full errors, gradients, finite-difference comparisons, and
 logs are written under gitignored `reference/seobnr/enzyme/`. A compact measured
 record is committed in `packages/GWSEOBNR/diagnostics/enzyme-2026-10-19.toml`.
-Only the standalone integration environment adds Enzyme; package dependencies
-and the advertised differentiation capability are unchanged.
+Only the standalone integration environment adds Enzyme. The package adds the
+optional EnzymeCore extension; the advertised differentiation capability is unchanged.

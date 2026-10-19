@@ -1,0 +1,13 @@
+Disable Python embedding and remove build-machine flags from public version metadata.
+Recipe PR: https://github.com/JuliaPackaging/Yggdrasil/pull/15187
+
+--- a/lalsimulation/configure.ac
++++ b/lalsimulation/configure.ac
+@@ -150 +150 @@
+-PKG_CHECK_MODULES([PYTHON3_EMBED],[python-${PYTHON_VERSION}-embed],[have_python3_embed=true],[have_python3_embed=false])
++have_python3_embed=false
+--- a/gnuscripts/lalsuite_vcs_info.am
++++ b/gnuscripts/lalsuite_vcs_info.am
+@@ -18 +18 @@
+-	echo '#define $(PACKAGE_NAME_UCASE)_CONFIGURE_ARGS "'"$(ac_configure_args)"'"' >>$@; \
++	echo '#define $(PACKAGE_NAME_UCASE)_CONFIGURE_ARGS "'"BinaryBuilder: shared libraries; Python and OpenMP disabled; HDF5 enabled"'"' >>$@; \

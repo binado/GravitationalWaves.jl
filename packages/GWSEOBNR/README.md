@@ -46,7 +46,8 @@ ForwardDiff uses NonlinearSolve's implicit derivatives without requiring
 SciMLSensitivity. Loading optional `SciMLSensitivity` selects the tested
 `SteadyStateAdjoint(autojacvec=false)`, using dense ForwardDiff residual Jacobians
 inside the native Enzyme implicit pullback. Continuous timing partials use
-implicit differentiation. Evolution uses Vern9 dense output. The complex
+implicit differentiation through ForwardDiff; reverse timing pullbacks are not
+implemented. Evolution uses Vern9 dense output. The complex
 tail and FFT have package-local ForwardDiff adapters. Timing and matching use
 continuous interpolants, with fixed five-point time derivatives for matching.
 Physical piecewise formulas are retained.
@@ -61,6 +62,50 @@ primal error checks; trajectory values and continuous timing remain active.
 Run `just test-integration-seobnr-fft` for direct-DFT and gradient checks.
 Run `just test-integration-seobnr-initial` for nine-case production initial-state
 and Enzyme-gradient comparisons against the frozen sequential solver.
+
+## Current numerical and reverse-mode errors
+
+Measured on 2026-10-19 with Julia 1.12.7, Enzyme 0.13.216, NonlinearSolve
+4.32.0, and SciMLSensitivity 7.119.13. No complete Enzyme waveform gradient has
+been returned, so there is no waveform reverse-gradient numerical error to report.
+
+- **Primal/ForwardDiff acceptance:** 130 checks pass and 13 fail. Nine failures
+  concern NQC matching coefficients; four concern the unweighted spectral L²
+  error limit (`1e-3`). All tested ForwardDiff derivative checks, noise-weighted
+  mismatches, convergence checks, and offset likelihood gradients pass. See
+  [ACCEPTANCE.md](ACCEPTANCE.md) for the cases and diagnostics. The failed gates
+  remain required; `is_differentiable=false`.
+- **Production reverse path:** the initial-condition gradients pass all nine
+  tested cases, but the complete waveform fails in automatic ODE sensitivity
+  selection with `ReverseDiffVJP{false} does not support Functors.jl parameter
+  structs`. The ODE parameters are a NamedTuple containing Hamiltonian data and
+  precomputed flux arrays. Enzyme is the outer engine; SciMLSensitivity selects
+  ReverseDiff internally for this ODE adjoint. See the committed
+  [production diagnostics](diagnostics/nonlinearsolve-production-2026-10-19.toml).
+- **Experimental SciMLStructures parameters:** an integration-only wrapper
+  exposes all 7,297 real coefficient values as tunable, including the real and
+  imaginary parts of the multipole prefixes. This gets the full waveform probe
+  past the parameter-container error. Its next observed failure is
+  `IllegalTypeAnalysisException` in `bracket_root`, at
+  `signbit(fa) != signbit(fb)` (`src/roots.jl`). Correct reverse timing requires
+  implicit pullbacks; marking the root inactive would discard physical
+  derivatives. The wrapper is not installed in production.
+- **Packing experiment:** the first short-ODE attempt with the wrapper failed
+  with `Need an adjoint for constructor Base.Generator` during SciMLSensitivity's
+  Zygote reconstruction of structured parameter cotangents. The revised wrapper
+  uses explicit concatenation and gets past that error, but the short ODE now
+  fails with `FieldError: type Active has no field dval` in
+  `DiffEqBaseEnzymeExt.reverse` (`solve_up`): the initial `SVector` is annotated
+  `Active`, while the rule accesses `.dval` on it. No short-ODE reverse gradient is
+  returned. Direct RHS Enzyme gradients agree with ForwardDiff to `1.9e-15`;
+  this component result does not validate the ODE adjoint or complete waveform.
+
+See [the SciMLStructures experiment](../../integration/GWSEOBNR/SCIMLSTRUCTURES.md),
+[committed experiment diagnostics](diagnostics/scimlstructures-2026-10-19.toml),
+and [the Enzyme investigation](../../integration/GWSEOBNR/ENZYME.md) for
+reproduction commands and the distinction between previous and current blockers.
+The initial-condition SVD and FFT-planning errors from earlier probes have been
+resolved for their tested components; they are not the current production blocker.
 
 Small committed component/QNM snapshots run without Python. The separate locked
 oracle environment is documented in [python/seobnr](../../python/seobnr/README.md).

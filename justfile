@@ -84,3 +84,8 @@ test-integration-seobnr-validation:
 test-integration-seobnr-initial:
     {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR integration/GWSEOBNR/probe_nonlinearsolve.jl production default reference/seobnr/enzyme/nonlinearsolve-production.toml
+
+# Exploratory SciMLStructures ODE container; records reverse errors and exits nonzero on failure.
+probe-seobnr-structures:
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR integration/GWSEOBNR/probe_scimlstructures.jl short reference/seobnr/enzyme/structures-short-explicit.toml

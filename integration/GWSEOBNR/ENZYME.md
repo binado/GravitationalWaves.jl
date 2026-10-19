@@ -144,3 +144,10 @@ ODE sensitivity error: automatic selection chooses `ReverseDiffVJP`, which does
 not support the Functors parameter structure. No waveform gradient is returned.
 This replaces the initial-condition SVD blocker; continuous timing still lacks
 reverse pullbacks. Full waveform reverse mode remains unvalidated.
+
+## SciMLStructures ODE parameters
+
+An integration-only `EOBParameters` prototype exposes every precomputed physical
+coefficient as a flat real tunable vector. See [SCIMLSTRUCTURES.md](SCIMLSTRUCTURES.md)
+for the interface, reproduction commands, and measured limitations. The runtime
+parameter container and advertised differentiation support are unchanged.

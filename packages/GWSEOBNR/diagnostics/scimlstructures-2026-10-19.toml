@@ -1,0 +1,44 @@
+container_assertions = 102
+production_changed = false
+tunable_count = 7297
+enzyme = "0.13.216"
+scimlsensitivity = "7.119.13"
+julia = "1.12.7"
+short_ode_error_location = "DiffEqBaseEnzymeExt.reverse, solve_up, line 140; u0::Active{SVector{4,Float64}}"
+scimlstructures = "1.10.6"
+initial_packing_error = "Need an adjoint for constructor Base.Generator"
+
+[rhs]
+enzyme_forwarddiff_error = 1.897343984969843e-15
+forwarddiff = [2.1365529625157264e-5, -4.2731059250310693e-5, 0.0027624996876756346, 0.0011795572968389817]
+steps = [0.010000000000000002, 0.0017782794100389228, 0.00031622776601683794, 5.623413251903491e-5, 1.0e-5]
+primal = 0.044234834220651234
+forwarddiff_fd_errors = [7.110691792389574e-12, 2.5090862370741983e-11, 4.0513668256837616e-10, 6.803022733797645e-10, 4.460263731041369e-9]
+status = "pass"
+gradient = [2.1365529625153307e-5, -4.2731059250306614e-5, 0.0027624996876756346, 0.0011795572968389821]
+seconds_including_compilation = 1.762473291
+enzyme_fd_errors = [7.110010383023162e-12, 2.5090693410041608e-11, 4.0513627272217916e-10, 6.803008093473545e-10, 4.460263303729434e-9]
+
+[waveform]
+steps = [0.010000000000000002, 0.0017782794100389228, 0.00031622776601683794, 5.623413251903491e-5, 1.0e-5]
+primal = -0.6785054709114814
+mode = "default"
+forwarddiff = [8.249739009278276, 18.04774186705626, -107.197386221201, -41.23232216992347, 0.0013570110276790264, 0.3243033710680829, -3.8809052692214534]
+parameters = [40.0, 20.0, 0.4, -0.3, 500.0, 0.7, 0.3]
+forwarddiff_fd_errors = [0.0026374975992470608, 4.61413440134762e-6, 2.3003840506517906e-6, 1.365092854960868e-5, 9.330699189336718e-5]
+status = "error"
+error_type = "Enzyme.Compiler.IllegalTypeAnalysisException"
+case = "waveform"
+error = "IllegalTypeAnalysisException in bracket_root: signbit(fa) != signbit(fb), src/roots.jl:13"
+enzyme = "0.13.216"
+scimlsensitivity = "7.119.13"
+julia = "1.12.7"
+
+[short_ode]
+forwarddiff = [-0.26014759199779147, -0.2475074024408405, -0.6300889105967943, -0.2795306787364114]
+steps = [0.010000000000000002, 0.0017782794100389228, 0.00031622776601683794, 5.623413251903491e-5, 1.0e-5]
+primal = 34.96053888584011
+forwarddiff_fd_errors = [1.405641647928388e-10, 6.837139791304642e-10, 2.6272566910187005e-9, 1.613180422972222e-8, 1.073672098951314e-7]
+status = "error"
+error = "FieldError: type Active has no field `dval`, available fields: `val`"
+error_type = "FieldError"

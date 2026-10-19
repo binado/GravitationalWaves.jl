@@ -34,6 +34,8 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 | `guarded_sqrt`, `rescale_to_norm` | Norm and rescaling that stay finite (and differentiable) at zero spin. |
 | `FitSet`, `fit_powers!`, `eval_fit`, `fit_params` | Parametric fits (sum of `coef * prod x_j^n_j` over 7 parameters) in flat, integer-indexed storage. |
 | `DynamicsSurrogate`, `load_dynamics`, `dynamics` | The 11-variable precession ODE: RK4 start-up then variable-step AB4 on the fixed node grid, forward and backward from `t_ref`, with per-step renormalization. Allocation-light (`SVector` state) and about 0.6 ms per trajectory. |
+| `PrecessingSurrogate`, `load_surrogate`, `inertial_modes`, `mode_sum` | The full pipeline: dynamics interpolated onto the coorbital grid, coorbital modes, Wigner-D rotation into the inertial frame, spline resampling and the `₋₂Y_ℓm` sum. About 15 ms for 2000 time samples. |
+| `PrecessingGenerator`, `hphc_td` | SI-unit `h₊`, `h×` from total mass, distance, mass ratio, spin vectors, inclination and reference phase. |
 | `t_ref_from_omega` | Reference time from an orbital frequency by linear interpolation between nodes. Only C⁰: its derivative jumps at every node crossing, so fix `t_ref` for gradient-based work. |
 | `CoorbitalSurrogate`, `load_coorbital`, `coorbital_modes` | Coorbital-frame modes from node fits and the empirical-interpolation basis; v2 blends two time subdomains with stored masks. |
 
@@ -54,7 +56,10 @@ evaluation point in the last interval of a short knot window: it evaluates the c
 interval before it. In the dynamics surrogate this changes the interpolated ODE derivative only for
 times in the last interval of the grid (`t` in the final ~2 M, after merger). This package uses the
 correct natural spline there, so `dynamics` with a `t_ref` in that range differs from
-`gwsurrogate`; everywhere else it agrees to about 1e-14.
+`gwsurrogate`; everywhere else it agrees to about 1e-14. The same bug affects `gwsurrogate`'s
+final resampling when an output sample falls in the last interval of the model grid (`t` within
+about 0.2 M of the end), so the last output sample can differ from `gwsurrogate` by up to about 1e-6 of
+the peak amplitude when the output grid ends exactly at the end of the model.
 
 ## Data
 

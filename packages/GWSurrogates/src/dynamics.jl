@@ -303,7 +303,9 @@ function dynamics(
     normA = sqrt(a[1]^2 + a[2]^2 + a[3]^2)
     normB = sqrt(b[1]^2 + b[2]^2 + b[3]^2)
     max(normA, normB) <= 1.001 || throw(ArgumentError("spin magnitude $(max(normA, normB)) exceeds 1"))
-    T = promote_type(typeof(q), eltype(a), eltype(b), typeof(init_orbphase), eltype(init_quat), Float64)
+    T = promote_type(
+        typeof(q), eltype(a), eltype(b), typeof(init_orbphase), eltype(init_quat), typeof(something(t_ref, 0.0)), Float64,
+    )
     if t_ref !== nothing
         s.t[1] <= t_ref <= s.t[end] || throw(ArgumentError("t_ref outside the time domain"))
     end

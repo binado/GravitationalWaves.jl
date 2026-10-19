@@ -5,6 +5,9 @@ time-dependent coorbital-frame spins on the ``t_coorb`` grid, the node fit value
 datapiece, and the coorbital modes returned by gwsurrogate. Also writes
 ``<model>_dynamics.npz``: dynamics trajectories for several initial conditions and reference
 times, plus ODE right-hand sides at probe states and reference times from orbital frequencies.
+Finally ``<model>_waveforms.npz`` holds full inertial-frame modes (dimensionless) for several
+reference frequencies, output grids and frames, a spin-weighted harmonic table and an end-to-end
+strain in SI units.
 
 Run it with ``uv run --project python/surrogates python python/generate_surrogates.py``. With
 ``--download`` the model files are fetched from Zenodo (CC-BY-4.0, doi:10.5281/zenodo.22257361) and
@@ -20,6 +23,7 @@ from typing import Any
 import gwsurrogate.surrogate as gws_top
 import numpy as np
 from gwsurrogate.new.precessing_surrogate import _utils
+from gwtools.harmonics import sYlm
 from numpy.typing import NDArray
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -178,6 +182,146 @@ def generate_dynamics(name: str, data_dir: Path, out_dir: Path) -> None:
     print(f"wrote {path}")
 
 
+WAVEFORM_CASES: list[dict[str, Any]] = [
+    {"q": 2.0, "chiA": (0.3, 0.2, 0.4), "chiB": (-0.1, 0.5, -0.3)},
+    {
+        "q": 2.0,
+        "chiA": (0.3, 0.2, 0.4),
+        "chiB": (-0.1, 0.5, -0.3),
+        "f_ref": 0.05 / np.pi,
+        "dt": 2.0,
+        "ell_max": 3,
+    },
+    {
+        "q": 3.1,
+        "chiA": (0.5, -0.4, 0.3),
+        "chiB": (0.2, 0.3, -0.6),
+        "f_ref": 0.05 / np.pi,
+        "f_low": 0.04 / np.pi,
+        "dt": 1.5,
+    },
+    {
+        "q": 1.7,
+        "chiA": (-0.2, 0.1, 0.7),
+        "chiB": (0.4, -0.3, 0.1),
+        "f_ref": 0.04 / np.pi,
+        "times": np.concatenate(
+            [np.linspace(-3000.0, -500.0, 200), np.linspace(-499.0, 90.0, 300)]
+        ),
+    },
+    {
+        "q": 2.6,
+        "chiA": (0.1, 0.6, -0.5),
+        "chiB": (0.0, 0.0, 0.7),
+        "f_ref": 0.05 / np.pi,
+        "dt": 3.0,
+        "orbphase": 0.6,
+        "quat": (0.9, 0.1, -0.3, 0.2),
+    },
+    {"q": 1.0, "chiA": (0.0, 0.0, 0.0), "chiB": (0.0, 0.0, 0.0)},
+]
+
+
+def generate_waveforms(name: str, data_dir: Path, out_dir: Path) -> None:
+    """Write the full-waveform reference fixture of one model.
+
+    Parameters
+    ----------
+    name
+        Model name, a key of ``MODELS``.
+    data_dir
+        Directory containing ``<name>.h5``.
+    out_dir
+        Output directory for the ``.npz`` file.
+    """
+    sur = getattr(gws_top, name)(str(data_dir / f"{name}.h5"))
+    full = sur._sur_dimless
+    ell_model = full.coorb_sur.ellMax
+    out: dict[str, Any] = {"n_cases": np.array(len(WAVEFORM_CASES))}
+    for i, case in enumerate(WAVEFORM_CASES):
+        quat = case.get("quat")
+        opts = {"init_orbphase": case.get("orbphase", 0.0)}
+        if quat is not None:
+            opts["init_quat"] = np.array(quat)
+        ell_max = case.get("ell_max", ell_model)
+        times, h, _ = full(
+            [case["q"], np.array(case["chiA"]), np.array(case["chiB"])],
+            fM_low=case.get("f_low", 0),
+            fM_ref=case.get("f_ref", 0),
+            dtM=case.get("dt"),
+            timesM=case.get("times"),
+            ellMax=ell_max,
+            precessing_opts=opts,
+        )
+        modes = np.array(
+            [h[(ell, m)] for ell in range(2, ell_max + 1) for m in range(-ell, ell + 1)]
+        )
+        out[f"case{i}_q"] = np.array(case["q"])
+        out[f"case{i}_chiA0"] = np.array(case["chiA"])
+        out[f"case{i}_chiB0"] = np.array(case["chiB"])
+        out[f"case{i}_f_ref"] = np.array(case.get("f_ref", 0.0))
+        out[f"case{i}_f_low"] = np.array(case.get("f_low", 0.0))
+        out[f"case{i}_dt"] = np.array(case.get("dt", np.nan))
+        if "times" in case:
+            out[f"case{i}_times"] = np.asarray(case["times"])
+        out[f"case{i}_ell_max"] = np.array(ell_max)
+        out[f"case{i}_orbphase0"] = np.array(case.get("orbphase", 0.0))
+        out[f"case{i}_quat0"] = np.array(case.get("quat", (1.0, 0.0, 0.0, 0.0)))
+        out[f"case{i}_t"] = np.asarray(times)
+        out[f"case{i}_modes"] = modes
+
+    # Spin-weighted spherical harmonics, to pin down the convention of the mode sum.
+    thetas = np.array([0.3, 1.1, 2.5])
+    phis = np.array([0.0, 0.7, -2.0])
+    out["sylm_thetas"] = thetas
+    out["sylm_phis"] = phis
+    out["sylm"] = np.array(
+        [
+            [
+                sYlm(-2, ell, m, th, ph)
+                for ell in range(2, 6)
+                for m in range(-ell, ell + 1)
+            ]
+            for th, ph in zip(thetas, phis)
+        ]
+    )
+
+    # End to end in SI units: strain at an inclination and reference phase.
+    mks = {
+        "q": 2.2,
+        "chiA": (0.3, 0.2, 0.4),
+        "chiB": (-0.1, 0.5, -0.3),
+        "M": 60.0,
+        "dist_mpc": 400.0,
+        "f_ref": 25.0,
+        "dt": 1.0 / 4096,
+        "inclination": 0.7,
+        "phi_ref": 0.3,
+    }
+    domain, strain, _ = sur(
+        mks["q"],
+        np.array(mks["chiA"]),
+        np.array(mks["chiB"]),
+        M=mks["M"],
+        dist_mpc=mks["dist_mpc"],
+        f_low=0,
+        f_ref=mks["f_ref"],
+        dt=mks["dt"],
+        inclination=mks["inclination"],
+        phi_ref=mks["phi_ref"],
+        units="mks",
+    )
+    for key, value in mks.items():
+        out[f"mks_{key}"] = np.array(value)
+    out["mks_t"] = np.asarray(domain)
+    out["mks_h"] = np.asarray(strain)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{name}_waveforms.npz"
+    np.savez(path, **out)
+    print(f"wrote {path}")
+
+
 def download(name: str, data_dir: Path) -> None:
     """Fetch the HDF5 file of one model from Zenodo and verify its checksum.
 
@@ -282,6 +426,7 @@ def main() -> None:
         if (args.data_dir / f"{name}.h5").exists():
             generate(name, args.data_dir, args.out)
             generate_dynamics(name, args.data_dir, args.out)
+            generate_waveforms(name, args.data_dir, args.out)
         else:
             print(f"skipping {name}: {args.data_dir / (name + '.h5')} not found")
 

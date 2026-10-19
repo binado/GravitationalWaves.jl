@@ -28,3 +28,6 @@ excluded bins. Diagnostic time/phase optimization never changes primary gates.
 **Acceptance is pending.** See `packages/GWSEOBNR/ACCEPTANCE.md` and its committed
 measurement record. NQC matching and several spectral L² comparisons remain
 outside the original tolerances. These failures are not skipped or relaxed.
+
+Exploratory native Enzyme reverse-mode results and reproduction instructions are
+in [ENZYME.md](ENZYME.md). These probes do not establish reverse-mode support.

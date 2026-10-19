@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWTimeFrequencyDomains' && matrix.package != 'GWSurrogates'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWTimeFrequencyDomains'
       - name: Set up Python reference environment
         if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWTimeFrequencyDomains' && matrix.package != 'GWSurrogates'
         run: uv sync --project python --locked
@@ -66,6 +66,17 @@ jobs:
       - name: Generate inference reference fixtures
         if: matrix.package == 'GWMatchedFiltering'
         run: uv run --project python python python/generate_inference.py
+      - uses: actions/cache@v4
+        if: matrix.package == 'GWSurrogates'
+        with:
+          path: ${{ runner.temp }}/surrogate-data
+          key: surrogate-data-v1
+      - name: Generate surrogate reference fixtures
+        if: matrix.package == 'GWSurrogates'
+        run: |
+          uv sync --project python/surrogates --locked
+          uv run --project python/surrogates python python/generate_surrogates.py --data-dir "$RUNNER_TEMP/surrogate-data" --download
+          echo "GWSURROGATES_DATA_DIR=$RUNNER_TEMP/surrogate-data" >> "$GITHUB_ENV"
       - name: Locate LAL libraries
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWWaveforms'
         run: echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV

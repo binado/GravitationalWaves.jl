@@ -43,6 +43,8 @@ def select_packages(paths):
         parts = path.split("/")
         if len(parts) >= 3 and parts[0] == "packages" and parts[1] in AFFECTED:
             selected.update(AFFECTED[parts[1]])
+        elif path.startswith("python/surrogates/") or path == "python/generate_surrogates.py":
+            selected.update(AFFECTED["GWSurrogates"])
         elif path.startswith("python/"):
             selected.update(AFFECTED["GWParameterConversion"] | {"GWDetectors", "GWMatchedFiltering"})
         else:

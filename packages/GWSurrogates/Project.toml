@@ -3,15 +3,26 @@ uuid = "1e29a2e4-8621-4e56-af62-04cc6fe99f1b"
 version = "0.1.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
+[deps]
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+Scratch = "6c6a2e73-6563-6170-7368-637461726353"
+
 [compat]
 Aqua = "0.8"
 DataInterpolations = "10"
+Downloads = "1"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
+HDF5 = "0.17"
 JET = "0.11, 0.12"
 LinearAlgebra = "1"
+NPZ = "0.4"
 Quaternionic = "5"
 Random = "1"
+SHA = "0.7, 1"
+Scratch = "1"
 SphericalFunctions = "3"
 Test = "1"
 julia = "1.12"
@@ -23,10 +34,11 @@ FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 Quaternionic = "0756cd96-85bf-4b6f-a009-b5012ea7a443"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SphericalFunctions = "af6d55de-b1f7-4743-b797-0829a72cf84e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataInterpolations", "FiniteDifferences", "ForwardDiff", "JET", "LinearAlgebra", "Quaternionic", "Random", "SphericalFunctions", "Test"]
+test = ["Aqua", "DataInterpolations", "FiniteDifferences", "ForwardDiff", "JET", "LinearAlgebra", "NPZ", "Quaternionic", "Random", "SphericalFunctions", "Test"]

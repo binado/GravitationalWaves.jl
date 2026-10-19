@@ -64,6 +64,15 @@ class SelectionTests(unittest.TestCase):
                     CONVERSION_AFFECTED + ["GWDetectors", "GWMatchedFiltering"],
                 )
 
+    def test_surrogate_python_tooling_selects_only_surrogates(self):
+        for path in (
+            "python/generate_surrogates.py",
+            "python/surrogates/uv.lock",
+            "python/surrogates/pyproject.toml",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(select_packages([path]), ["GWSurrogates"])
+
     def test_documentation_only_and_empty(self):
         self.assertEqual(
             select_packages(["README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"]), []

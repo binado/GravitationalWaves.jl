@@ -34,7 +34,10 @@ fixtures:
     uv run --project python python python/generate.py
     uv run --project python python python/generate_detectors.py
     uv run --project python python python/generate_inference.py
+    uv sync --project python/surrogates
+    uv run --project python/surrogates python python/generate_surrogates.py --data-dir reference/surrogates-data --download
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
+    @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
 test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference

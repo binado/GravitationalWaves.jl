@@ -84,22 +84,27 @@ investigate compiler/dependency/libm differences before considering changes.
 
 ## Release gates and follow-up adoption
 
-| Target | Build / relocation audit | Native smoke | Both complete suites | Artifact sizes |
+| Target | BinaryBuilder build / audit | Native smoke | Both complete suites | Artifact sizes |
 | --- | --- | --- | --- | --- |
-| Linux x86-64 glibc | Pending | Pending | Pending | Pending |
-| macOS ARM64 | Pending | Pending | Pending | Pending |
-| Linux ARM64 glibc | Pending | Pending | Pending | Pending |
-| macOS x86-64 | Pending | Pending | Pending | Pending |
+| Linux x86-64 glibc | Passed | Pending | Pending | Pending |
+| macOS ARM64 | Passed | Pending | Pending | Pending |
+| Linux ARM64 glibc | Passed | Pending | Pending | Pending |
+| macOS x86-64 | Passed | Pending | Pending | Pending |
+
+[Buildkite build #33938](https://buildkite.com/julialang/yggdrasil/builds/33938)
+passed all twelve artifact builds and BinaryBuilder audits at recipe commit
+`db66d4fb96567ae0c624079295496ffb28cf0e50`. Native waveform checks, complete
+package suites against these artifacts, and the remaining release audits are pending.
 
 Local preparation verified the source archive, BinaryBuilder recipe metadata on
 Julia 1.12 and 1.13, patch application, recipe shell syntax, Runic formatting, and
 the 14 CI helper tests. The existing external loader tests and all four waveform
 smoke inputs passed against wheel libraries on Julia 1.12. These checks do not
-validate the candidate artifacts. The macOS ARM64 build attempt stopped before
-compilation because Docker is unavailable; all native artifact results are pending.
-The initial upstream macOS ARM64 build exposed missing compiler-rt complex-division
-helpers; the recipe now links the required build-only runtime. Dependency review
-also excluded serial HDF5 1.12.2, whose registry compatibility stops at Julia 1.11.
+validate the candidate artifacts. Local artifact compilation requires Docker,
+which is unavailable in this environment; the cross-build results above come from
+upstream CI. The compiler-rt dependency pins the registered `16.0.6+1` build:
+Julia 1.13 reproduces the missing-source-path failure for the incomplete `16.0.6`
+pin, while the full revision and ARM64 dependency set resolve successfully.
 
 Submit the recipe upstream, complete all four validation rows, and wait for
 General registration before adopting the JLL. An existing upstream

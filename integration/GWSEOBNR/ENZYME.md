@@ -85,10 +85,32 @@ error `8.89e-14`. The committed follow-up measurements are in
 `packages/GWSEOBNR/diagnostics/enzyme-fft-2026-10-19.toml`; the initial record is
 retained as the pre-rule baseline.
 
-The complete waveform probe was rerun with the FFT extension loaded. It still
+At that stage the complete waveform probe was rerun with the FFT extension loaded. It still
 returns `IllegalTypeAnalysisException` at the solver return-code equality check
 in `dynamics.jl:91`, before producing a gradient. The local FFT fix therefore
 does not remove the independent dynamics/root blockers.
+
+## Solver-status validation follow-up
+
+The two return-code checks now live in `check_evolution_retcode`, which returns
+`nothing` and is marked inactive only in the optional EnzymeCore extension.
+The check still runs in the primal: failed return codes raise the original
+failure error, and a successful solve that reaches its time limit without a
+physical termination guard raises the original coverage error. Neither the ODE
+solve nor any trajectory values or continuous event times are marked inactive.
+
+```sh
+just test-integration-seobnr-validation
+```
+
+Three Enzyme assertions check the valid-case gradient and both error branches.
+Normal package tests also cover these statuses. Evolution and complete waveform
+reverse probes now pass the return-code comparison and fail at LAPACK
+`dgesdd_64_`, used by `cond(J)` in the initial-condition Newton solver. No reverse
+gradient is returned. The condition check and root mathematics are unchanged;
+implicit-root/continuous-time pullbacks remain necessary for correct reverse
+support. Measurements are recorded in
+`packages/GWSEOBNR/diagnostics/enzyme-validation-2026-10-19.toml`.
 
 ## Reproduction
 

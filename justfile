@@ -37,7 +37,7 @@ fixtures:
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-seobnr-fft
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-seobnr-fft test-integration-seobnr-validation
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -75,3 +75,7 @@ test-integration-seobnr:
 # Narrow Enzyme reverse rule for the local real FFT; independent of oracle fixtures.
 test-integration-seobnr-fft:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_fft.jl")'
+
+# Inactive solver-status validation still rejects failed/incomplete solves under AD.
+test-integration-seobnr-validation:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_validation.jl")'

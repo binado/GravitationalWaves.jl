@@ -1,9 +1,14 @@
 module GWSEOBNREnzymeCoreExt
 
-using GWSEOBNR: real_fft
+using GWSEOBNR: real_fft, check_evolution_retcode
 using FFTW: plan_rfft, ESTIMATE
 using EnzymeCore: Const, Duplicated
 using EnzymeCore: EnzymeRules
+
+# Discrete status validation has no numerical output or differentiable side
+# effects. Inactivity preserves execution (including errors) in the primal.
+# Do not mark the solve, trajectory, or continuous termination times inactive.
+EnzymeRules.inactive(::typeof(check_evolution_retcode), retcode) = true
 
 # The constant-plan/adjoint construction follows the discussion in
 # https://github.com/SciML/NonlinearSolve.jl/issues/597 . This rule is restricted

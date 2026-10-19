@@ -4,6 +4,13 @@ const MTSUN_SI = 4.925490947641267e-6
 const MRSUN_SI = 1476.6250380501247
 const MPC_SI = 3.085677581491367e22
 
+"""Reject failed solves and evolution ending without a physical termination guard."""
+function check_evolution_retcode(retcode::SciMLBase.ReturnCode.T)
+    SciMLBase.successful_retcode(retcode) || throw(SolveError("EOB evolution failed: $retcode"))
+    retcode == SciMLBase.ReturnCode.Terminated || throw(SolveError("EOB evolution exhausted time coverage without a physical guard"))
+    return nothing
+end
+
 function check_isco_interval(r_initial, r_final, r_isco)
     r_initial >= r_isco >= r_final || throw(SolveError("Kerr ISCO is unavailable within the evolved trajectory"))
     return nothing
@@ -87,8 +94,7 @@ function evolve(m1, m2, chi1, chi2, g::SEOBNRv5HM)
         reltol = g.reltol, abstol = g.abstol, callback, dense = true,
         dtmax = 10.0, maxiters = 10^7
     )
-    SciMLBase.successful_retcode(sol) || throw(SolveError("EOB evolution failed: $(sol.retcode)"))
-    sol.retcode == SciMLBase.ReturnCode.Terminated || throw(SolveError("EOB evolution exhausted time coverage without a physical guard"))
+    check_evolution_retcode(sol.retcode)
     check_isco_interval(sol.u[1][1], sol.u[end][1], r_isco)
     Fisco = t -> sol(t)[1] - r_isco
     t_isco = continuous_root(Fisco, sol.t[1], sol.t[end], t -> sol(t, Val{1})[1])

@@ -48,7 +48,9 @@ Physical piecewise formulas are retained.
 Loading EnzymeCore enables an optional reverse rule for the local real FFT on
 dense Float32/Float64 vectors (one reverse lane). Planning uses scratch storage;
 the pullback applies the constant plan's adjoint. This component rule does not
-establish reverse-mode waveform support: root and ODE compilation blockers remain.
+establish reverse-mode waveform support: initial-condition roots remain blocked.
+Discrete solver-status validation is inactive under Enzyme while retaining its
+primal error checks; trajectory values and continuous timing remain active.
 Run `just test-integration-seobnr-fft` for direct-DFT and gradient checks.
 
 Small committed component/QNM snapshots run without Python. The separate locked

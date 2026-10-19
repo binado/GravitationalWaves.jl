@@ -87,6 +87,9 @@ end
 end
 
 @testset "roots and explicit failures" begin
+    @test S.check_evolution_retcode(S.SciMLBase.ReturnCode.Terminated) === nothing
+    @test_throws "EOB evolution exhausted time coverage without a physical guard" S.check_evolution_retcode(S.SciMLBase.ReturnCode.Success)
+    @test_throws "EOB evolution failed:" S.check_evolution_retcode(S.SciMLBase.ReturnCode.MaxIters)
     @test_throws S.SolveError S.check_isco_interval(10.0, 4.0, 3.0)
     @test_throws S.SolveError S.check_isco_interval(2.0, 1.5, 3.0)
     @test_throws S.SolveError S.attachment_time(5.0, -6.0, 0.0, 10.0)

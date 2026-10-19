@@ -34,3 +34,5 @@ in [ENZYME.md](ENZYME.md). These probes do not establish reverse-mode support.
 `just test-integration-seobnr-fft` tests the optional local FFT reverse rule
 without Python or oracle fixtures, including endpoint weighting and cotangent
 accumulation. The complete waveform/likelihood Enzyme probes remain exploratory.
+`just test-integration-seobnr-validation` checks that inactive solver-status
+validation preserves gradients on valid inputs and errors on invalid solves.

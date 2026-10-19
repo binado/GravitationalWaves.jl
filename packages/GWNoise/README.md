@@ -33,9 +33,10 @@ before interpolation. `asd(f, curve)` evaluates the square root of the resulting
 Evaluation outside file coverage throws; `psd(f, curve; outside=:zero)` explicitly
 requests zero fill. Frequencies must be strictly increasing; densities nonnegative.
 
-`GaussianNoise` prepares the uniform FFT grid and Gaussian scales once. Its default
+`GaussianNoise` prepares the uniform FFT grid and effective PSD once. Its default
 band is the file coverage intersected with `[0, sampling_frequency/2]`; explicit
-bands must be covered by the file. Other bins, DC, and even-length Nyquist are zero.
+bands must be covered by the file. Draw scales are computed per bin when sampling.
+Other bins, DC, and even-length Nyquist are zero.
 Odd-length final bins are sampled normally. `psd(model)` returns the effective PSD
 including these zeros. No automatic taper or smoothing changes the target.
 
@@ -44,9 +45,7 @@ spacing is `fs/N`, and the FD vector has `N÷2+1` elements. Interior real and im
 parts independently have variance `PSD/(4Δf)`. The physical Fourier convention is:
 
 ```julia
-using FFTW
-n_td = irfft(n_fd, model.nsamples) * model.sampling_frequency
-@assert rfft(n_td) / model.sampling_frequency ≈ n_fd
+n_td = to_timedomain(model.time_domain, n_fd)
 ```
 
 Each draw is a finite periodic FFT segment. Concatenating independent segments does
@@ -54,9 +53,9 @@ not produce a continuous stream. Use the transform above for matching FD and TD
 realizations; successive sampler calls draw independent noise. Omit the RNG to use
 `Random.default_rng()`. RNGs are never reseeded by this package.
 
-`noise_fd!([rng], out, model)` and `noise_td!([rng], out, model)`
-fill existing vectors. The TD method still allocates FFT temporaries; neither FFT
-plans nor mutable scratch buffers are cached in the model.
+`noise_fd!([rng], out, model)` fills an existing complex vector. `noise_td`
+allocates its output and FFT temporaries; neither FFT plans nor mutable scratch
+buffers are cached in the model.
 
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.
@@ -74,10 +73,10 @@ and channel identity, ignoring epoch; numerical draw methods do not repeat these
 checks. Invalid output shapes are outside their preconditions. `frequencies`
 is shared with GWTimeFrequencyDomains.
 
-Odd time-domain lengths remain supported by noise generation. The domain package's
-real-FFT conversion uses an even-length contract: `frequency_domain(td)` rejects
-odd lengths. Keep the noise model's known transform length when using its odd FD
-draws; they do not imply an even-length inverse time domain.
+All FFT conversions are implemented by GWTimeFrequencyDomains; GWNoise loads FFTW
+and LinearAlgebra to activate that package's FFT extension. Odd time-domain lengths
+remain supported through `to_timedomain(model.time_domain, n_fd)`, which uses the
+known target length. `frequency_domain(td)` still requires even lengths.
 
 Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
 with `GaussianNoise(curve, td; ...)` and requires separate output validation.

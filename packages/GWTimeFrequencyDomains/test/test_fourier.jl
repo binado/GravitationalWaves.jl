@@ -1,6 +1,25 @@
 using FFTW
 using LinearAlgebra
 
+@testset "Inverse FFT with explicit target domain" begin
+    for T in (Float32, Float64), n in (3, 14, 15), nc in (1, 2)
+        td = TimeDomain(; epoch = 1126259460.125, nsamples = n, sampling_frequency = 100.1, channels = nc == 1 ? (:H1,) : (:H1, :L1))
+        x = reshape(T.(sin.(1:(n * nc))), n, nc)
+        nc == 1 && (x = vec(x))
+        h = rfft(x, 1)
+        h .*= sample_spacing(td)
+        saved = copy(h)
+        restored = to_timedomain(td, h)
+        @test size(restored) == size(x)
+        @test eltype(restored) == T
+        @test restored ≈ x rtol = (T == Float32 ? 1.0e-6 : 1.0e-14)
+        @test h == saved
+        if iseven(n)
+            @test restored ≈ to_timedomain(frequency_domain(td), h)
+        end
+    end
+end
+
 @testset "Physical FFTs and reusable plans" begin
     for T in (Float32, Float64), n in (2, 6, 16), nc in (1, 2), viewed in (false, true)
         a = reshape(T.(sin.(1:(n * nc))), n, nc)

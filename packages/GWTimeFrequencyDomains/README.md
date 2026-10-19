@@ -56,6 +56,7 @@ using FFTW
 check_fourier_domain(td)
 h = to_frequencydomain(td, x)  # dt*rfft(x, 1); arrays only
 x2 = to_timedomain(fd, h)      # irfft(h, N, 1)/dt
+x3 = to_timedomain(td, h)      # use the explicit target sample count and sampling rate
 
 forward = plan_to_frequencydomain(td, x)
 inverse = plan_to_timedomain(fd, h)
@@ -70,6 +71,12 @@ grid with `M >= 2` and infers `N=2(M-1)`, `dt=1/(N*df)`. The phase origin is rel
 to the epoch; there is no absolute-GPS rephasing. Imaginary DC/Nyquist parts are
 discarded. Removing low bins prevents inversion until restored explicitly; removing
 high bins lowers inverse sampling frequency while preserving `1/df` duration.
+
+`to_timedomain(td, h)` instead takes the target `TimeDomain`, supporting both odd
+and even sample counts without inferring a length from the bins. Supply its full
+zero-origin one-sided spectrum (`N÷2+1` bins with spacing `sampling_frequency(td)/N`).
+For odd lengths the final bin is complex and has no Nyquist constraint. This explicit
+inverse does not change the even-length contract of metadata derivation or plans.
 
 Plans validate prototypes on the host and cache backend plans, scaling, shape/type
 requirements and output domains. Execution assumes matching prevalidated arrays;

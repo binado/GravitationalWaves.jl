@@ -10,7 +10,6 @@
         @test check_data(fd, noise_fd(model)) === nothing
         @test check_data(td, noise_td(model)) === nothing
         @test noise_fd!(Xoshiro(42), zeros(ComplexF64, nsamples(fd)), model) == noise_fd(Xoshiro(42), model)
-        @test noise_td!(Xoshiro(42), zeros(n), model) == noise_td(Xoshiro(42), model)
         bad = TimeDomain(; epoch = 0, nsamples = n, sampling_frequency = 64, channels = (:H1,))
         @test_throws ArgumentError check_compatible(bad, model)
         labels = FrequencyDomain(; frequencies = frequencies(model), epoch = 0, channels = (:L1,))

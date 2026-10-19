@@ -54,11 +54,9 @@ using GWNoise
             @test length(td) == n
             @test rfft(td) / 128 ≈ fd
             @test noise_fd!(Xoshiro(42), similar(fd), model) == fd
-            @test noise_td!(Xoshiro(42), similar(td), model) == td
             @test length(noise_fd(model)) == length(fd)
             @test length(noise_td(model)) == n
             @test noise_fd!(similar(fd), model) isa Vector{ComplexF64}
-            @test noise_td!(similar(td), model) isa Vector{Float64}
         end
         model = GaussianNoise(curve, TimeDomain(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); minimum_frequency = 10.5, maximum_frequency = 30)
         expected = [10.5 <= x <= 30 ? 2.0 : 0.0 for x in frequencies(model)]
@@ -66,9 +64,8 @@ using GWNoise
         @test all(iszero, noise_fd(model)[expected .== 0])
         @test_throws ArgumentError GaussianNoise(curve, TimeDomain(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); maximum_frequency = 65)
         @test_throws DimensionMismatch check_data(FrequencyDomain(; frequencies = frequencies(model), epoch = 0, channels = (:H1,)), zeros(ComplexF64, 3))
-        @test_throws DimensionMismatch check_data(TimeDomain(; epoch = 0, nsamples = model.nsamples, sampling_frequency = model.sampling_frequency, channels = (:H1,)), zeros(3))
+        @test_throws DimensionMismatch check_data(TimeDomain(; epoch = 0, nsamples = nsamples(model.time_domain), sampling_frequency = sampling_frequency(model.time_domain), channels = (:H1,)), zeros(3))
         @test_throws MethodError noise_fd!(zeros(length(frequencies(model))), model)
-        @test_throws MethodError noise_td!(zeros(ComplexF64, model.nsamples), model)
         for kwargs in ((sampling_frequency = 0, nsamples = 128), (sampling_frequency = 128, nsamples = 1))
             @test_throws ArgumentError GaussianNoise(curve, TimeDomain(; epoch = 0, channels = (:H1,), kwargs...))
         end
@@ -97,7 +94,7 @@ using GWNoise
         for bin in (11, 41)
             @test sum(abs2, colored_draws[bin, :]) / count ≈ psd(colored)[bin] / 2 rtol = 0.06
         end
-        td = irfft(draws, model.nsamples, 1) .* model.sampling_frequency
+        td = irfft(draws, nsamples(model.time_domain), 1) .* sampling_frequency(model.time_domain)
         # Each active interior bin contributes S Δf to the TD variance.
         @test sum(abs2, td) / length(td) ≈ sum(psd(model)) * step(frequencies(model)) rtol = 0.02
     end

@@ -1,8 +1,19 @@
+"""Regenerate scalar equation ports from the checksum-verified 0.3.7 source.
+
+Run from the repository root, then run Runic on the generated Julia files.
+"""
+# SPDX-License-Identifier: GPL-3.0-or-later
 import ast,re,textwrap,hashlib
 from pathlib import Path
 import sys
 root=Path(sys.argv[1])  # extracted, checksum-verified pySEOBNR 0.3.7 sdist
 out=Path('packages/GWSEOBNR/src')
+import tomllib
+provenance = tomllib.loads(Path("packages/GWSEOBNR/provenance.toml").read_text())
+for source, expected in provenance["source_sha256"].items():
+    actual = hashlib.sha256((root / source).read_bytes()).hexdigest()
+    if actual != expected:
+        raise RuntimeError(f"Source checksum mismatch: {source}")
 header='# SPDX-License-Identifier: GPL-3.0-or-later\n# Derived from pySEOBNR 0.3.7; see ../NOTICE.md and ../provenance.toml.\n# Modified: generic Julia arithmetic and one-based arrays.\n\n'
 class Julia:
  def expr(self,n):

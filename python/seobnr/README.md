@@ -19,3 +19,27 @@ Post-adiabatic evolution is disabled and only (2,2) output requested. This does
 not reduce the multipoles used by the radiation-reaction flux. Waveforms and
 trajectories are written under gitignored `reference/seobnr`. Small component
 snapshots and exact QNM interpolation coefficients are committed with the package.
+
+After generating large mode fixtures, apply the same continuous attachment-peak
+convention and physical conditioning, and regenerate the compact short case:
+
+```
+uv run --project python/seobnr python python/seobnr/condition.py
+uv run --project python/seobnr python python/seobnr/short_snapshot.py
+```
+
+The raw pySEOBNR output remains available in the original `.npz` files. The
+conditioner recovers the continuous (2,2) attachment peak from its zero-slope
+matching target, undoing the sampled upstream output-time shift. It does not
+optimize time or phase against Julia. QNM sequence hashes are recorded in
+`packages/GWSEOBNR/qnm-provenance.toml` alongside the bundled interpolants.
+
+To reproduce the scalar equation ports, extract the archive identified in
+`packages/GWSEOBNR/provenance.toml`, then run from the repository root:
+
+```
+python3 python/seobnr/port_equations.py /path/to/pyseobnr-0.3.7
+runic --inplace packages/GWSEOBNR/src
+```
+
+The generator verifies committed source-file checksums before writing outputs.

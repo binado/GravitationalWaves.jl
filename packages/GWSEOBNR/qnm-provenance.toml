@@ -1,0 +1,11 @@
+version = "0.4.4"
+s = -2
+l = 2
+n = 0
+positive_m = 2
+negative_m = -2
+sequence_format = "little-endian Float64 rows (spin, real(omega), imag(omega))"
+
+[sequence_sha256]
+positive = "ce83740133f15042df09d285a2d1aafcfa533988055ad1a01c2e0d9bf269f404"
+negative = "11106bcc373f8f357a2f011bbf7b418077824ce7fd7e22c3b3fc78af1bc4e511"

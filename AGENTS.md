@@ -19,6 +19,7 @@ Julia packages live in `packages/`:
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
 - `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`); tests use LAL as the oracle.
+- `GWSEOBNR`: experimental GPL-3.0-or-later aligned-spin SEOBNRv5HM prototype pinned to pySEOBNR 0.3.7, with (2,±2) output and the complete upstream flux. Native Vern9 evolution, local FFT/tail ForwardDiff adapters, and continuous timing; `is_differentiable` stays false until full acceptance. Compact committed oracles run without Python; full checks and recorded failures live in `integration/GWSEOBNR` and `packages/GWSEOBNR/ACCEPTANCE.md`.
 - `GWDetectors`: StaticArrays-based, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and domain-first broadcasted FD projection over uniform integer-indexed frequency bins. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
 - `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
 
@@ -91,8 +92,8 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 `GWTimeFrequencyDomains` changes also test `GWNoise`, `GWDetectors`, and `GWMatchedFiltering`.
 
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
-`GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
-changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
+`GWParameterConversion` changes also test both existing waveform packages and `GWSEOBNR`, `LALWaveforms`
+changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both existing waveform packages and `GWSEOBNR`. Python tooling changes test all three conversion/waveform
 packages, `GWDetectors`, and `GWMatchedFiltering`. Detector changes select `GWDetectors`. Inference changes select `GWMatchedFiltering`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.
@@ -104,7 +105,7 @@ and default test targets. Run `just test-integration` locally before submitting 
 to numerical kernels or the AD integrations; individual package recipes are listed above.
 CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
-Pushes to `main` and manual CI runs test all nine packages on Julia 1.12 and latest stable.
+Pushes to `main` and manual CI runs test all ten packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
 Selection and status checks can be tested locally with
 `python3 -m unittest discover -s .github/ci -v`.

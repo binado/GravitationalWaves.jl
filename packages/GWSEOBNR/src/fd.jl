@@ -41,9 +41,7 @@ function evaluated_spectrum(f, p, g)
             return zero(complex(scale + p.inclination + p.phase + p.chi_1 + p.chi_2))
         end
         h22 = complete_mode(e, nqc, mr, t) * rotation
-        onset = if primal(t) <= primal(e.t_ref)
-            u = e.sol(t)
-            omega = orbital_frequency((u[1], u[2]), (u[3], u[4]), e.c)
+        onset = if primal(t) <= primal(e.t_attach)
             h0 = inspiral_mode(e, t)
             freq = -time_jet(s -> angle(inspiral_mode(e, s) / h0), t)[2] / (2π * Msec)
             quintic_step((freq - 0.8g.minimum_frequency) / (0.2g.minimum_frequency))

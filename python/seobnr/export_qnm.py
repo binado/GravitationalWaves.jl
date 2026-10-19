@@ -9,8 +9,12 @@ verify_versions()
 lines = ["# SPDX-License-Identifier: MIT", "# qnm 0.4.4 (Leo C. Stein); see NOTICE.md and qnm-LICENSE.",
          "# Exact piecewise cubic coefficients, exported by python/seobnr/export_qnm.py."]
 snapshots = []
+sequence_hashes = {}
 for m, name in ((2, "POSITIVE"), (-2, "NEGATIVE")):
     seq = qnm.modes_cache(s=-2, l=2, m=m, n=0)
+    import numpy as np
+    payload = np.column_stack((seq.a, np.real(seq.omega), np.imag(seq.omega))).astype("<f8").tobytes()
+    sequence_hashes[name.lower()] = hashlib.sha256(payload).hexdigest()
     for part, interp in (("REAL", seq._interp_o_r), ("IMAG", seq._interp_o_i)):
         poly = scipy.interpolate.PPoly.from_spline(interp._eval_args)
         # Repeated knots have zero width; retain only genuine intervals.
@@ -29,3 +33,8 @@ path.write_text("\n".join(lines) + "\n")
 import tomlkit
 (ROOT / "packages/GWSEOBNR/test/qnm_oracle.toml").write_text(tomlkit.dumps(dict(cases=snapshots)))
 print(path, hashlib.sha256(path.read_bytes()).hexdigest(), flush=True)
+
+(ROOT / "packages/GWSEOBNR/qnm-provenance.toml").write_text(tomlkit.dumps(dict(
+    version="0.4.4", s=-2, l=2, n=0, positive_m=2, negative_m=-2,
+    sequence_format="little-endian Float64 rows (spin, real(omega), imag(omega))",
+    sequence_sha256=sequence_hashes)))

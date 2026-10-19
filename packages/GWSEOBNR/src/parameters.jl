@@ -18,6 +18,7 @@ end
 
 function validate_parameters(f::AbstractRange, params::NamedTuple, g::SEOBNRv5HM)
     check_frequency_grid(f)
+    isfinite(step(f)) && isfinite(last(f)) || throw(ArgumentError("frequency grid must be finite"))
     for k in keys(params)
         k in ALLOWED_KEYS || throw(ArgumentError("unknown parameter `$k`"))
         isfinite(getproperty(params, k)) || throw(ArgumentError("parameter `$k` must be finite"))

@@ -4,6 +4,17 @@ const MTSUN_SI = 4.925490947641267e-6
 const MRSUN_SI = 1476.6250380501247
 const MPC_SI = 3.085677581491367e22
 
+function check_isco_interval(r_initial, r_final, r_isco)
+    r_initial >= r_isco >= r_final || throw(SolveError("Kerr ISCO is unavailable within the evolved trajectory"))
+    return nothing
+end
+
+function attachment_time(t_isco, delta_t, t_start, t_end)
+    t = t_isco - delta_t
+    t_start < primal(t) < t_end || throw(SolveError("attachment requires an upstream clamping fallback"))
+    return t
+end
+
 function conservative_residual(x, theta)
     c = hamiltonian_coefficients(theta[1], theta[2], theta[3], theta[4])
     d = hamiltonian_gradient((x[1], zero(x[1])), (zero(x[1]), x[2]), c)
@@ -78,11 +89,10 @@ function evolve(m1, m2, chi1, chi2, g::SEOBNRv5HM)
     )
     SciMLBase.successful_retcode(sol) || throw(SolveError("EOB evolution failed: $(sol.retcode)"))
     sol.retcode == SciMLBase.ReturnCode.Terminated || throw(SolveError("EOB evolution exhausted time coverage without a physical guard"))
-    sol.u[end][1] <= r_isco || throw(SolveError("Kerr ISCO is unavailable before termination"))
+    check_isco_interval(sol.u[1][1], sol.u[end][1], r_isco)
     Fisco = t -> sol(t)[1] - r_isco
     t_isco = continuous_root(Fisco, sol.t[1], sol.t[end], t -> sol(t, Val{1})[1])
-    t_attach = t_isco - dt_nr
-    sol.t[1] < primal(t_attach) < sol.t[end] || throw(SolveError("attachment requires an upstream clamping fallback"))
+    t_attach = attachment_time(t_isco, dt_nr, sol.t[1], sol.t[end])
     omega_ref = π * (m1 + m2) * MTSUN_SI * g.reference_frequency
     Fref = t -> orbital_frequency((sol(t)[1], sol(t)[2]), (sol(t)[3], sol(t)[4]), c) - omega_ref
     tref = continuous_root(Fref, sol.t[1], primal(t_attach), t -> dot(hamiltonian_hessian((sol(t)[1], sol(t)[2]), (sol(t)[3], sol(t)[4]), c)[4, :], sol(t, Val{1})))

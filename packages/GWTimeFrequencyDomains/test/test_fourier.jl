@@ -69,3 +69,19 @@ using LinearAlgebra
     indexed = view(a, [1, 3, 4, 8])
     @test_throws MethodError to_frequencydomain(precise, indexed)
 end
+
+@testset "Nonbinary sampling rate and strain-scale samples" begin
+    for T in (Float32, Float64)
+        td = TimeDomain(; epoch = 1126259460.125, nsamples = 14, sampling_frequency = 100.1, channels = (:H1, :L1, :V1))
+        fd = frequency_domain(td)
+        x = reshape(T.(sin.(1:42) .* 1.0e-22), 14, 3)
+        h = to_frequencydomain(td, x)
+        @test h ≈ rfft(x, 1) .* sample_spacing(td) rtol = (T == Float32 ? 1.0e-6 : 1.0e-14)
+        forward = plan_to_frequencydomain(td, x)
+        inverse = plan_to_timedomain(fd, h)
+        @test transform(forward, x) ≈ h
+        @test transform(inverse, h) ≈ to_timedomain(fd, h)
+        @test transform(inverse, h) ≈ x rtol = (T == Float32 ? 1.0e-6 : 1.0e-14)
+        @test check_same_grid(output_domain(inverse), td) === nothing
+    end
+end

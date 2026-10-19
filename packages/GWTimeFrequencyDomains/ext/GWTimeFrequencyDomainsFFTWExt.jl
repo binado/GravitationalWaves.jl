@@ -44,7 +44,7 @@ function GWTimeFrequencyDomains.plan_to_timedomain(d::FrequencyDomain, h::Union{
     buffer = complex.(h)
     shape = ntuple(i -> i == 1 ? nsamples(output) : size(h, i), ndims(h))
     fft = plan_irfft(buffer, nsamples(output), 1; flags = FFTW.ESTIMATE)
-    return make_plan(fft, output, sampling_frequency(output), buffer, real(eltype(h)), size(h), shape)
+    return make_plan(fft, output, nsamples(output) * frequency_spacing(d), buffer, real(eltype(h)), size(h), shape)
 end
 GWTimeFrequencyDomains.output_domain(p::DomainFFTPlan) = p.output
 function GWTimeFrequencyDomains.transform(p::DomainFFTPlan{P, D, S, B, T}, input::Union{RealCPU, ComplexCPU}) where {P, D, S, B, T}

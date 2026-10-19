@@ -62,13 +62,15 @@ end
 function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
     T = promote_type(eltype(h), eltype(quat))
     out = zeros(T, size(h))
+    powers = SpinorPowers(complex(eltype(quat)), 2ell_max)
     for k in axes(h, 1)
         ra = complex(quat[k, 1], quat[k, 4])
         rb = complex(quat[k, 3], quat[k, 2])
+        fill_powers!(powers, ra, rb)
         for l in 2:ell_max, mp in (-l):l
             acc = zero(T)
             for m in (-l):l
-                acc += wigner_D_element(l, mp, m, ra, rb) * h[k, mode_column(l, m)]
+                acc += wigner_D_element(l, mp, m, powers) * h[k, mode_column(l, m)]
             end
             out[k, mode_column(l, mp)] = acc
         end

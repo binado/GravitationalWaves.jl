@@ -2,7 +2,9 @@
 
 Writes ``reference/surrogates/<model>_coorbital.npz``: for each case the mass ratio, the
 time-dependent coorbital-frame spins on the ``t_coorb`` grid, the node fit values of one
-datapiece, and the coorbital modes returned by gwsurrogate.
+datapiece, and the coorbital modes returned by gwsurrogate. Also writes
+``<model>_dynamics.npz``: dynamics trajectories for several initial conditions and reference
+times, plus ODE right-hand sides at probe states and reference times from orbital frequencies.
 
 Run it with ``uv run --project python/surrogates python python/generate_surrogates.py``. With
 ``--download`` the model files are fetched from Zenodo (CC-BY-4.0, doi:10.5281/zenodo.22257361) and
@@ -82,6 +84,98 @@ def spin_history(
     )
     chi /= np.linalg.norm(chi, axis=1, keepdims=True)
     return amplitude * (1.0 + 0.1 * np.sin(3 * s))[:, None] * chi
+
+
+DYNAMICS_CASES: list[dict[str, Any]] = [
+    {"q": 1.0, "chiA": (0.0, 0.0, 0.0), "chiB": (0.0, 0.0, 0.0), "t_ref": None},
+    {"q": 2.0, "chiA": (0.3, 0.2, 0.4), "chiB": (-0.1, 0.5, -0.3), "t_ref": None},
+    {"q": 2.0, "chiA": (0.3, 0.2, 0.4), "chiB": (-0.1, 0.5, -0.3), "t_ref": -100.0},
+    {
+        "q": 3.2,
+        "chiA": (0.5, -0.4, 0.3),
+        "chiB": (0.2, 0.3, -0.6),
+        "orbphase": 0.7,
+        "quat": (0.9, 0.1, -0.3, 0.2),
+        "t_ref": 0.0,
+    },
+    {"q": 1.5, "chiA": (-0.2, 0.1, 0.7), "chiB": (0.4, -0.3, 0.1), "t_ref": -4000.0},
+    {"q": 1.5, "chiA": (-0.2, 0.1, 0.7), "chiB": (0.4, -0.3, 0.1), "t_ref": -4260.0},
+    {"q": 1.5, "chiA": (-0.2, 0.1, 0.7), "chiB": (0.4, -0.3, 0.1), "t_ref": -4222.0},
+    {"q": 1.5, "chiA": (-0.2, 0.1, 0.7), "chiB": (0.4, -0.3, 0.1), "t_ref": -4170.0},
+    {"q": 3.9, "chiA": (0.1, 0.6, -0.5), "chiB": (0.0, 0.0, 0.7), "t_ref": 50.0},
+]
+OMEGA_REFS: list[float] = [0.02, 0.05, 0.1]
+
+
+def generate_dynamics(name: str, data_dir: Path, out_dir: Path) -> None:
+    """Write the dynamics reference fixture of one model.
+
+    Parameters
+    ----------
+    name
+        Model name, a key of ``MODELS``.
+    data_dir
+        Directory containing ``<name>.h5``.
+    out_dir
+        Output directory for the ``.npz`` file.
+    """
+    sur = getattr(gws_top, name)(str(data_dir / f"{name}.h5"))
+    dyn = sur._sur_dimless.dynamics_sur
+    out: dict[str, Any] = {
+        "t_ds": np.asarray(dyn.t),
+        "n_cases": np.array(len(DYNAMICS_CASES)),
+    }
+    for i, case in enumerate(DYNAMICS_CASES):
+        quat, orbphase, chi_a, chi_b, _ = dyn(
+            case["q"],
+            np.array(case["chiA"]),
+            np.array(case["chiB"]),
+            init_quat=None if "quat" not in case else np.array(case["quat"]),
+            init_orbphase=case.get("orbphase", 0.0),
+            t_ref=case["t_ref"],
+        )
+        out[f"case{i}_q"] = np.array(case["q"])
+        out[f"case{i}_chiA0"] = np.array(case["chiA"])
+        out[f"case{i}_chiB0"] = np.array(case["chiB"])
+        out[f"case{i}_orbphase0"] = np.array(case.get("orbphase", 0.0))
+        out[f"case{i}_quat0"] = np.array(case.get("quat", (1.0, 0.0, 0.0, 0.0)))
+        out[f"case{i}_t_ref"] = np.array(
+            np.nan if case["t_ref"] is None else case["t_ref"]
+        )
+        out[f"case{i}_quat"] = quat
+        out[f"case{i}_orbphase"] = orbphase
+        out[f"case{i}_chiA"] = chi_a
+        out[f"case{i}_chiB"] = chi_b
+
+    # ODE right-hand sides at a probe state, at nodes and at off-node times.
+    q = 2.4
+    y = np.array([0.8, 0.2, -0.4, 0.4, 1.3, 0.3, -0.2, 0.5, -0.4, 0.1, 0.3])
+    y[:4] /= np.linalg.norm(y[:4])
+    nodes = [0, 1, 2, 7, 100, 232]
+    times = [-4290.0, -4250.0, -3000.5, -100.25, 0.0, 90.0]
+    out["probe_q"] = np.array(q)
+    out["probe_y"] = y
+    out["probe_nodes"] = np.array(nodes)
+    out["probe_dydt_nodes"] = np.array(
+        [dyn.get_time_deriv_from_index(i, q, y) for i in nodes]
+    )
+    out["probe_times"] = np.array(times)
+    out["probe_dydt_times"] = np.array([dyn.get_time_deriv(t, q, y) for t in times])
+
+    # Reference times from orbital frequencies.
+    chi_a, chi_b = np.array([0.3, 0.2, 0.4]), np.array([-0.1, 0.5, -0.3])
+    out["omega_refs"] = np.array(OMEGA_REFS)
+    out["omega_q"] = np.array(2.0)
+    out["omega_chiA"] = chi_a
+    out["omega_chiB"] = chi_b
+    out["omega_t_refs"] = np.array(
+        [dyn._get_t_from_omega(w, 2.0, chi_a, chi_b, 0.0, None) for w in OMEGA_REFS]
+    )
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{name}_dynamics.npz"
+    np.savez(path, **out)
+    print(f"wrote {path}")
 
 
 def download(name: str, data_dir: Path) -> None:
@@ -187,6 +281,7 @@ def main() -> None:
             download(name, args.data_dir)
         if (args.data_dir / f"{name}.h5").exists():
             generate(name, args.data_dir, args.out)
+            generate_dynamics(name, args.data_dir, args.out)
         else:
             print(f"skipping {name}: {args.data_dir / (name + '.h5')} not found")
 

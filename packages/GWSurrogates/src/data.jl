@@ -103,3 +103,40 @@ Load the coorbital surrogate of `:NRSur7dq4` or `:NRSur7dq4v2` from [`data_path`
 function load_coorbital(model::Symbol; download::Bool = true)
     return load_coorbital(data_path(model; download), MODEL_FILES[model].params)
 end
+
+
+"""
+    load_dynamics(path, params; settings = NRSUR7DQ4_FIT_SETTINGS, omega_ref_max = 0.201) -> DynamicsSurrogate
+
+Read the dynamics surrogate (the `t_ds` grid and the nine fits of every `ds_node_i` group) from an
+NRSur7dq4 or NRSur7dq4v2 HDF5 file. `omega_ref_max` is the largest orbital frequency accepted by
+[`t_ref_from_omega`](@ref).
+"""
+function load_dynamics(
+        path::AbstractString, params; settings::FitSettings = NRSUR7DQ4_FIT_SETTINGS, omega_ref_max::Real = 0.201,
+    )
+    keys9 = ("omega_orb_0", "omega_orb_1", "omega", "chiA_0", "chiA_1", "chiA_2", "chiB_0", "chiB_1", "chiB_2")
+    return HDF5.h5open(path, "r") do f
+        t = Vector{Float64}(HDF5.read_dataset(f, "t_ds"))
+        orders = Matrix{Int}[]
+        coefs = Vector{Float64}[]
+        for i in 0:(length(t) - 1)
+            group = HDF5.open_group(f, "ds_node_$i")
+            for key in keys9
+                push!(orders, Matrix{Int}(HDF5.read_dataset(group, "$(key)_bfOrders")))
+                push!(coefs, Vector{Float64}(HDF5.read_dataset(group, "$(key)_coefs")))
+            end
+            close(group)
+        end
+        return DynamicsSurrogate(params, settings, t, FitSet(settings, orders, coefs), omega_ref_max)
+    end
+end
+
+"""
+    load_dynamics(model::Symbol; download = true) -> DynamicsSurrogate
+
+Load the dynamics surrogate of `:NRSur7dq4` or `:NRSur7dq4v2` from [`data_path`](@ref).
+"""
+function load_dynamics(model::Symbol; download::Bool = true)
+    return load_dynamics(data_path(model; download), MODEL_FILES[model].params)
+end

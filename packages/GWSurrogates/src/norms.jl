@@ -20,6 +20,6 @@ gradient-based samplers should not treat exactly-zero spin as a regular point.
 @inline function rescale_to_norm(v, target)
     s = sum(abs2, v)
     positive = s > zero(s)
-    scale = ifelse(positive, target / sqrt(ifelse(positive, s, one(s))), one(s))
-    return v .* scale
+    n = sqrt(ifelse(positive, s, one(s)))
+    return map(x -> ifelse(positive, x * target / n, x), v)
 end

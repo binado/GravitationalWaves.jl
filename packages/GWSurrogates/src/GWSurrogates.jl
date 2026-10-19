@@ -13,15 +13,19 @@ for ForwardDiff, Enzyme and Mooncake: no `try`/`catch`, no `Dict`, and branches 
 """
 module GWSurrogates
 
+using StaticArrays: SVector
+
 public NaturalCubicSpline, spline_eval, wigner_D, wigner_D_element, guarded_sqrt, rescale_to_norm
 public FitSettings, FitSet, fit_powers!, eval_fit, fit_params, NRSur7dq4Params, NRSur7dq4v2Params
 public CoorbitalSurrogate, coorbital_modes, load_coorbital, data_path
+public DynamicsSurrogate, dynamics, output_times, t_ref_from_omega, load_dynamics
 
 include("spline.jl")
 include("wignerd.jl")
 include("norms.jl")
 include("fits.jl")
 include("coorbital.jl")
+include("dynamics.jl")
 include("data.jl")
 
 end

@@ -45,9 +45,7 @@ spacing is `fs/N`, and the FD vector has `N÷2+1` elements. Interior real and im
 parts independently have variance `PSD/(4Δf)`. The physical Fourier convention is:
 
 ```julia
-using FFTW
-n_td = irfft(n_fd, nsamples(model.time_domain)) * sampling_frequency(model.time_domain)
-@assert rfft(n_td) / sampling_frequency(model.time_domain) ≈ n_fd
+n_td = to_timedomain(model.time_domain, n_fd)
 ```
 
 Each draw is a finite periodic FFT segment. Concatenating independent segments does
@@ -75,10 +73,10 @@ and channel identity, ignoring epoch; numerical draw methods do not repeat these
 checks. Invalid output shapes are outside their preconditions. `frequencies`
 is shared with GWTimeFrequencyDomains.
 
-Odd time-domain lengths remain supported by noise generation. The domain package's
-real-FFT conversion uses an even-length contract: `frequency_domain(td)` rejects
-odd lengths. Keep the noise model's known transform length when using its odd FD
-draws; they do not imply an even-length inverse time domain.
+All FFT conversions are implemented by GWTimeFrequencyDomains; GWNoise loads FFTW
+and LinearAlgebra to activate that package's FFT extension. Odd time-domain lengths
+remain supported through `to_timedomain(model.time_domain, n_fd)`, which uses the
+known target length. `frequency_domain(td)` still requires even lengths.
 
 Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
 with `GaussianNoise(curve, td; ...)` and requires separate output validation.

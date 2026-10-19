@@ -5,10 +5,13 @@ import GWTimeFrequencyDomains
 
 using GWTimeFrequencyDomains: TimeDomain, FrequencyDomain, nsamples, sampling_frequency, channels
 using GWTimeFrequencyDomains: epoch, frequency_spacing, check_coordinate, check_same_frequency_grid
+using GWTimeFrequencyDomains: to_timedomain
 import GWTimeFrequencyDomains: frequencies, check_compatible
 
 using DelimitedFiles: readdlm
-using FFTW: irfft
+# Activate GWTimeFrequencyDomains' FFT extension.
+import FFTW
+import LinearAlgebra
 using Random: AbstractRNG, default_rng, randn
 
 export TabulatedPSD, read_psd, read_asd, psd, asd

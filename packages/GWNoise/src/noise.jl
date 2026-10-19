@@ -75,13 +75,12 @@ end
 """
     noise_td([rng], model::GaussianNoise)
 
-Draw real time-domain strain: `irfft(noise_fd(rng, model), nsamples) * sampling_frequency`.
+Draw real time-domain strain using `to_timedomain(model.time_domain, noise_fd(rng, model))`.
 To obtain matching FD and TD data, draw once with `noise_fd` and transform it.
 """
 noise_td(model::GaussianNoise) = noise_td(default_rng(), model)
 noise_td(rng::AbstractRNG, model::GaussianNoise) =
-    irfft(noise_fd(rng, model), nsamples(model.time_domain)) .*
-    Float64(sampling_frequency(model.time_domain))
+    to_timedomain(model.time_domain, noise_fd(rng, model))
 
 """
     noise_td!([rng], out, model)

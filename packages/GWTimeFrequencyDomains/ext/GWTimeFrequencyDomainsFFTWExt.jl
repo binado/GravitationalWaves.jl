@@ -14,8 +14,15 @@ function GWTimeFrequencyDomains.to_frequencydomain(d::TimeDomain, x::RealCPU)
     return values
 end
 function GWTimeFrequencyDomains.to_timedomain(d::FrequencyDomain, h::Union{RealCPU, ComplexCPU})
-    values = irfft(h, 2 * (nsamples(d) - 1), 1)
-    values .*= 2 * (nsamples(d) - 1) * frequency_spacing(d)
+    n = 2 * (nsamples(d) - 1)
+    return inverse_transform(h, n, n * frequency_spacing(d))
+end
+function GWTimeFrequencyDomains.to_timedomain(d::TimeDomain, h::Union{RealCPU, ComplexCPU})
+    return inverse_transform(h, nsamples(d), sampling_frequency(d))
+end
+function inverse_transform(h, n, scale)
+    values = irfft(h, n, 1)
+    values .*= scale
     return values
 end
 

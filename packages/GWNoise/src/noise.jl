@@ -18,29 +18,29 @@ end
 function GaussianNoise(
         curve::TabulatedPSD, domain::TimeDomain;
         minimum_frequency = first(curve.frequencies),
-        maximum_frequency = min(last(curve.frequencies), GWTimeFrequencyDomains.sampling_frequency(domain) / 2),
+        maximum_frequency = min(last(curve.frequencies), sampling_frequency(domain) / 2),
     )
     length(channels(domain)) == 1 || throw(ArgumentError("GaussianNoise requires a single-channel domain"))
-    sampling_frequency = GWTimeFrequencyDomains.sampling_frequency(domain)
-    nsamples = GWTimeFrequencyDomains.nsamples(domain)
-    isfinite(sampling_frequency) && sampling_frequency > 0 && nsamples >= 2 ||
+    fs = sampling_frequency(domain)
+    n = nsamples(domain)
+    isfinite(fs) && fs > 0 && n >= 2 ||
         throw(ArgumentError("need a positive sampling frequency and at least two samples"))
     first(curve.frequencies) <= minimum_frequency <= maximum_frequency <=
-        min(last(curve.frequencies), sampling_frequency / 2) ||
+        min(last(curve.frequencies), fs / 2) ||
         throw(ArgumentError("requested band must lie within PSD coverage and Nyquist"))
-    fs = Float64(sampling_frequency)
-    isfinite(fs) && fs > 0 || throw(ArgumentError("noise sampling frequency must be representable as positive finite Float64"))
-    df = fs / nsamples
-    f = range(0.0; step = df, length = nsamples ÷ 2 + 1)
+    fs64 = Float64(fs)
+    isfinite(fs64) && fs64 > 0 || throw(ArgumentError("noise sampling frequency must be representable as positive finite Float64"))
+    df = fs64 / n
+    f = range(0.0; step = df, length = n ÷ 2 + 1)
     s = [minimum_frequency <= x <= maximum_frequency ? psd(x, curve) : 0.0 for x in f]
     s[1] = 0.0
-    iseven(nsamples) && (s[end] = 0.0)
-    fd = FrequencyDomain(; frequencies = f, epoch = GWTimeFrequencyDomains.epoch(domain), channels = channels(domain))
+    iseven(n) && (s[end] = 0.0)
+    fd = FrequencyDomain(; frequencies = f, epoch = epoch(domain), channels = channels(domain))
     return GaussianNoise(domain, fd, s)
 end
 
 """`frequencies(model)` returns the one-sided FFT frequency range in Hz."""
-frequencies(model::GaussianNoise) = GWTimeFrequencyDomains.frequencies(model.frequency_domain)
+frequencies(model::GaussianNoise) = frequencies(model.frequency_domain)
 
 """`psd(model)` returns a copy of the effective PSD, including band and endpoint zeros."""
 psd(model::GaussianNoise) = copy(model.spectrum)
@@ -64,7 +64,7 @@ noise_fd!(out::AbstractVector{<:Complex}, model::GaussianNoise) =
     noise_fd!(default_rng(), out, model)
 
 function noise_fd!(rng::AbstractRNG, out::AbstractVector{<:Complex}, model::GaussianNoise)
-    df = GWTimeFrequencyDomains.frequency_spacing(model.frequency_domain)
+    df = frequency_spacing(model.frequency_domain)
     for i in eachindex(out, model.spectrum)
         scale = sqrt(model.spectrum[i] / df) / 2
         out[i] = scale * complex(randn(rng), randn(rng))
@@ -100,7 +100,7 @@ end
 function check_compatible(d::TimeDomain, model::GaussianNoise)
     nsamples(d) == nsamples(model.time_domain) || throw(DimensionMismatch("noise sample count differs"))
     fs = Float64(sampling_frequency(model.time_domain))
-    GWTimeFrequencyDomains.check_coordinate(sampling_frequency(d), fs, fs, "sampling frequencies")
+    check_coordinate(sampling_frequency(d), fs, fs, "sampling frequencies")
     channels(d) == channels(model.time_domain) || throw(ArgumentError("noise channel orders differ"))
     return nothing
 end

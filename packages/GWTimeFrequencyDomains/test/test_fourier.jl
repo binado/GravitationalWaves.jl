@@ -85,3 +85,21 @@ end
         @test check_same_grid(output_domain(inverse), td) === nothing
     end
 end
+
+@testset "Strided FFT prototypes" begin
+    td = TimeDomain(; epoch = 0, nsamples = 14, sampling_frequency = 100.1, channels = (:H1, :L1, :V1))
+    fd = frequency_domain(td)
+    backing = reshape(sin.(1:84), 28, 3)
+    samples = view(backing, 1:2:28, :)
+    saved = copy(samples)
+    forward = plan_to_frequencydomain(td, samples)
+    h = transform(forward, samples)
+    @test h ≈ to_frequencydomain(td, samples)
+    bins = zeros(ComplexF64, 2nsamples(fd), 3)
+    strided = view(bins, 1:2:size(bins, 1), :)
+    strided .= h
+    inverse = plan_to_timedomain(fd, strided)
+    @test transform(inverse, strided) ≈ samples
+    @test to_timedomain(fd, strided) ≈ samples
+    @test samples == saved && strided == h
+end

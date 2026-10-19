@@ -1,7 +1,7 @@
 """
     GaussianNoise(curve, domain::TimeDomain;
                   minimum_frequency=first(curve.frequencies),
-                  maximum_frequency=min(last(curve.frequencies), sampling_frequency/2))
+                  maximum_frequency=min(last(curve.frequencies), sampling_frequency(domain)/2))
 
 Prepare a finite stationary Gaussian noise segment. The domain sample count and
 sampling frequency (Hz) determine the duration and one-sided FFT grid.

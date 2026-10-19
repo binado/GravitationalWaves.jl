@@ -1,4 +1,5 @@
 using Test
+using GWTimeFrequencyDomains
 using GWDetectors
 using ForwardDiff
 using DifferentiationInterface

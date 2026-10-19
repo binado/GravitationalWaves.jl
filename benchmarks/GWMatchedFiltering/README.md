@@ -58,31 +58,37 @@ Reactant performance is a separate backend measurement. The initial allocating
 broadcast implementation was substantially slower on the host, motivating the
 native specialization and the StaticArrays runtime dependency.
 
-## GWSeries delegation
+## Domain-first inference
 
-The layout benchmark also records `series/blocks` and `series/diagonal` alongside
-production array calls. For a focused comparison, including native matrix views:
+For a focused comparison of domain-first evaluation against the underlying array
+contraction kernel, including native matrix views:
 
 ```sh
-julia --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/series.jl
+julia --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/domains.jl
 ```
 
-This validates equal numerical results before timing, with fixed epoch/channel
-metadata and three channels at 8,193 active frequencies. Metadata validation is
-included in series timings; metric preparation and series construction are
-excluded. FFTs, storage adaptation, and whole-series compilation are separate
-contracts. Rerun on deployment hardware; these measurements are not CI thresholds.
+The comparison uses one and three channels, vector/matrix storage and their views,
+and 8,193 active frequency bins. It validates data
+and metric compatibility before timing, and checks equal numerical results. Both
+paths include the same physical `4df` normalization. No compatibility checks or
+coordinate-array construction occur during evaluation. Metric/domain construction
+is excluded. Measurements are hardware-specific, not CI timing thresholds.
 
-Measured on Apple M4 with Julia 1.12.7, one Julia/BLAS thread and no competing
-Julia jobs. Median microseconds, with zero bytes and zero allocations throughout:
+Measured after integration checks on Apple M4, Julia 1.12.7, one Julia/BLAS
+thread. Median microseconds; every case allocated zero bytes and zero objects:
 
-| Metric | Storage | Arrays | Series |
-| --- | --- | --- | --- |
-| Diagonal | Matrix | 15.000 | 15.042 |
-| Diagonal | Matrix view | 15.041 | 15.042 |
-| Correlated blocks | Matrix | 26.417 | 26.459 |
-| Correlated blocks | Matrix view | 26.375 | 26.417 |
+| Channels | Metric | Storage | Kernel | Domain-first |
+| --- | --- | --- | --- | --- |
+| 1 | Diagonal | Vector | 5.000 | 5.000 |
+| 1 | Diagonal | Vector view | 5.000 | 5.000 |
+| 1 | Blocks | Vector | 5.584 | 5.584 |
+| 1 | Blocks | Vector view | 5.625 | 5.625 |
+| 3 | Diagonal | Matrix | 15.000 | 15.000 |
+| 3 | Diagonal | Matrix view | 15.000 | 15.041 |
+| 3 | Blocks | Matrix | 26.417 | 26.375 |
+| 3 | Blocks | Matrix view | 26.375 | 26.375 |
 
-Observed wrapper overhead was 0–0.3% in these cases. See
-[raw series results](series_results.csv). This establishes representative host
-behavior, not a guarantee for other storage, sizes, hardware, or compiled backends.
+Domain-first timings were within 0.3% of the raw kernel in these measurements,
+including small variations in both directions. See [raw results](domains_results.csv).
+This is representative host evidence, not a guarantee for other sizes, storage,
+hardware, or compiled backends. Previous series-wrapper measurements have been retired.

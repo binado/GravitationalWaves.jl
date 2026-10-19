@@ -53,9 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWTimeFrequencyDomains'
       - name: Set up Python reference environment
-        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractGWWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWTimeFrequencyDomains'
         run: uv sync --project python --locked
       - name: Generate bilby reference fixtures
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWParameterConversion'

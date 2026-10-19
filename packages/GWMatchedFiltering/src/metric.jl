@@ -16,7 +16,8 @@ end
 
 """
     FrequencyDomainMetric(domain::FrequencyDomain, spectral_density;
-        minimum_frequency=first(f), maximum_frequency=last(f), nsamples=nothing)
+        minimum_frequency=first(frequencies(domain)),
+        maximum_frequency=last(frequencies(domain)), nsamples=nothing)
 
 Prepare a joint metric with first-argument conjugation and normalization supplied by the evaluation domain as `4frequency_spacing(domain)`.
 The domain frequency grid must be a uniform nonnegative `AbstractRange`. Supply PSDs with shape

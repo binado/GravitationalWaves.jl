@@ -1,6 +1,6 @@
 using BenchmarkTools
 using GWMatchedFiltering
-using GWSeries
+using GWTimeFrequencyDomains
 using GWDetectors
 using GWWaveforms
 using LinearAlgebra
@@ -67,13 +67,15 @@ function benchmark_layouts()
         b = randn(rng, ComplexF64, nf, D)
         s0 = Matrix{ComplexF64}(I, D, D) + fill(0.1, D, D)
         S = repeat(reshape(s0, 1, D, D), nf + 1, 1, 1)
-        m = FrequencyDomainMetric(f, names, S)
+        m_domain = FrequencyDomain(; frequencies = f, epoch = 0.0, channels = names)
+        m = FrequencyDomainMetric(m_domain, S)
         w = permutedims(m.metric.whiteners, (3, 1, 2))
         psd = fill(2.0, nf + 1, D)
-        md = FrequencyDomainMetric(f, names, psd)
+        md_domain = FrequencyDomain(; frequencies = f, epoch = 0.0, channels = names)
+        md = FrequencyDomainMetric(md_domain, psd)
         full_a = vcat(zeros(ComplexF64, 1, D), a)
         full_b = vcat(zeros(ComplexF64, 1, D), b)
-        reference = complex_inner_product(full_a, full_b, m) / m.normalization
+        reference = complex_inner_product(m_domain, full_a, full_b, m) / (4frequency_spacing(m_domain))
         for layout in (Val(:frequency_first), Val(:channel_first), Val(:block_contiguous))
             aa = layout isa Val{:channel_first} ? permutedims(a) : a
             bb = layout isa Val{:channel_first} ? permutedims(b) : b
@@ -86,25 +88,21 @@ function benchmark_layouts()
             record("$label/static", @benchmarkable static_blocks($aa, $bb, $ww, $layout, $(Val(D)), $nf))
             record("$label/diagonal", @benchmarkable diagonal($aa, $bb, $weights))
         end
-        series_a = FrequencySeries(full_a; frequencies = f, epoch = 1126259460.0, channels = names)
-        series_b = FrequencySeries(full_b; frequencies = f, epoch = 1126259460.0, channels = names)
-        @assert complex_inner_product(series_a, series_b, m) ≈ m.normalization * reference
-        record("D=$D/nf=$nf/series/blocks", @benchmarkable complex_inner_product($series_a, $series_b, $m))
-        record("D=$D/nf=$nf/series/diagonal", @benchmarkable complex_inner_product($series_a, $series_b, $md))
-        record("D=$D/nf=$nf/production/blocks", @benchmarkable complex_inner_product($full_a, $full_b, $m))
-        record("D=$D/nf=$nf/production/diagonal", @benchmarkable complex_inner_product($full_a, $full_b, $md))
-        record("D=$D/nf=$nf/production/norm", @benchmarkable optimal_snr_squared($full_a, $m))
-        record("D=$D/nf=$nf/production/matched", @benchmarkable matched_filter_snr($full_a, $full_b, $m))
-        record("D=$D/nf=$nf/production/residual", @benchmarkable residual_squared($full_a, $full_b, $m))
-        record("D=$D/nf=$nf/setup/blocks", @benchmarkable FrequencyDomainMetric($f, $names, $S))
-        record("D=$D/nf=$nf/setup/diagonal", @benchmarkable FrequencyDomainMetric($f, $names, $psd))
+        record("D=$D/nf=$nf/production/blocks", @benchmarkable complex_inner_product($m_domain, $full_a, $full_b, $m))
+        record("D=$D/nf=$nf/production/diagonal", @benchmarkable complex_inner_product($md_domain, $full_a, $full_b, $md))
+        record("D=$D/nf=$nf/production/norm", @benchmarkable optimal_snr_squared($m_domain, $full_a, $m))
+        record("D=$D/nf=$nf/production/matched", @benchmarkable matched_filter_snr($m_domain, $full_a, $full_b, $m))
+        record("D=$D/nf=$nf/production/residual", @benchmarkable residual_squared($m_domain, $full_a, $full_b, $m))
+        record("D=$D/nf=$nf/setup/blocks", @benchmarkable FrequencyDomainMetric(FrequencyDomain(; frequencies = $f, epoch = 0.0, channels = $names), $S))
+        record("D=$D/nf=$nf/setup/diagonal", @benchmarkable FrequencyDomainMetric(FrequencyDomain(; frequencies = $f, epoch = 0.0, channels = $names), $psd))
     end
     return nothing
 end
 
-function waveform_path(f, generator, params, sky, w, layout)
+function waveform_path(domains, generator, params, sky, w, layout)
+    f = frequencies(first(domains))
     pol = hphc_fd(f, params, generator)
-    strains = hcat([project_fd(f, pol, sky, d; start_time = sky.geocent_time - 2) for d in (detectors.H1, detectors.L1, detectors.V1)]...)
+    strains = hcat([project_fd(domain, pol, sky, d) for (domain, d) in zip(domains, (detectors.H1, detectors.L1, detectors.V1))]...)
     selected = strains[2:end, :]
     a = layout isa Val{:channel_first} ? permutedims(selected) : selected
     return scalar_blocks(a, a, w, layout, Val(3), length(f) - 1)
@@ -115,10 +113,11 @@ function benchmark_pipeline()
     generator = TaylorF2(; maximum_frequency = last(f))
     params = (; mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3)
     sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
+    domains = map(name -> FrequencyDomain(; frequencies = f, epoch = sky.geocent_time - 2, channels = (name,)), (:H1, :L1, :V1))
     W = repeat(reshape(Matrix{Float64}(I, 3, 3), 1, 3, 3), length(f) - 1, 1, 1)
     for layout in (Val(:frequency_first), Val(:channel_first), Val(:block_contiguous))
         w = layout isa Val{:frequency_first} ? W : permutedims(W, (2, 3, 1))
-        record("pipeline/$(typeof(layout))", @benchmarkable waveform_path($f, $generator, $params, $sky, $w, $layout))
+        record("pipeline/$(typeof(layout))", @benchmarkable waveform_path($domains, $generator, $params, $sky, $w, $layout))
     end
     return nothing
 end

@@ -37,7 +37,7 @@ fixtures:
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-seobnr-fft test-integration-seobnr-validation
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-seobnr-fft test-integration-seobnr-validation test-integration-seobnr-initial
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -79,3 +79,8 @@ test-integration-seobnr-fft:
 # Inactive solver-status validation still rejects failed/incomplete solves under AD.
 test-integration-seobnr-validation:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_validation.jl")'
+
+# Experimental NonlinearSolve initial conditions: nine cases, native Enzyme adjoint, and failure checks.
+test-integration-seobnr-initial:
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR integration/GWSEOBNR/probe_nonlinearsolve.jl dense default reference/seobnr/enzyme/nonlinearsolve-dense.toml

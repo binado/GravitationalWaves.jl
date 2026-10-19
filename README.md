@@ -7,6 +7,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 |---------|---------|---------|
 | [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | GPL-2.0-or-later |
 | [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
+| [GWSEOBNR](packages/GWSEOBNR) | Experimental native SEOBNRv5HM with (2,±2) output; acceptance pending | GPL-3.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
@@ -199,3 +200,15 @@ runic --inplace .
 
 The root [LICENSE](LICENSE) and every package except `GWDistributions` use GPL-2.0-or-later.
 `GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).
+
+### Experimental SEOBNR prototype
+
+`packages/GWSEOBNR` is a native Julia aligned-spin SEOBNRv5HM research prototype
+based on pySEOBNR 0.3.7. It outputs **only (2,±2)** while keeping the full
+radiation-reaction flux. Its package license is **GPL-3.0-or-later**; the licenses
+of existing packages are unchanged. Full waveform and ForwardDiff acceptance is
+not yet established, so `is_differentiable` remains false. See the
+[package README](packages/GWSEOBNR/README.md) and
+[acceptance status](packages/GWSEOBNR/ACCEPTANCE.md). The independent locked
+oracle and full acceptance commands are `just fixtures-seobnr` and
+`just test-integration-seobnr`.

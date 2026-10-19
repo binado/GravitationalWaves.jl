@@ -1,0 +1,54 @@
+name = "GWSEOBNR"
+uuid = "4f0e8f35-72a1-49ea-92e6-98a6e729c138"
+version = "0.1.0"
+license = "GPL-3.0-or-later"
+
+[deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+AbstractGWWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GWParameterConversion = "8025f710-d0ad-4738-9700-57195c00f751"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
+OrdinaryDiffEqVerner = "79d7bb75-1356-48c1-b8c0-6832512096c2"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[sources]
+AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
+GWParameterConversion = {path = "../GWParameterConversion"}
+
+[weakdeps]
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+SciMLSensitivity = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
+
+[extensions]
+GWSEOBNREnzymeCoreExt = "EnzymeCore"
+GWSEOBNRSciMLSensitivityExt = "SciMLSensitivity"
+
+[compat]
+ADTypes = "1"
+EnzymeCore = "0.8.21"
+AbstractGWWaveforms = "0.2"
+FFTW = "1"
+ForwardDiff = "1"
+GWParameterConversion = "0.1"
+LinearAlgebra = "1"
+NonlinearSolve = "4.32"
+OrdinaryDiffEqVerner = "1, 2"
+SciMLBase = "2, 3"
+SciMLSensitivity = "7.119"
+SpecialFunctions = "2"
+StaticArrays = "1"
+Test = "1"
+TOML = "1"
+julia = "1.12"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[targets]
+test = ["Test", "TOML"]

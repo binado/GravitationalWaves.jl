@@ -14,13 +14,15 @@ PACKAGES = (
     "GWTimeFrequencyDomains",
     "GWNoise",
     "GWMatchedFiltering",
+    "GWSEOBNR",
 )
 AFFECTED = {
     "GWTimeFrequencyDomains": {"GWTimeFrequencyDomains", "GWNoise", "GWDetectors", "GWMatchedFiltering"},
-    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
+    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSEOBNR"},
     "LALWaveforms": {"LALWaveforms", "GWWaveforms"},
-    "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms"},
+    "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms", "GWSEOBNR"},
     "GWWaveforms": {"GWWaveforms"},
+    "GWSEOBNR": {"GWSEOBNR"},
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
@@ -41,6 +43,8 @@ def select_packages(paths):
         parts = path.split("/")
         if len(parts) >= 3 and parts[0] == "packages" and parts[1] in AFFECTED:
             selected.update(AFFECTED[parts[1]])
+        elif path.startswith(("python/seobnr/", "integration/GWSEOBNR/")):
+            selected.add("GWSEOBNR")
         elif path.startswith("python/"):
             selected.update(AFFECTED["GWParameterConversion"] | {"GWDetectors", "GWMatchedFiltering"})
         else:

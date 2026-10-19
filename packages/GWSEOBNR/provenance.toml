@@ -1,0 +1,15 @@
+upstream = "pyseobnr"
+version = "0.3.7"
+archive_url = "https://files.pythonhosted.org/packages/dc/ed/7d5b6587f73aa04ffb494bc1a946cbccb9ea659767455606efc89b261525/pyseobnr-0.3.7.tar.gz"
+archive_sha256 = "a3125f4b7ba680bb0f0c64f6fc644e1ccb663805d78052b40803f30fd6bbb581"
+qnm_version = "0.4.4"
+
+[source_sha256]
+"pyseobnr/eob/hamiltonian/Ham_align_a6_apm_AP15_DP23_gaugeL_Tay_C.pyx" = "c3ff0bbdf7f4fc1a7cddb435dbfd85fddbd101aef221e5727ebe9e668fc0569e"
+"pyseobnr/eob/fits/fits_Hamiltonian.py" = "0233e5dd1cb74df87e6a5a67598a78985c843a71bf24cedbec5b339946565dc3"
+"pyseobnr/eob/waveform/waveform.pyx" = "712c6ae986c903e9c6f8c1f5b6470a4d168a0d79362d246eea63b63d87b69cef"
+"LICENSE" = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+"pyseobnr/eob/fits/GSF_fits.py" = "7fead90b3484d8abfaea46822e9d7665d40ad8cf7a950a9405831f827ba9903d"
+"pyseobnr/eob/fits/IV_fits.py" = "7b0158b744aa1eb0eaf0d9f796767f121c87a458a61483804581c206c7e87fb7"
+"pyseobnr/eob/fits/MR_fits.py" = "16235478ebbde9749cdaefea85d05f641cc7964ca10c4c6151ff06e3e76e7073"
+"pyseobnr/eob/utils/nr_utils.py" = "0acfb5d7a113714e40a3bb44a37716ea2ee2372808ccf5d8570b8984967a18a6"

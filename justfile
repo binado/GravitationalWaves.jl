@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering packages/GWSEOBNR; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:
@@ -37,7 +37,7 @@ fixtures:
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-seobnr-fft test-integration-seobnr-validation test-integration-seobnr-initial
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -59,3 +59,33 @@ test-integration-inference:
 benchmark-inference:
     {{ julia }} --startup-file=no --project=benchmarks/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate()'
     {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/layouts.jl
+
+# Independent pinned pySEOBNR oracle (requires GSL, SWIG, and a C compiler).
+fixtures-seobnr:
+    uv sync --project python/seobnr --locked
+    uv run --project python/seobnr python python/seobnr/generate.py --components --waves
+    uv run --project python/seobnr python python/seobnr/export_qnm.py
+    uv run --project python/seobnr python python/seobnr/condition.py
+    uv run --project python/seobnr python python/seobnr/short_snapshot.py
+
+# Full nine-case SEOBNR primal/ForwardDiff/composition acceptance; keeps failure diagnostics.
+test-integration-seobnr:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/runtests.jl")'
+
+# Narrow Enzyme reverse rule for the local real FFT; independent of oracle fixtures.
+test-integration-seobnr-fft:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_fft.jl")'
+
+# Inactive solver-status validation still rejects failed/incomplete solves under AD.
+test-integration-seobnr-validation:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_validation.jl")'
+
+# Production NonlinearSolve initial conditions: nine cases, native Enzyme adjoint, and failure checks.
+test-integration-seobnr-initial:
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR integration/GWSEOBNR/probe_nonlinearsolve.jl production default reference/seobnr/enzyme/nonlinearsolve-production.toml
+
+# Exploratory SciMLStructures ODE container; records reverse errors and exits nonzero on failure.
+probe-seobnr-structures:
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --project=integration/GWSEOBNR integration/GWSEOBNR/probe_scimlstructures.jl short reference/seobnr/enzyme/structures-short-explicit.toml

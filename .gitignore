@@ -3,3 +3,5 @@ reference/
 python/.venv/
 .claude/
 LocalPreferences.toml
+python/seobnr/.venv/
+python/seobnr/__pycache__/

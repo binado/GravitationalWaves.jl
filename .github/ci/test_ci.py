@@ -4,7 +4,7 @@ import unittest
 from ci import PACKAGES, check_status, select_matrix, select_packages
 
 
-CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "GWWaveforms"]
+CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "GWWaveforms", "GWSEOBNR"]
 
 
 class SelectionTests(unittest.TestCase):
@@ -17,7 +17,8 @@ class SelectionTests(unittest.TestCase):
             "GWMatchedFiltering": ["GWMatchedFiltering"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
-            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],
+            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSEOBNR"],
+            "GWSEOBNR": ["GWSEOBNR"],
             "GWParameterConversion": CONVERSION_AFFECTED,
         }
         for package, expected in cases.items():
@@ -60,8 +61,14 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(
                     select_packages([f"python/{name}"]),
-                    CONVERSION_AFFECTED + ["GWDetectors", "GWMatchedFiltering"],
+                    CONVERSION_AFFECTED[:-1] + ["GWDetectors", "GWMatchedFiltering", "GWSEOBNR"],
                 )
+
+    def test_seobnr_reference_and_integration(self):
+        for path in ("python/seobnr/generate.py", "python/seobnr/uv.lock",
+                     "integration/GWSEOBNR/runtests.jl"):
+            with self.subTest(path=path):
+                self.assertEqual(select_packages([path]), ["GWSEOBNR"])
 
     def test_documentation_only_and_empty(self):
         self.assertEqual(
@@ -91,7 +98,7 @@ class SelectionTests(unittest.TestCase):
                     "packages/GWParameterConversion/src/new.jl",
                 ]
             ),
-            CONVERSION_AFFECTED + ["GWDistributions"],
+            CONVERSION_AFFECTED[:-1] + ["GWDistributions", "GWSEOBNR"],
         )
 
     def test_unusual_filenames_are_data(self):

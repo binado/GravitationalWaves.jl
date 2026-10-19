@@ -1,0 +1,25 @@
+module GWSEOBNR
+
+using AbstractGWWaveforms
+using GWParameterConversion
+using ForwardDiff
+using StaticArrays
+using LinearAlgebra
+using SpecialFunctions
+using FFTW
+using OrdinaryDiffEqVerner: Vern9
+using SciMLBase
+
+import AbstractGWWaveforms: hphc_fd, validate_parameters, approximant,
+    reference_frequency, minimum_frequency, maximum_frequency,
+    spin_support, supports_mode_array, is_differentiable
+using AbstractGWWaveforms: check_frequency_grid, frequency_bounds
+
+export SEOBNRv5HM, hphc_fd, validate_parameters
+export approximant, reference_frequency, minimum_frequency, maximum_frequency
+export spin_support, supports_mode_array, is_differentiable
+
+include("generator.jl")
+include("parameters.jl")
+
+end

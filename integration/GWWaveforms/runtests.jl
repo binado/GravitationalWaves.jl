@@ -14,3 +14,4 @@ test_waveform_gradients(
 )
 
 include("test_reactant.jl")
+include("test_reactant_xas.jl")

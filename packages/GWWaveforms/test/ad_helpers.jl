@@ -26,10 +26,10 @@ function ad_loss(generator, template)
     end
 end
 
-function test_waveform_gradients(backends)
+function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, IMRPhenomXAS))
     return @testset "automatic differentiation" begin
         x_template = AD_X0 .* [1.01, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        for G in (TaylorF2, IMRPhenomD)
+        for G in generators
             @testset "$G" begin
                 generator = G(; minimum_frequency = 25.0)
                 template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), generator).cross

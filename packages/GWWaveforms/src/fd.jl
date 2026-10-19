@@ -29,8 +29,8 @@ The parameter values are **not** checked: spins must be (anti-)aligned with the 
 momentum, `eccentricity` zero, masses and distance positive, and so on. Run
 [`validate_parameters`](@ref) first (once, on the host) for that. In exchange, `hphc_fd` is free of
 data-dependent branches and can be compiled by Reactant with tracked scalar parameters.
-Both `TaylorF2` and `IMRPhenomD` are supported, and `maximum_frequency` must be positive
-(`ArgumentError` otherwise, as the ISCO or `0.2 / M` cutoff depends on the masses).
+`TaylorF2`, `IMRPhenomD` and `IMRPhenomXAS` are supported, and `maximum_frequency` must be positive
+(`ArgumentError` otherwise, as the model's intrinsic cutoff depends on the masses).
 
 The element type is `Complex{T}` with `T` the floating-point type promoted from the
 parameters, so dual numbers (ForwardDiff) and Enzyme or Mooncake reverse mode pass through.

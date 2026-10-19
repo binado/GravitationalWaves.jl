@@ -10,6 +10,7 @@ parameter names, units and mass conversions. The code is generic over `Real`, so
 |--------------|-------|
 | `TaylorF2()` | post-Newtonian stationary-phase inspiral, aligned spins, optional SPA amplitude corrections |
 | `IMRPhenomD()` | aligned-spin inspiral-merger-ringdown (Husa et al. 2016, Khan et al. 2016) |
+| `IMRPhenomXAS()` | default aligned-spin quadrupole inspiral-merger-ringdown (Pratten et al. 2020) |
 
 ```julia
 using GWWaveforms
@@ -44,7 +45,7 @@ and frequency ranges the model cannot produce, and returns `nothing` otherwise.
 
 ## Compiled inference with Reactant
 
-`hphc_fd(f, params, generator)` compiles, for both `TaylorF2` and `IMRPhenomD`, with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
+`hphc_fd(f, params, generator)` compiles, for `TaylorF2`, `IMRPhenomD` and `IMRPhenomXAS`, with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
 on CPU, with scalar `params` tracked and the grid `f` and the generator static. One executable then
 serves every parameter draw, and Enzyme differentiates it:
 
@@ -66,21 +67,48 @@ one executable serves draws on both sides of it. The cost is that `maximum_frequ
 positive: stopping at the ISCO (`TaylorF2`) or at `0.2 / M` (`IMRPhenomD`) by default depends on the
 masses and throws `ArgumentError`. The compiled results match the host ones to about 1e-12 relative.
 
+`IMRPhenomXAS` likewise masks its mass-dependent cutoff (`0.3 / M_sec`) within the static slice.
+Its collocation solves and region selections use scalar arithmetic that Reactant can differentiate.
+Inactive amplitude expressions are evaluated at safe frequencies in their own regions.
+
 ## Scope
 
 - Frequency domain, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tidal parameters.
-- Both models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
-  `eccentricity` zero, otherwise `validate_parameters` throws `ArgumentError` (LAL rejects such input too). Neither model has higher
+- All models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
+  `eccentricity` zero, otherwise `validate_parameters` throws `ArgumentError` (LAL rejects such input too). None has higher
   modes, so there is no `mode_array` option.
 - `TaylorF2` takes `pn_spin_order`, `pn_phase_order` and `pn_amplitude_order` as in LAL (`-1` selects the highest
-  order); `IMRPhenomD` only takes `pn_amplitude_order`, which shifts the start frequency.
+  order); `IMRPhenomD` and `IMRPhenomXAS` only take `pn_amplitude_order`, which shifts the start frequency.
+- `IMRPhenomXAS` implements LAL's default calibration versions. Its intrinsic cutoff is
+  `0.3 / M_sec`, inclusive. Alternative calibration flags are not exposed.
+
+### IMRPhenomXAS differentiation
+
+The collocation systems use small, pivoted Gaussian eliminations expanded into scalar arithmetic.
+This keeps the matrix and right-hand-side dependence visible to AD without adding a runtime
+dependency or requiring an adjoint for a backend LU primitive. The intermediate amplitude uses
+a normalized polynomial coordinate to avoid large powers of nearby frequency nodes.
+
+Mass differences are calculated directly from component masses, avoiding the singular derivative
+of `sqrt(1 - 4eta)` at equal mass. The ISCO expression has a regular evaluation near zero final
+spin. These choices do not remove coordinate singularities in conversions from other mass
+parameters. Hard frequency cutoffs remain discontinuous: gradients describe the currently
+selected support and do not differentiate a bin entering or leaving it.
 
 ## Fidelity
 
-The ports follow LALSimulation (lalsuite 7.26) line by line, including the operation order, LAL's `UsefulPowers`
+The TaylorF2 and IMRPhenomD ports follow LALSimulation (lalsuite 7.26) line by line, including the operation order, LAL's `UsefulPowers`
 and the natural cubic spline that GSL builds over the QNM tables. Against `LALWaveforms` the largest deviation
 relative to the largest sample is about 1e-14 to 4e-13 for IMRPhenomD and 1e-13 to 7e-12 for TaylorF2 (limited by
 `cbrt`/`log`/`sin` ulp differences on phases of order 1e5 rad). Where LAL and a paper or ripple disagree, LAL wins.
+
+IMRPhenomXAS fit tables and arithmetic were transcribed from
+[Ripple revision 58c5302](https://github.com/tedwards2412/ripple/tree/58c53024718697e0430b666ef5dd40ff3c2e029d/src/ripplegw/waveforms),
+with full complex polarizations and exact support compared against LALSimulation 7.26.
+The comparison covers equal and unequal masses, swapped component labels, high spins,
+high mass ratio, moving cutoffs and alternative frequency settings. LAL is the value oracle.
+Across these cases, the largest complex-polarization error relative to the largest sample
+is below `8e-12` (below `2e-13` for the tested ordinary stellar-mass binaries).
 
 ## Tests
 
@@ -97,7 +125,7 @@ and compare against finite differences.
 
 Run the separate integration suite from the repository root to check ForwardDiff,
 Enzyme and Mooncake against finite differences and each other, and the Reactant CPU
-compilation of TaylorF2 against the host result:
+compilation and gradients against the host result:
 
 ```sh
 just test-integration-waveforms

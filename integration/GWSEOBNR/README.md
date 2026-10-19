@@ -37,8 +37,9 @@ accumulation. The complete waveform/likelihood Enzyme probes remain exploratory.
 `just test-integration-seobnr-validation` checks that inactive solver-status
 validation preserves gradients on valid inputs and errors on invalid solves.
 
-The standalone [NonlinearSolve initial-condition prototype](NONLINEARSOLVE.md)
-compares nine physical cases and all initial-state mass/spin derivatives with
-the original solver. Run `just test-integration-seobnr-initial`. It uses SciML's
-native implicit adjoint with dense ForwardDiff Jacobians inside Enzyme reverse
-mode; production initial conditions and runtime dependencies are unchanged.
+The [NonlinearSolve initial-condition checks](NONLINEARSOLVE.md) compare nine
+physical cases and all initial-state mass/spin derivatives with the frozen old
+solver. Run `just test-integration-seobnr-initial`. The production path uses
+NonlinearSolve; optional SciMLSensitivity selects its native implicit adjoint
+with dense ForwardDiff Jacobians inside Enzyme reverse mode. The original
+standalone prototype remains available for comparison.

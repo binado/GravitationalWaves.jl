@@ -3,6 +3,7 @@ module NonlinearInitialPrototype
 
 using GWSEOBNR, NonlinearSolve, ForwardDiff, Enzyme, SciMLSensitivity
 using LinearAlgebra
+include("../../packages/GWSEOBNR/test/legacy_initial.jl")
 const S = GWSEOBNR
 const DEFAULT_SENSEALG = SteadyStateAdjoint(; autojacvec = false)
 
@@ -52,7 +53,7 @@ end
 
 function reference_initial(x)
     omega = π * (x[1] + x[2]) * S.MTSUN_SI * 16
-    return collect(S.initial_conditions(x..., omega))
+    return collect(LegacyInitial.initial_conditions(x..., omega))
 end
 
 function initial_loss(x; sensealg = DEFAULT_SENSEALG)

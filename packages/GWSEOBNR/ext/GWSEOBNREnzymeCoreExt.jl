@@ -1,6 +1,6 @@
 module GWSEOBNREnzymeCoreExt
 
-using GWSEOBNR: real_fft, check_evolution_retcode
+using GWSEOBNR: real_fft, check_evolution_retcode, check_initial_solution
 using FFTW: plan_rfft, ESTIMATE
 using EnzymeCore: Const, Duplicated
 using EnzymeCore: EnzymeRules
@@ -9,6 +9,7 @@ using EnzymeCore: EnzymeRules
 # effects. Inactivity preserves execution (including errors) in the primal.
 # Do not mark the solve, trajectory, or continuous termination times inactive.
 EnzymeRules.inactive(::typeof(check_evolution_retcode), retcode) = true
+EnzymeRules.inactive(::typeof(check_initial_solution), sol) = true
 
 # The constant-plan/adjoint construction follows the discussion in
 # https://github.com/SciML/NonlinearSolve.jl/issues/597 . This rule is restricted

@@ -39,8 +39,14 @@ segments, failed roots/solves, missing ISCOs, and attachment clamping requiremen
 raise explicit errors. The physical spectrum is Δt*rfft with the start-time
 phase correction. Shared FFT APIs are unchanged.
 
-The Hamiltonian uses the upstream analytic gradient and Hessian; root partials
-use implicit differentiation. Evolution uses Vern9 dense output. The complex
+The Hamiltonian uses the upstream analytic gradient and Hessian. Initial
+conditions use NonlinearSolve's NewtonRaphson on the three coupled conservative/
+dissipative equations, with residual, conditioning, and physical-branch checks.
+ForwardDiff uses NonlinearSolve's implicit derivatives without requiring
+SciMLSensitivity. Loading optional `SciMLSensitivity` selects the tested
+`SteadyStateAdjoint(autojacvec=false)`, using dense ForwardDiff residual Jacobians
+inside the native Enzyme implicit pullback. Continuous timing partials use
+implicit differentiation. Evolution uses Vern9 dense output. The complex
 tail and FFT have package-local ForwardDiff adapters. Timing and matching use
 continuous interpolants, with fixed five-point time derivatives for matching.
 Physical piecewise formulas are retained.
@@ -48,10 +54,13 @@ Physical piecewise formulas are retained.
 Loading EnzymeCore enables an optional reverse rule for the local real FFT on
 dense Float32/Float64 vectors (one reverse lane). Planning uses scratch storage;
 the pullback applies the constant plan's adjoint. This component rule does not
-establish reverse-mode waveform support: initial-condition roots remain blocked.
+establish reverse-mode waveform support: continuous timing pullbacks remain
+outstanding and the complete reverse path remains unvalidated.
 Discrete solver-status validation is inactive under Enzyme while retaining its
 primal error checks; trajectory values and continuous timing remain active.
 Run `just test-integration-seobnr-fft` for direct-DFT and gradient checks.
+Run `just test-integration-seobnr-initial` for nine-case production initial-state
+and Enzyme-gradient comparisons against the frozen sequential solver.
 
 Small committed component/QNM snapshots run without Python. The separate locked
 oracle environment is documented in [python/seobnr](../../python/seobnr/README.md).

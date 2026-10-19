@@ -16,6 +16,10 @@ normalized component masses; precomputed draw-dependent flux coefficients;
 replaced GSL evolution by OrdinaryDiffEqVerner; implicit first-order derivatives
 of initial-condition roots and continuous timing roots; continuous trajectory
 matching and amplitude-peak timing; fixed physical FFT sampling and conditioning.
+Initial-condition equations are solved as a coupled three-variable Newton system
+with NonlinearSolve rather than sequential custom Newton/bisection solves. Their
+physical residual equations are unchanged. Optional SciMLSensitivity support
+selects a dense implicit adjoint for Enzyme initial-condition derivatives.
 These changes are experimental and require the acceptance checks in integration.
 The scalar remnant fits originate in LAL's `lalinference.imrtgr.nrutils`
 (LAL 7.24, February 2025), as identified by pySEOBNR's `nr_utils.py`.

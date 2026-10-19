@@ -80,7 +80,7 @@ test-integration-seobnr-fft:
 test-integration-seobnr-validation:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate(); include("integration/GWSEOBNR/test_enzyme_validation.jl")'
 
-# Experimental NonlinearSolve initial conditions: nine cases, native Enzyme adjoint, and failure checks.
+# Production NonlinearSolve initial conditions: nine cases, native Enzyme adjoint, and failure checks.
 test-integration-seobnr-initial:
     {{ julia }} --startup-file=no --project=integration/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
-    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR integration/GWSEOBNR/probe_nonlinearsolve.jl dense default reference/seobnr/enzyme/nonlinearsolve-dense.toml
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSEOBNR integration/GWSEOBNR/probe_nonlinearsolve.jl production default reference/seobnr/enzyme/nonlinearsolve-production.toml

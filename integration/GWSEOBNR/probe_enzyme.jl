@@ -1,5 +1,5 @@
 # Exploratory reverse-mode checks; failures are recorded rather than treated as support.
-using GWSEOBNR, ForwardDiff, Enzyme, LinearAlgebra, TOML
+using GWSEOBNR, ForwardDiff, Enzyme, LinearAlgebra, TOML, SciMLSensitivity
 using GWDetectors, GWMatchedFiltering, GWTimeFrequencyDomains
 const S = GWSEOBNR
 const GRID = 0:0.125:1024
@@ -88,7 +88,8 @@ function run_probe(name, mode_name, destination)
     end
     result = Dict{String, Any}(
         "case" => name, "mode" => mode_name,
-        "julia" => string(VERSION), "enzyme" => string(pkgversion(Enzyme)), "parameters" => x
+        "julia" => string(VERSION), "enzyme" => string(pkgversion(Enzyme)),
+        "scimlsensitivity" => string(pkgversion(SciMLSensitivity)), "parameters" => x
     )
     try
         println(stderr, "Reference gradients: $name"); flush(stderr)

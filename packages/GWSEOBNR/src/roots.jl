@@ -4,51 +4,6 @@ struct SolveError <: Exception
 end
 Base.showerror(io::IO, e::SolveError) = print(io, e.message)
 
-function newton_root(F, guess, theta; tolerance = 1.0e-12, maxiters = 60)
-    x = collect(guess)
-    for _ in 1:maxiters
-        residual = F(x, theta)
-        all(isfinite, residual) || throw(SolveError("nonfinite initial-condition residual"))
-        J = ForwardDiff.jacobian(y -> F(y, theta), x)
-        isfinite(cond(J)) && cond(J) < 1.0e14 || throw(SolveError("singular initial-condition Jacobian"))
-        norm(residual, Inf) <= tolerance && return x
-        dx = J \ residual
-        accepted = false
-        for j in 0:30
-            trial = x - 2.0^(-j) * dx
-            trial[1] > 0 || continue
-            next_residual = F(trial, theta)
-            if all(isfinite, next_residual) && norm(next_residual) < norm(residual)
-                x = trial
-                accepted = true
-                break
-            end
-        end
-        accepted || throw(SolveError("initial-condition Newton line search failed"))
-    end
-    throw(SolveError("initial-condition root did not converge"))
-end
-
-function implicit_root(F, guess, theta::AbstractVector{<:AbstractFloat})
-    return newton_root(F, guess, theta)
-end
-
-function implicit_root(F, guess, theta::AbstractVector{ForwardDiff.Dual{Tag, V, P}}) where {Tag, V <: AbstractFloat, P}
-    t0 = ForwardDiff.value.(theta)
-    x = newton_root(F, guess, t0)
-    Jx = ForwardDiff.jacobian(y -> F(y, t0), x)
-    Jtheta = ForwardDiff.jacobian(y -> F(x, y), t0)
-    isfinite(cond(Jx)) && cond(Jx) < 1.0e14 || throw(SolveError("singular implicit root Jacobian"))
-    dx = -(Jx \ Jtheta)
-    return map(eachindex(x)) do i
-        ForwardDiff.Dual{Tag}(
-            x[i], ntuple(P) do j
-                sum(dx[i, k] * ForwardDiff.partials(theta[k])[j] for k in eachindex(theta))
-            end
-        )
-    end
-end
-
 function bracket_root(F, lo, hi; xtol = 1.0e-11, maxiters = 100)
     a, b = Float64(primal(lo)), Float64(primal(hi))
     fa, fb = primal(F(a)), primal(F(b))

@@ -127,3 +127,20 @@ logs are written under gitignored `reference/seobnr/enzyme/`. A compact measured
 record is committed in `packages/GWSEOBNR/diagnostics/enzyme-2026-10-19.toml`.
 Only the standalone integration environment adds Enzyme. The package adds the
 optional EnzymeCore extension; the advertised differentiation capability is unchanged.
+
+## Production NonlinearSolve initial conditions
+
+Initial conditions now use the tested coupled NonlinearSolve system. Loading
+optional SciMLSensitivity selects the dense implicit adjoint, while primal and
+ForwardDiff evaluation need no SciMLSensitivity import. The old custom Newton
+solver is frozen in test/reference tooling and is absent from the runtime path.
+
+The production primitive passes all nine initial-state/Enzyme-gradient cases,
+including per-component finite-difference checks. See [NONLINEARSOLVE.md](NONLINEARSOLVE.md)
+and `packages/GWSEOBNR/diagnostics/nonlinearsolve-production-2026-10-19.toml`.
+
+The complete Enzyme waveform probe, retried in a fresh process, now returns an
+ODE sensitivity error: automatic selection chooses `ReverseDiffVJP`, which does
+not support the Functors parameter structure. No waveform gradient is returned.
+This replaces the initial-condition SVD blocker; continuous timing still lacks
+reverse pullbacks. Full waveform reverse mode remains unvalidated.

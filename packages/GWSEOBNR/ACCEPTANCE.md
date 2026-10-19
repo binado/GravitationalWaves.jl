@@ -18,7 +18,10 @@ solver convergence, and the offset H1/L1 fixed-PSD likelihood gradient. It still
 fails the NQC coefficient fidelity gate in all nine cases and the primary
 spectral L² gate in four cases. Raw, unoptimized mismatches pass in every case.
 
-The final Julia 1.12.7 run reports **130 passing and 13 failing checks**, with no test errors. The committed diagnostic record contains solver steps, timing roots, matching
+The Julia 1.12.7 run after the production NonlinearSolve migration reports
+**130 passing and 13 failing checks**, with no test errors. The committed
+[diagnostic record](diagnostics/acceptance-production-nonlinearsolve-2026-10-19.toml)
+contains solver steps, timing roots, matching
 coefficients, raw/optimized errors, five-point finite-difference sweeps,
 convergence, and allocation/timing measurements. Large raw and conditioned
 Python fixtures remain under gitignored `reference/seobnr`.
@@ -27,7 +30,7 @@ Python fixtures remain under gitignored `reference/seobnr`.
 |---|---|---|---|---|
 | 40 | 1 | 1.478e-04 | 1.464e-08 | 3.336e-03 |
 | 40 | 2 | 8.098e-04 | 3.545e-07 | 7.469e-02 |
-| 40 | 4 | 6.865e-05 | 3.363e-09 | 2.569e-04 |
+| 40 | 4 | 6.865e-05 | 3.362e-09 | 2.569e-04 |
 | 60 | 1 | 4.746e-04 | 1.608e-07 | 7.154e-03 |
 | 60 | 2 | 1.095e-03 | 9.162e-07 | 7.448e-02 |
 | 60 | 4 | 2.481e-04 | 6.195e-08 | 2.834e-04 |
@@ -48,3 +51,10 @@ acceptance or enabling the differentiability capability flag.
 Reproduce with `just fixtures-seobnr` followed by
 `just test-integration-seobnr`. The latter intentionally exits unsuccessfully
 while any gate remains unmet and writes diagnostics even when tests fail.
+
+The initial-condition migration leaves the identities of all 13 failed gates
+unchanged. The largest change in the spectral-L² error statistic versus the
+[pre-migration record](diagnostics/acceptance-2026-10-19.toml) is `2.64e-8`.
+Waveform and derivative convergence changes remain below `2.84e-8` and
+`4.08e-6`, respectively; the offset likelihood-gradient finite-difference error
+is `6.58e-8`. These regression results do not resolve the existing fidelity gates.

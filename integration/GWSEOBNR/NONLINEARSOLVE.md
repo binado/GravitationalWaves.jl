@@ -1,16 +1,27 @@
-# NonlinearSolve initial-condition prototype
+# NonlinearSolve initial conditions
 
-`nonlinearsolve_initial.jl` is a standalone candidate for the initial-condition
-solve. Production waveforms still use the original solver. No NonlinearSolve or
-SciMLSensitivity dependency is added to the workspace package.
+The tested coupled solver is now used by production waveforms in
+`packages/GWSEOBNR/src/initial.jl`. NonlinearSolve and ADTypes are runtime
+dependencies; SciMLSensitivity remains optional. Loading SciMLSensitivity
+activates `GWSEOBNRSciMLSensitivityExt`, selecting the dense implicit adjoint
+for real parameter types. Primal and ForwardDiff evaluations require no
+SciMLSensitivity import. Configuration must remain fixed during differentiation.
 
-The prototype solves the same conservative frequency/radial-force equations and
+`nonlinearsolve_initial.jl` retains the standalone prototype for comparison.
+Both production and prototype checks use the frozen pre-migration solver in
+`packages/GWSEOBNR/test/legacy_initial.jl`, rather than comparing the new solver
+with itself. The production source contains no copy of the old custom Newton
+initial-condition solver. Scalar bisection remains for continuous timing roots.
+
+The solver uses the same conservative frequency/radial-force equations and
 dissipative radial-momentum equation as GWSEOBNR. It combines them into a single
 three-variable system `(r, p_phi, p_rstar)`. The conservative equations are
 independent of radial momentum, so their roots agree with the original sequential
 construction. It uses `NewtonRaphson` with ForwardDiff Jacobians and absolute/
-relative tolerances of `1e-14`. The start frequency is fixed at 16 Hz, matching
-the production generator's default `0.8 * minimum_frequency`.
+relative tolerances of `1e-14`. The prototype checks use a 16 Hz start, matching
+the generator's default `0.8 * minimum_frequency`. The production solve accepts
+the generator's dimensionless start frequency; normal tests also cover 8 and
+24 Hz starts.
 
 The configured implicit adjoint is:
 
@@ -35,17 +46,22 @@ bracket. Failed solves are rejected.
 JULIA='julia +1.12' just test-integration-seobnr-initial
 ```
 
-Or use the prototype directly:
+Or exercise the production primitive directly for AD checks:
 
 ```julia
-include("integration/GWSEOBNR/nonlinearsolve_initial.jl")
-using .NonlinearInitialPrototype
-using Enzyme
-P = NonlinearInitialPrototype
+using GWSEOBNR, SciMLSensitivity, Enzyme
+function initial_state(x)
+    omega = π * (x[1] + x[2]) * GWSEOBNR.MTSUN_SI * 16
+    return collect(GWSEOBNR.initial_conditions(x..., omega))
+end
+function initial_loss(x)
+    u = initial_state(x)
+    return u[1] + 3u[3] + 2u[4]
+end
 x = [40.0, 20.0, 0.4, -0.3] # solar masses and signed aligned spins
-u = P.initial_conditions(x)  # (r, phi, p_rstar, p_phi)
+u = initial_state(x)        # (r, phi, p_rstar, p_phi)
 gradient = zeros(4)
-Enzyme.autodiff(Enzyme.Reverse, Enzyme.Const(P.initial_loss), Enzyme.Active,
+Enzyme.autodiff(Enzyme.Reverse, Enzyme.Const(initial_loss), Enzyme.Active,
     Enzyme.Duplicated(copy(x), gradient))
 ```
 
@@ -85,6 +101,16 @@ julia +1.12 --project=integration/GWSEOBNR \
     reference/seobnr/enzyme/nonlinearsolve-default.toml
 ```
 
-The explicit dense configuration avoids that backend. This validates an
-initial-condition candidate, not complete waveform reverse-mode support. ODE
-sensitivities and continuous attachment/peak timing still need separate work.
+The production extension selects the dense configuration automatically. Its
+nine-case checks pass with maximum component error `4.98e-10` and Enzyme
+gradient-row error `6.71e-10`. Every derivative row has an adjacent pair of
+finite-difference errors below `3.85e-7`. The module-default and iteration-budget
+failure checks pass, and primal/ForwardDiff loading without SciMLSensitivity is
+verified. These measurements are in
+`packages/GWSEOBNR/diagnostics/nonlinearsolve-production-2026-10-19.toml`.
+
+This validates production initial conditions, not complete waveform reverse-mode
+support. The full Enzyme waveform now fails when SciML's automatic ODE adjoint
+selects `ReverseDiffVJP` for the Functors parameter structure. No full waveform
+gradient is returned. ODE sensitivities and continuous attachment/peak timing
+still need separate work; the advertised capability remains unchanged.

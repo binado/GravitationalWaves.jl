@@ -1,5 +1,6 @@
 using Test, GWSEOBNR, GWParameterConversion, ForwardDiff, LinearAlgebra, TOML
 const S = GWSEOBNR
+include("legacy_initial.jl")
 
 @testset "configuration and envelope" begin
     g = SEOBNRv5HM()
@@ -97,10 +98,18 @@ end
     @test S.attachment_time(5.0, 1.0, 0.0, 10.0) == 4.0
     @test_throws S.SolveError S.bracket_root(x -> x^2 + 1, -1, 1)
     @test_throws S.SolveError S.continuous_root(x -> x^3, -1, 1, x -> 3x^2)
-    @test_throws S.SolveError S.newton_root((x, p) -> [1.0], [1.0], [1.0])
-    root(t) = only(S.implicit_root((x, p) -> [x[1]^2 - p[1]], [1.0], [t]))
-    @test root(2.0) ≈ sqrt(2)
-    @test ForwardDiff.derivative(root, 2.0) ≈ 1 / (2sqrt(2))
+    theta = [40.0, 20.0, 0.4, -0.3, π * 60 * S.MTSUN_SI * 16]
+    @test_throws S.SolveError S.check_initial_solution(S.initial_solution(theta; maxiters = 0))
+    for frequency in (8.0, 24.0)
+        omega = π * 60 * S.MTSUN_SI * frequency
+        @test all(isapprox.(S.initial_conditions(40.0, 20.0, 0.4, -0.3, omega), LegacyInitial.initial_conditions(40.0, 20.0, 0.4, -0.3, omega); rtol = 1.0e-9, atol = 1.0e-13))
+    end
+    for M in (40.0, 60.0, 100.0), (q, chi1, chi2) in ((1.0, 0.0, 0.0), (2.0, 0.4, -0.3), (4.0, -0.6, 0.6))
+        x = [M * q / (1 + q), M / (1 + q), chi1, chi2]
+        initial(y) = collect(S.initial_conditions(y..., π * (y[1] + y[2]) * S.MTSUN_SI * 16))
+        @test all(isapprox.(initial(x), LegacyInitial.initial_conditions(x); rtol = 1.0e-9, atol = 1.0e-13))
+        @test ForwardDiff.jacobian(initial, x) ≈ ForwardDiff.jacobian(LegacyInitial.initial_conditions, x) rtol = 1.0e-8 atol = 1.0e-12
+    end
     timing(t) = S.continuous_root(s -> s^2 - t, 0.1, 3.0, s -> 2s)
     @test ForwardDiff.derivative(timing, 2.0) ≈ 1 / (2sqrt(2)) rtol = 1.0e-10
 end

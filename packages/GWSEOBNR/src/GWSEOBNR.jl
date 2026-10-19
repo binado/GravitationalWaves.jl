@@ -1,5 +1,6 @@
 module GWSEOBNR
 
+using ADTypes: AutoForwardDiff
 using AbstractGWWaveforms
 using GWParameterConversion
 using ForwardDiff
@@ -9,6 +10,7 @@ using SpecialFunctions
 using FFTW
 using OrdinaryDiffEqVerner: Vern9
 using SciMLBase
+import NonlinearSolve
 
 import AbstractGWWaveforms: hphc_fd, validate_parameters, approximant,
     reference_frequency, minimum_frequency, maximum_frequency,
@@ -30,6 +32,7 @@ include("flux.jl")
 include("mode_fits.jl")
 include("remnant.jl")
 include("roots.jl")
+include("initial.jl")
 include("dynamics.jl")
 include("qnm_data.jl")
 include("qnm.jl")

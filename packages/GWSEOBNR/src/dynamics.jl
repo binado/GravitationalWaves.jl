@@ -22,41 +22,6 @@ function attachment_time(t_isco, delta_t, t_start, t_end)
     return t
 end
 
-function conservative_residual(x, theta)
-    c = hamiltonian_coefficients(theta[1], theta[2], theta[3], theta[4])
-    d = hamiltonian_gradient((x[1], zero(x[1])), (zero(x[1]), x[2]), c)
-    return [d[4] - theta[5], d[1]]
-end
-
-function dissipative_residual(pr, r, L, c, coeffs)
-    q, p = (r, zero(r)), (pr, L)
-    hess = hamiltonian_hessian(q, p, c)
-    dLdr = -hess[1, 1] / hess[4, 1]
-    d = hamiltonian_dynamics(q, p, c)
-    omega_circ = orbital_frequency(q, (zero(pr), L), c)
-    force = radiation_reaction(pr, L, d[4], omega_circ, d[5], c, coeffs)
-    return force[2] / (d[6] * dLdr) - d[3]
-end
-
-function initial_conditions(m1, m2, chi1, chi2, omega)
-    theta = collect(promote(m1, m2, chi1, chi2, omega))
-    r_guess = primal(omega)^(-2 / 3)
-    r, L = implicit_root(conservative_residual, [r_guess, sqrt(r_guess)], theta)
-    c = hamiltonian_coefficients(theta[1], theta[2], theta[3], theta[4])
-    coeffs = flux_coefficients(c)
-    F = pr -> dissipative_residual(pr, r, L, c, coeffs)
-    root = bracket_root(F, -0.03, 0.0; xtol = 1.0e-13)
-    slope = ForwardDiff.derivative(
-        pr -> dissipative_residual(
-            pr, primal(r), primal(L),
-            hamiltonian_coefficients(primal(m1), primal(m2), primal(chi1), primal(chi2)),
-            flux_coefficients(hamiltonian_coefficients(primal(m1), primal(m2), primal(chi1), primal(chi2)))
-        ), root
-    )
-    pr = attach_time_partials(root, F(root), slope)
-    return SVector(r, zero(r), pr, L)
-end
-
 function eob_rhs(u, pars, t)
     c, coeffs = pars.c, pars.coeffs
     r, phi, pr, L = u

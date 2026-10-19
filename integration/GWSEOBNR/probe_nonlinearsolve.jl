@@ -2,12 +2,32 @@
 include("nonlinearsolve_initial.jl")
 using .NonlinearInitialPrototype
 using NonlinearSolve, SciMLSensitivity, Enzyme, ForwardDiff, LinearAlgebra, TOML
-length(ARGS) == 3 || error("usage: probe_nonlinearsolve.jl default|dense default|runtime OUTPUT.toml")
-ARGS[1] in ("default", "dense") || error("unknown sensitivity configuration")
+length(ARGS) == 3 || error("usage: probe_nonlinearsolve.jl production|default|dense default|runtime OUTPUT.toml")
+ARGS[1] in ("production", "default", "dense") || error("unknown sensitivity configuration")
 ARGS[2] in ("default", "runtime") || error("unknown activity configuration")
 const P = NonlinearInitialPrototype
 const SENSEALG = ARGS[1] == "dense" ? SteadyStateAdjoint(; autojacvec = false) : nothing
-coordinate_loss(x, j) = P.initial_conditions(x; sensealg = SENSEALG)[j]
+const PRODUCTION = ARGS[1] == "production"
+function tested_solution(x; maxiters = 100)
+    if PRODUCTION
+        omega = π * (x[1] + x[2]) * P.S.MTSUN_SI * 16
+        return P.S.initial_solution([x[1], x[2], x[3], x[4], omega]; maxiters)
+    end
+    return P.initial_solution(x; maxiters, sensealg = SENSEALG)
+end
+function tested_initial(x)
+    if PRODUCTION
+        omega = π * (x[1] + x[2]) * P.S.MTSUN_SI * 16
+        return collect(P.S.initial_conditions(x..., omega))
+    end
+    return P.initial_conditions(x; sensealg = SENSEALG)
+end
+check_solution(sol) = PRODUCTION ? P.S.check_initial_solution(sol) : P.check_initial_solution(sol)
+coordinate_loss(x, j) = tested_initial(x)[j]
+function tested_loss(x)
+    u = tested_initial(x)
+    return u[1] + 3u[3] + 2u[4]
+end
 
 function run_probe(activity, destination)
     result = Dict{String, Any}(
@@ -17,6 +37,10 @@ function run_probe(activity, destination)
         "enzyme" => string(pkgversion(Enzyme)), "sensitivity" => ARGS[1],
         "activity" => activity, "cases" => Dict{String, Any}[]
     )
+    result["production"] = PRODUCTION
+    if PRODUCTION
+        @assert P.S.initial_condition_sensealg(Float64) isa SteadyStateAdjoint
+    end
     save() = open(io -> TOML.print(io, result), destination, "w")
     mkpath(dirname(destination))
     mode = activity == "runtime" ? Enzyme.set_runtime_activity(Enzyme.Reverse) : Enzyme.Reverse
@@ -26,11 +50,11 @@ function run_probe(activity, destination)
         push!(result["cases"], case); save()
         println("M=$M q=$q: primal/ForwardDiff/FD"); flush(stdout)
         try
-            sol = P.initial_solution(x; sensealg = SENSEALG)
-            P.check_initial_solution(sol)
-            u = P.initial_conditions(x; sensealg = SENSEALG)
+            sol = tested_solution(x)
+            check_solution(sol)
+            u = tested_initial(x)
             expected = ForwardDiff.jacobian(P.reference_initial, x)
-            jac = ForwardDiff.jacobian(y -> P.initial_conditions(y; sensealg = SENSEALG), x)
+            jac = ForwardDiff.jacobian(tested_initial, x)
             case["state"] = u
             reference_state = P.reference_initial(x)
             case["state_relative_error"] = P.relative(u, reference_state)
@@ -79,13 +103,14 @@ function run_probe(activity, destination)
     end
     x = [40.0, 20.0, 0.4, -0.3]
     actual = zeros(4)
-    Enzyme.autodiff(mode, Enzyme.Const(P.initial_loss), Enzyme.Active, Enzyme.Duplicated(copy(x), actual))
-    result["module_default_gradient_error"] = P.relative(actual, ForwardDiff.gradient(P.initial_loss, x))
-    failed = P.initial_solution(x; maxiters = 0)
+    loss = PRODUCTION ? tested_loss : P.initial_loss
+    Enzyme.autodiff(mode, Enzyme.Const(loss), Enzyme.Active, Enzyme.Duplicated(copy(x), actual))
+    result["module_default_gradient_error"] = P.relative(actual, ForwardDiff.gradient(loss, x))
+    failed = tested_solution(x; maxiters = 0)
     result["maxiters_retcode"] = string(failed.retcode)
     result["maxiters_rejected"] = false
     try
-        P.check_initial_solution(failed)
+        check_solution(failed)
     catch err
         result["maxiters_rejected"] = err isa P.S.SolveError && !P.S.SciMLBase.successful_retcode(failed)
     end

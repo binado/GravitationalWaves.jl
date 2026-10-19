@@ -18,12 +18,11 @@ end
 BlockDiagonalMetric(w::AbstractArray{<:Number, 3}) = BlockDiagonalMetric{size(w, 1), typeof(w)}(w)
 
 """A prepared metric on an ordered set of channels and a uniform frequency grid."""
-struct FrequencyDomainMetric{F, C, M <: AbstractMetric, T}
+struct FrequencyDomainMetric{F, C, M <: AbstractMetric}
     frequencies::F
     channels::C
     metric::M
     active_bins::UnitRange{Int}
-    normalization::T
 end
 
 function check_grid(f::AbstractRange)
@@ -31,13 +30,4 @@ function check_grid(f::AbstractRange)
     isfinite(first(f)) && isfinite(last(f)) && first(f) >= 0 && step(f) > 0 ||
         throw(ArgumentError("need a finite, nonnegative, increasing frequency range"))
     return nothing
-end
-
-function channel_order(channels)
-    names = Tuple(channels)
-    !isempty(names) && all(x -> x isa Symbol || x isa AbstractString, names) ||
-        throw(ArgumentError("channels must be nonempty names (symbols or strings)"))
-    canonical = map(Symbol, names)
-    allunique(canonical) || throw(ArgumentError("channel names must be unique"))
-    return canonical
 end

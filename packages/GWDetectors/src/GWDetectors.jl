@@ -1,7 +1,7 @@
 module GWDetectors
 
-import GWSeries
-using GWSeries: FrequencySeries
+import GWTimeFrequencyDomains
+using GWTimeFrequencyDomains: FrequencyDomain, frequencies, frequency_spacing, nsamples, epoch
 
 using LinearAlgebra: cross, dot
 using StaticArrays: SVector, @SMatrix

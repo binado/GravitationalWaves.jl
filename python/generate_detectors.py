@@ -86,7 +86,7 @@ def main():
         ifo.geometry._detector_tensor_updated = True
         np.testing.assert_array_equal(ifo.geometry.detector_tensor, native)
         np.testing.assert_array_equal(ifo.geometry.vertex, vertex)
-        for grid in ([0., 23., 77.25, 12.5, 256.], list(np.arange(9)*0.25)):
+        for grid in (list(12.5 + np.arange(5)*23.), list(np.arange(9)*0.25)):
             f = np.array(grid)
             hp = rng.normal(size=len(f)) + 1j*rng.normal(size=len(f))
             hc = rng.normal(size=len(f)) + 1j*rng.normal(size=len(f))

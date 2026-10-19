@@ -1,26 +1,3 @@
-# Pairwise metadata checks happen before either operand is unwrapped.
-check_operands(a, b) = nothing
-check_operands(a::FrequencySeries, b::FrequencySeries) = check_same_grid(a, b)
-check_operands(a::FrequencySeries, b) = throw(ArgumentError("wrap both operands as series or unwrap both as arrays"))
-check_operands(a, b::FrequencySeries) = throw(ArgumentError("wrap both operands as series or unwrap both as arrays"))
-
-function check_array(a::AbstractMatrix, metric::FrequencyDomainMetric)
-    size(a) == (length(metric.frequencies), length(metric.channels)) ||
-        throw(DimensionMismatch("strain must have shape (frequency, channel) matching the metric"))
-    return a
-end
-
-check_array(a::AbstractVector, metric::FrequencyDomainMetric) = check_array(reshape(a, :, 1), metric)
-
-check_array(a::GWSeries.AbstractSeries, ::FrequencyDomainMetric) =
-    throw(ArgumentError("matched filtering needs a FrequencySeries; convert time series with to_frequencyseries"))
-
-function check_array(a::FrequencySeries, metric::FrequencyDomainMetric)
-    check_same_frequency_grid(frequencies(a), metric.frequencies)
-    channels(a) == metric.channels || throw(ArgumentError("strain and metric channel orders differ"))
-    return check_array(parent(a), metric)
-end
-
 contraction(a, b, metric::DiagonalMetric) = sum(conj.(a) .* metric.weights .* b)
 
 # Reactant's traced arrays also subtype DenseArray/StridedArray. Restrict the
@@ -68,65 +45,88 @@ function contraction(a, b, metric::BlockDiagonalMetric)
     return result
 end
 
-"""
-    complex_inner_product(a, b, metric)
-
-Compute `4Δf Σ a[k,:]' * inv(S[k,:,:]) * b[k,:]` on active bins.
-Accept two `GWSeries.FrequencySeries` or two arrays; mixing them, or passing a
-`TimeSeries`, throws `ArgumentError`. Series must pass `check_same_grid` with each
-other (including the epoch, since frequency-domain phases are referenced to it)
-and match the metric's channel order and grid within `check_same_frequency_grid`'s
-ulp tolerance. Raw arrays implicitly use the metric's grid and channel order. A
-vector denotes one channel. The first argument is conjugated.
-"""
-function complex_inner_product(a, b, metric::FrequencyDomainMetric)
-    check_operands(a, b)
-    aa = check_array(a, metric)
-    bb = check_array(b, metric)
-    return metric.normalization * contraction(active_values(aa, metric.active_bins), active_values(bb, metric.active_bins), metric.metric)
-end
-
-"""The real part of [`complex_inner_product`](@ref), summed over all channels."""
-noise_weighted_inner_product(a, b, metric::FrequencyDomainMetric) = real(complex_inner_product(a, b, metric))
-
-"""Squared optimal network SNR `(h|h)` under the supplied joint noise metric."""
-optimal_snr_squared(h, metric::FrequencyDomainMetric) = noise_weighted_inner_product(h, h, metric)
-
-"""Optimal network SNR, `sqrt(optimal_snr_squared(h, metric))`."""
-optimal_snr(h, metric::FrequencyDomainMetric) = sqrt(optimal_snr_squared(h, metric))
 
 """
-Complex scalar matched-filter SNR `C(template,data)/sqrt(C(template,template))`
-at the supplied alignment. No time/phase maximization is performed. A zero-norm
-template raises `DomainError`. Set `check=false` inside compiled kernels after
-establishing a nonzero template on the host; this removes the value-dependent
-exception path. Shape and metadata checks remain enabled.
+    complex_inner_product(domain, a, b, metric)
+
+Compute `4df Σ a[k,:]' inv(S[k,:,:]) b[k,:]`. Arrays use (frequency, channel)
+layout; vectors denote one channel. Validate data/domain/metric compatibility on
+the host before evaluation. No metadata or sample-value checks occur here.
 """
-function matched_filter_snr(template, data, metric::FrequencyDomainMetric; check::Bool = true)
-    norm_squared = optimal_snr_squared(template, metric)
-    if check
-        norm_squared > 0 || throw(DomainError(norm_squared, "matched-filter SNR needs a nonzero template"))
-    end
-    return complex_inner_product(template, data, metric) / sqrt(norm_squared)
+function complex_inner_product(d::FrequencyDomain, a::AbstractMatrix, b::AbstractMatrix, metric::FrequencyDomainMetric)
+    return (4 * frequency_spacing(d)) * contraction(active_values(a, metric.active_bins), active_values(b, metric.active_bins), metric.metric)
 end
-
-"""Squared residual norm `(data-template|data-template)` on the active channels/bins."""
-function residual_squared(data, template, metric::FrequencyDomainMetric)
-    check_operands(data, template)
-    residual = check_array(data, metric) .- check_array(template, metric)
-    return optimal_snr_squared(residual, metric)
+"""Real noise-weighted inner product of prevalidated arrays."""
+noise_weighted_inner_product(d::FrequencyDomain, a, b, metric::FrequencyDomainMetric) = real(complex_inner_product(d, a, b, metric))
+"""Squared optimal SNR for prevalidated samples and fixed sampling/metric metadata."""
+optimal_snr_squared(d::FrequencyDomain, h, metric::FrequencyDomainMetric) = noise_weighted_inner_product(d, h, h, metric)
+"""Optimal SNR for prevalidated arrays."""
+optimal_snr(d::FrequencyDomain, h, metric::FrequencyDomainMetric) = sqrt(optimal_snr_squared(d, h, metric))
+"""Complex scalar matched-filter SNR. Requires a nonzero template; run check_template on the host."""
+matched_filter_snr(d::FrequencyDomain, template, data, metric::FrequencyDomainMetric) =
+    complex_inner_product(d, template, data, metric) / sqrt(optimal_snr_squared(d, template, metric))
+"""Squared residual norm for prevalidated arrays."""
+function residual_squared(d::FrequencyDomain, data::AbstractMatrix, template::AbstractMatrix, metric::FrequencyDomainMetric)
+    residual = data .- template
+    return optimal_snr_squared(d, residual, metric)
 end
-
-"""Return reusable `(h_inner_d, h_inner_h)` network contractions for a fixed PSD."""
-function likelihood_statistics(template, data, metric::FrequencyDomainMetric)
-    return (;
-        h_inner_d = complex_inner_product(template, data, metric),
-        h_inner_h = optimal_snr_squared(template, metric),
-    )
-end
-
-"""Fixed-PSD Gaussian log likelihood ratio `Re C(h,d) - C(h,h)/2` against noise alone."""
-function log_likelihood_ratio(template, data, metric::FrequencyDomainMetric)
-    stats = likelihood_statistics(template, data, metric)
+"""Reusable fixed-PSD contractions, without metadata validation."""
+likelihood_statistics(d::FrequencyDomain, template, data, metric::FrequencyDomainMetric) =
+    (; h_inner_d = complex_inner_product(d, template, data, metric), h_inner_h = optimal_snr_squared(d, template, metric))
+"""Fixed-PSD Gaussian log likelihood ratio for prevalidated arrays."""
+function log_likelihood_ratio(d::FrequencyDomain, template, data, metric::FrequencyDomainMetric)
+    stats = likelihood_statistics(d, template, data, metric)
     return real(stats.h_inner_d) - stats.h_inner_h / 2
 end
+"""Host-only check of domain compatibility, data shape, and finite positive template norm."""
+function check_template(d::FrequencyDomain, template, metric::FrequencyDomainMetric)
+    check_compatible(d, metric)
+    check_data(d, template)
+    norm_squared = optimal_snr_squared(d, template, metric)
+    isfinite(norm_squared) && norm_squared > 0 || throw(DomainError(norm_squared, "matched-filter SNR needs a finite nonzero template"))
+    return nothing
+end
+
+# A vector is one channel. Keep it one-dimensional: reshaping constant input
+# buffers inside a differentiated call introduces mixed-activity array headers.
+const HostVector = Union{Vector, SubArray{<:Any, 1, <:Union{Vector, Matrix}}}
+active_values(a::AbstractVector, bins) = a[bins]
+# Index original arrays directly; Base.view(::Vector, ...) itself invokes an
+# identity reshape that Enzyme cannot share between active and constant buffers.
+function contraction(a::HostVector, b::HostVector, metric::DiagonalMetric, bins)
+    result = zero(promote_type(eltype(a), eltype(b), eltype(metric.weights)))
+    @inbounds for (j, k) in enumerate(bins)
+        result += conj(a[k]) * metric.weights[j, 1] * b[k]
+    end
+    return result
+end
+function contraction(a::HostVector, b::HostVector, metric::BlockDiagonalMetric{1}, bins)
+    result = zero(promote_type(eltype(a), eltype(b), eltype(metric.whiteners)))
+    @inbounds for (j, k) in enumerate(bins)
+        w = metric.whiteners[1, 1, j]
+        result += conj(w * a[k]) * (w * b[k])
+    end
+    return result
+end
+function complex_inner_product(d::FrequencyDomain, a::HostVector, b::HostVector, m::FrequencyDomainMetric)
+    return (4 * frequency_spacing(d)) * contraction(a, b, m.metric, m.active_bins)
+end
+contraction(a::AbstractVector, b::AbstractVector, metric::DiagonalMetric) =
+    sum(conj.(a) .* view(metric.weights, :, 1) .* b)
+function contraction(a::AbstractVector, b::AbstractVector, metric::BlockDiagonalMetric{1})
+    weights = view(metric.whiteners, 1, 1, :)
+    return sum(conj.(weights .* a) .* (weights .* b))
+end
+function complex_inner_product(d::FrequencyDomain, a::AbstractVector, b::AbstractVector, m::FrequencyDomainMetric)
+    return (4 * frequency_spacing(d)) * contraction(active_values(a, m.active_bins), active_values(b, m.active_bins), m.metric)
+end
+complex_inner_product(d::FrequencyDomain, a::AbstractVector, b::AbstractMatrix, m::FrequencyDomainMetric) =
+    complex_inner_product(d, a, view(b, :, 1), m)
+complex_inner_product(d::FrequencyDomain, a::AbstractMatrix, b::AbstractVector, m::FrequencyDomainMetric) =
+    complex_inner_product(d, view(a, :, 1), b, m)
+residual_squared(d::FrequencyDomain, a::AbstractVector, b::AbstractVector, m::FrequencyDomainMetric) =
+    optimal_snr_squared(d, a .- b, m)
+residual_squared(d::FrequencyDomain, a::AbstractVector, b::AbstractMatrix, m::FrequencyDomainMetric) =
+    residual_squared(d, a, view(b, :, 1), m)
+residual_squared(d::FrequencyDomain, a::AbstractMatrix, b::AbstractVector, m::FrequencyDomainMetric) =
+    residual_squared(d, view(a, :, 1), b, m)

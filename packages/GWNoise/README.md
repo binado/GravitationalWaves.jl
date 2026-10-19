@@ -4,13 +4,14 @@ Read one-sided PSD/ASD tables and draw stationary Gaussian strain noise in Julia
 PSD estimation and continuous streaming are outside the current scope.
 
 ```julia
-using GWNoise, Random
+using GWNoise, GWTimeFrequencyDomains, Random
 
 curve = read_psd("H1_psd.txt")  # or read_asd("H1_asd.txt")
 S = psd(range(20, 1024; step = 0.25), curve)
 
+td = TimeDomain(;epoch=1126259460.0, nsamples=8192, sampling_frequency=2048, channels=(:H1,))
 model = GaussianNoise(
-    curve; sampling_frequency = 2048.0, nsamples = 8192,
+    curve, td;
     minimum_frequency = 20.0, maximum_frequency = 1024.0,
 )
 rng = Xoshiro(42)
@@ -60,18 +61,23 @@ plans nor mutable scratch buffers are cached in the model.
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.
 
-## Sampling containers
+## Domain preparation and explicit validation
 
-```julia
-using GWSeries
-h = noise_fd(FrequencySeries, model; epoch=1126259460.0, channels=(:H1,))
-x = noise_td(TimeSeries, model; epoch=1126259460.0, channels=(:H1,))
-noise_fd!(h, model)
-noise_td!(x, model)
-```
+`GaussianNoise(curve, td; ...)` takes a single-channel `TimeDomain` and prepares
+stationary numerical state. Epoch does not affect a draw. Draws return arrays;
+`noise_fd` and `noise_td` consume only their prepared model. There are no sample
+wrappers or series-returning overloads.
 
-An optional RNG precedes the series type or destination. These methods retain the
-array API's numerical convention. Destinations must hold single-channel vectors;
-the grid is checked before drawing or mutation. FD series require even noise-model
-lengths for the GWSeries inverse contract. Array draws and TD series retain odd
-length support. `frequencies` is shared with GWSeries.
+Before repeated draws into a destination, call `check_data(domain, destination)`
+and `check_compatible(domain, model)` explicitly. Compatibility checks sampling
+and channel identity, ignoring epoch; numerical draw methods do not repeat these
+checks. Invalid destination shapes are outside their preconditions. `frequencies`
+is shared with GWTimeFrequencyDomains.
+
+Odd time-domain lengths remain supported by noise generation. The domain package's
+real-FFT conversion uses an even-length contract: `frequency_domain(td)` rejects
+odd lengths. Keep the noise model's known transform length when using its odd FD
+draws; they do not imply an even-length inverse time domain.
+
+Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
+with `GaussianNoise(curve, td; ...)` and requires separate destination validation.

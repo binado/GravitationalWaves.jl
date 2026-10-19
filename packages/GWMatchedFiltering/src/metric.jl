@@ -15,11 +15,11 @@ function analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
 end
 
 """
-    FrequencyDomainMetric(f, channels, spectral_density;
+    FrequencyDomainMetric(domain::FrequencyDomain, spectral_density;
         minimum_frequency=first(f), maximum_frequency=last(f), nsamples=nothing)
 
-Prepare a joint metric with first-argument conjugation and normalization `4step(f)`.
-`f` must be a uniform nonnegative `AbstractRange`. Supply PSDs with shape
+Prepare a joint metric with first-argument conjugation and normalization supplied by the evaluation domain as `4frequency_spacing(domain)`.
+The domain frequency grid must be a uniform nonnegative `AbstractRange`. Supply PSDs with shape
 `(frequency, channel)` (or a vector for one channel), or Hermitian spectral
 matrices with shape `(frequency, channel, channel)`. Define cross spectra by
 `S[k,i,j] = 2Δf * E[n[k,i] * conj(n[k,j])]` for interior bins.
@@ -35,15 +35,15 @@ Zeros outside the band are allowed. No interpolation, jitter, pseudoinverse or
 automatic channel reordering is performed. Setup copies the prepared weights.
 """
 function FrequencyDomainMetric(
-        f::AbstractRange, channels, spectrum::AbstractArray{<:Number};
-        minimum_frequency = first(f), maximum_frequency = last(f), nsamples = nothing,
+        domain::FrequencyDomain, spectrum::AbstractArray{<:Number};
+        minimum_frequency = first(frequencies(domain)), maximum_frequency = last(frequencies(domain)), nsamples = nothing,
     )
+    f = frequencies(domain)
     check_grid(f)
-    names = channel_order(channels)
+    names = channels(domain)
     bins = analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
     prepared = prepare_metric(spectrum, length(f), length(names), bins)
-    normalization = 4 * step(f)
-    return FrequencyDomainMetric(f, names, prepared, bins, normalization)
+    return FrequencyDomainMetric(f, names, prepared, bins)
 end
 
 prepare_metric(spectrum::AbstractVector{<:Real}, nf, nc, bins) =
@@ -71,4 +71,11 @@ function prepare_metric(spectrum::AbstractArray{<:Number, 3}, nf, nc, bins)
         factors[:, :, k] = factor.L \ Matrix{T}(I, nc, nc)
     end
     return BlockDiagonalMetric(factors)
+end
+
+"""Host-only stationary metric compatibility; the segment epoch is irrelevant."""
+function check_compatible(d::FrequencyDomain, metric::FrequencyDomainMetric)
+    check_same_frequency_grid(frequencies(d), metric.frequencies)
+    channels(d) == metric.channels || throw(ArgumentError("metric channel orders differ"))
+    return nothing
 end

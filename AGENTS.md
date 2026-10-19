@@ -20,12 +20,13 @@ Julia packages live in `packages/`:
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
 - `GWWaveforms`: pure-Julia, AD-friendly TaylorF2 and IMRPhenomD, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`); tests use LAL as the oracle.
 - `GWDetectors`: StaticArrays-based, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and domain-first broadcasted FD projection over uniform integer-indexed frequency bins. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
+- `GWSurrogates`: MIT, differentiable port of the NRSur7dq4 family from `gwsurrogate` (time-domain). Currently kernels only: natural cubic spline, closed-form Wigner-D (l <= 5), guarded norms; `SphericalFunctions.jl`/`DataInterpolations.jl` are test oracles. Model data (Zenodo 10.5281/zenodo.22257361, CC-BY-4.0) will be stored in flat integer-indexed vectors, not `Dict`s or closures, for Enzyme.
 - `GWDistributions`: Distributions.jl-based population models for masses, spins, orientations, delays, and redshifts. Cosmology comes from the external, unregistered `BackgroundCosmology.jl` dependency via a `[sources]` URL.
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
 Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
-The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms` and `GWDistributions` are MIT.
+The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms`, `GWDistributions` and `GWSurrogates` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands

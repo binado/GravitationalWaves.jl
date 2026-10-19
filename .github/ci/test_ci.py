@@ -15,6 +15,7 @@ class SelectionTests(unittest.TestCase):
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
             "GWMatchedFiltering": ["GWMatchedFiltering"],
+            "GWSurrogates": ["GWSurrogates"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
             "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],

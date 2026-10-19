@@ -14,6 +14,7 @@ PACKAGES = (
     "GWTimeFrequencyDomains",
     "GWNoise",
     "GWMatchedFiltering",
+    "GWSurrogates",
 )
 AFFECTED = {
     "GWTimeFrequencyDomains": {"GWTimeFrequencyDomains", "GWNoise", "GWDetectors", "GWMatchedFiltering"},
@@ -25,6 +26,7 @@ AFFECTED = {
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
     "GWMatchedFiltering": {"GWMatchedFiltering"},
+    "GWSurrogates": {"GWSurrogates"},
 }
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 

@@ -66,9 +66,9 @@ using GWNoise
         @test all(iszero, noise_fd(model)[expected .== 0])
         @test_throws ArgumentError GaussianNoise(curve, TimeDomain(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); maximum_frequency = 65)
         @test_throws DimensionMismatch check_data(FrequencyDomain(; frequencies = frequencies(model), epoch = 0, channels = (:H1,)), zeros(ComplexF64, 3))
-        @test_throws DimensionMismatch check_data(TimeDomain(; epoch = 0, nsamples = model.nsamples, sampling_frequency = model.sampling_frequency, channels = (:H1,)), zeros(3))
+        @test_throws DimensionMismatch check_data(TimeDomain(; epoch = 0, nsamples = nsamples(model.time_domain), sampling_frequency = sampling_frequency(model.time_domain), channels = (:H1,)), zeros(3))
         @test_throws MethodError noise_fd!(zeros(length(frequencies(model))), model)
-        @test_throws MethodError noise_td!(zeros(ComplexF64, model.nsamples), model)
+        @test_throws MethodError noise_td!(zeros(ComplexF64, nsamples(model.time_domain)), model)
         for kwargs in ((sampling_frequency = 0, nsamples = 128), (sampling_frequency = 128, nsamples = 1))
             @test_throws ArgumentError GaussianNoise(curve, TimeDomain(; epoch = 0, channels = (:H1,), kwargs...))
         end
@@ -97,7 +97,7 @@ using GWNoise
         for bin in (11, 41)
             @test sum(abs2, colored_draws[bin, :]) / count ≈ psd(colored)[bin] / 2 rtol = 0.06
         end
-        td = irfft(draws, model.nsamples, 1) .* model.sampling_frequency
+        td = irfft(draws, nsamples(model.time_domain), 1) .* sampling_frequency(model.time_domain)
         # Each active interior bin contributes S Δf to the TD variance.
         @test sum(abs2, td) / length(td) ≈ sum(psd(model)) * step(frequencies(model)) rtol = 0.02
     end

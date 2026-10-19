@@ -33,9 +33,10 @@ before interpolation. `asd(f, curve)` evaluates the square root of the resulting
 Evaluation outside file coverage throws; `psd(f, curve; outside=:zero)` explicitly
 requests zero fill. Frequencies must be strictly increasing; densities nonnegative.
 
-`GaussianNoise` prepares the uniform FFT grid and Gaussian scales once. Its default
+`GaussianNoise` prepares the uniform FFT grid and effective PSD once. Its default
 band is the file coverage intersected with `[0, sampling_frequency/2]`; explicit
-bands must be covered by the file. Other bins, DC, and even-length Nyquist are zero.
+bands must be covered by the file. Draw scales are computed per bin when sampling.
+Other bins, DC, and even-length Nyquist are zero.
 Odd-length final bins are sampled normally. `psd(model)` returns the effective PSD
 including these zeros. No automatic taper or smoothing changes the target.
 
@@ -45,8 +46,8 @@ parts independently have variance `PSD/(4Δf)`. The physical Fourier convention 
 
 ```julia
 using FFTW
-n_td = irfft(n_fd, model.nsamples) * model.sampling_frequency
-@assert rfft(n_td) / model.sampling_frequency ≈ n_fd
+n_td = irfft(n_fd, nsamples(model.time_domain)) * sampling_frequency(model.time_domain)
+@assert rfft(n_td) / sampling_frequency(model.time_domain) ≈ n_fd
 ```
 
 Each draw is a finite periodic FFT segment. Concatenating independent segments does

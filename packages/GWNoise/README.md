@@ -54,7 +54,7 @@ not produce a continuous stream. Use the transform above for matching FD and TD
 realizations; successive sampler calls draw independent noise. Omit the RNG to use
 `Random.default_rng()`. RNGs are never reseeded by this package.
 
-`noise_fd!([rng], destination, model)` and `noise_td!([rng], destination, model)`
+`noise_fd!([rng], out, model)` and `noise_td!([rng], out, model)`
 fill existing vectors. The TD method still allocates FFT temporaries; neither FFT
 plans nor mutable scratch buffers are cached in the model.
 
@@ -68,10 +68,10 @@ stationary numerical state. Epoch does not affect a draw. Draws return arrays;
 `noise_fd` and `noise_td` consume only their prepared model. There are no sample
 wrappers or series-returning overloads.
 
-Before repeated draws into a destination, call `check_data(domain, destination)`
+Before repeated draws into `out`, call `check_data(domain, out)`
 and `check_compatible(domain, model)` explicitly. Compatibility checks sampling
 and channel identity, ignoring epoch; numerical draw methods do not repeat these
-checks. Invalid destination shapes are outside their preconditions. `frequencies`
+checks. Invalid output shapes are outside their preconditions. `frequencies`
 is shared with GWTimeFrequencyDomains.
 
 Odd time-domain lengths remain supported by noise generation. The domain package's
@@ -80,4 +80,4 @@ odd lengths. Keep the noise model's known transform length when using its odd FD
 draws; they do not imply an even-length inverse time domain.
 
 Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
-with `GaussianNoise(curve, td; ...)` and requires separate destination validation.
+with `GaussianNoise(curve, td; ...)` and requires separate output validation.

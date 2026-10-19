@@ -57,20 +57,20 @@ variance `PSD/(4Δf)`. Each call draws a new realization.
 """
 noise_fd(model::GaussianNoise) = noise_fd(default_rng(), model)
 function noise_fd(rng::AbstractRNG, model::GaussianNoise)
-    destination = Vector{ComplexF64}(undef, length(model.frequencies))
-    noise_fd!(rng, destination, model)
-    return destination
+    out = Vector{ComplexF64}(undef, length(model.frequencies))
+    noise_fd!(rng, out, model)
+    return out
 end
 
-"""`noise_fd!([rng], destination, model)` fills a complex vector with a new FD draw."""
-noise_fd!(destination::AbstractVector{<:Complex}, model::GaussianNoise) =
-    noise_fd!(default_rng(), destination, model)
+"""`noise_fd!([rng], out, model)` fills a complex vector with a new FD draw."""
+noise_fd!(out::AbstractVector{<:Complex}, model::GaussianNoise) =
+    noise_fd!(default_rng(), out, model)
 
-function noise_fd!(rng::AbstractRNG, destination::AbstractVector{<:Complex}, model::GaussianNoise)
-    for i in eachindex(destination, model.scales)
-        destination[i] = model.scales[i] * complex(randn(rng), randn(rng))
+function noise_fd!(rng::AbstractRNG, out::AbstractVector{<:Complex}, model::GaussianNoise)
+    for i in eachindex(out, model.scales)
+        out[i] = model.scales[i] * complex(randn(rng), randn(rng))
     end
-    return destination
+    return out
 end
 
 """
@@ -84,16 +84,16 @@ noise_td(rng::AbstractRNG, model::GaussianNoise) =
     irfft(noise_fd(rng, model), model.nsamples) .* model.sampling_frequency
 
 """
-    noise_td!([rng], destination, model)
+    noise_td!([rng], out, model)
 
 Fill a real vector with a new TD draw. This convenience method allocates FFT
 temporaries; it does not cache scratch buffers or FFT plans in the model.
 """
-noise_td!(destination::AbstractVector{<:Real}, model::GaussianNoise) =
-    noise_td!(default_rng(), destination, model)
+noise_td!(out::AbstractVector{<:Real}, model::GaussianNoise) =
+    noise_td!(default_rng(), out, model)
 
-function noise_td!(rng::AbstractRNG, destination::AbstractVector{<:Real}, model::GaussianNoise)
-    return copyto!(destination, noise_td(rng, model))
+function noise_td!(rng::AbstractRNG, out::AbstractVector{<:Real}, model::GaussianNoise)
+    return copyto!(out, noise_td(rng, model))
 end
 
 """Validate a stationary noise model against sampling and channels, ignoring epoch."""

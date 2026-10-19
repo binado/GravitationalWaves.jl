@@ -22,7 +22,7 @@ Upstream draft: [Yggdrasil #15187](https://github.com/JuliaPackaging/Yggdrasil/p
   embedding, documentation, OpenMP, fast-math, or host-specific optimizations.
 - Binary dependency versions: FFTW_jll 3.3.11, GSL_jll 2.8.1, HDF5_jll 1.14.6,
   Zlib_jll 1.3.1, CompilerSupportLibraries_jll 1; GCC 8 toolchain. macOS ARM64
-  also uses build-only LLVMCompilerRT_jll 16.0.6 for complex division helpers.
+  also uses build-only LLVMCompilerRT_jll 16.0.6+1 for complex division helpers.
   HDF5 requires libgfortran5 and MPI platform variants: MPICH 4.3.x, OpenMPI
   4.1.8, and MPItrampoline 5.5.3, selected through MPIPreferences. The four native
   targets therefore produce twelve artifact variants. Dependency build revisions

@@ -25,7 +25,7 @@ Julia packages live in `packages/`:
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
 Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
-The waveform, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
+The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms` and `GWDistributions` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands

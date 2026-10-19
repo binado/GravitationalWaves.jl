@@ -5,7 +5,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 
 | Package | Purpose | License |
 |---------|---------|---------|
-| [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | GPL-2.0-or-later |
+| [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | MIT |
 | [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
@@ -197,5 +197,5 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and every package except `GWDistributions` use GPL-2.0-or-later.
-`GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).
+The root [LICENSE](LICENSE) and every package except `AbstractGWWaveforms` and `GWDistributions` use GPL-2.0-or-later.
+`AbstractGWWaveforms` ([LICENSE](packages/AbstractGWWaveforms/LICENSE)) and `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) are MIT.

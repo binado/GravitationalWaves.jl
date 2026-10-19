@@ -32,6 +32,8 @@ struct TabulatedPSD
     end
 end
 
+Base.broadcastable(curve::TabulatedPSD) = Ref(curve)
+
 """
     read_psd(path_or_io; interpolation=:linear)
 
@@ -77,7 +79,8 @@ end
 """
     psd(f, curve::TabulatedPSD; outside=:error)
 
-Evaluate a one-sided PSD at a frequency or collection of frequencies (Hz).
+Evaluate a one-sided PSD at a frequency (Hz). Use `psd.(frequencies, curve)`
+for a collection of frequencies; the curve broadcasts as a scalar.
 Frequencies outside the table throw unless `outside=:zero` is explicit.
 """
 function psd(f::Real, curve::TabulatedPSD; outside = :error)
@@ -96,7 +99,5 @@ function psd(f::Real, curve::TabulatedPSD; outside = :error)
     return (1 - w) * y[i] + w * y[i + 1]
 end
 
-psd(f, curve::TabulatedPSD; outside = :error) = map(x -> psd(x, curve; outside), f)
-
 """`asd(f, curve; outside=:error)` evaluates the square root of [`psd`](@ref)."""
-asd(f, curve::TabulatedPSD; outside = :error) = sqrt.(psd(f, curve; outside))
+asd(f::Real, curve::TabulatedPSD; outside = :error) = sqrt(psd(f, curve; outside))

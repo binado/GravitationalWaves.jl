@@ -7,7 +7,7 @@ PSD estimation and continuous streaming are outside the current scope.
 using GWNoise, GWTimeFrequencyDomains, Random
 
 curve = read_psd("H1_psd.txt")  # or read_asd("H1_asd.txt")
-S = psd(range(20, 1024; step = 0.25), curve)
+S = psd.(range(20, 1024; step = 0.25), curve)
 
 td = TimeDomain(;epoch=1126259460.0, nsamples=8192, sampling_frequency=2048, channels=(:H1,))
 model = GaussianNoise(
@@ -30,6 +30,8 @@ The default interpolation is linear in PSD and frequency. Use
 `read_psd(path; interpolation=:loglog)` for linear interpolation of log PSD against
 log frequency; this requires positive frequencies and densities. ASD is squared
 before interpolation. `asd(f, curve)` evaluates the square root of the resulting PSD.
+Use `psd.(frequencies, curve)` or `asd.(frequencies, curve)` for collections of
+frequencies; each curve broadcasts as a scalar.
 Evaluation outside file coverage throws; `psd(f, curve; outside=:zero)` explicitly
 requests zero fill. Frequencies must be strictly increasing; densities nonnegative.
 

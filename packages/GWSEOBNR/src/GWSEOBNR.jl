@@ -21,5 +21,13 @@ export spin_support, supports_mode_array, is_differentiable
 
 include("generator.jl")
 include("parameters.jl")
+include("fits.jl")
+include("hamiltonian.jl")
+include("flux_coefficients.jl")
+include("flux.jl")
+include("mode_fits.jl")
+include("remnant.jl")
+include("roots.jl")
+include("dynamics.jl")
 
 end

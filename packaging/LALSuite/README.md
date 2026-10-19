@@ -20,10 +20,13 @@ Upstream draft: [Yggdrasil #15187](https://github.com/JuliaPackaging/Yggdrasil/p
 - Shared LAL, LALSupport, and LALSimulation, headers, pkg-config metadata, and
   library licenses. No supported executable products, SWIG bindings, Python
   embedding, documentation, OpenMP, fast-math, or host-specific optimizations.
-- Build dependency versions: FFTW_jll 3.3.11, GSL_jll 2.8.1, HDF5_jll 1.12.2,
-  Zlib_jll 1.3.1; GCC 8 toolchain. The serial HDF5 release avoids requiring MPI
-  and has artifacts for all four targets. Dependency build revisions and all
-  transitive dependencies must be recorded from actual builds before release.
+- Binary dependency versions: FFTW_jll 3.3.11, GSL_jll 2.8.1, HDF5_jll 1.14.6,
+  Zlib_jll 1.3.1, CompilerSupportLibraries_jll 1; GCC 8 toolchain. macOS ARM64
+  also uses build-only LLVMCompilerRT_jll 16.0.6 for complex division helpers.
+  HDF5 requires libgfortran5 and MPI platform variants: MPICH 4.3.x, OpenMPI
+  4.1.8, and MPItrampoline 5.5.3, selected through MPIPreferences. The four native
+  targets therefore produce twelve artifact variants. Dependency build revisions
+  and all transitive dependencies must be recorded from actual builds before release.
 
 LALSimulation probes Python embedding independently of `--disable-python`.
 The recipe explicitly disables that probe before generating configure scripts.
@@ -42,8 +45,10 @@ Linux x86-64 and macOS ARM64, then the other two targets:
 
 ```sh
 cd L/LALSuite
-julia --project=/path/to/binarybuilder build_tarballs.jl x86_64-linux-gnu,aarch64-apple-darwin --verbose
-julia --project=/path/to/binarybuilder build_tarballs.jl aarch64-linux-gnu,x86_64-apple-darwin --verbose
+julia --project=/path/to/binarybuilder build_tarballs.jl x86_64-linux-gnu-libgfortran5-mpi+mpich,aarch64-apple-darwin-libgfortran5-mpi+mpich --verbose
+julia --project=/path/to/binarybuilder build_tarballs.jl aarch64-linux-gnu-libgfortran5-mpi+mpich,x86_64-apple-darwin-libgfortran5-mpi+mpich --verbose
+# Complete the OpenMPI and MPItrampoline variants too, with the auditor enabled.
+julia --project=/path/to/binarybuilder build_tarballs.jl --verbose
 ```
 
 Keep BinaryBuilder's relocation/dependency auditor enabled. Do not use
@@ -92,6 +97,9 @@ the 14 CI helper tests. The existing external loader tests and all four waveform
 smoke inputs passed against wheel libraries on Julia 1.12. These checks do not
 validate the candidate artifacts. The macOS ARM64 build attempt stopped before
 compilation because Docker is unavailable; all native artifact results are pending.
+The initial upstream macOS ARM64 build exposed missing compiler-rt complex-division
+helpers; the recipe now links the required build-only runtime. Dependency review
+also excluded serial HDF5 1.12.2, whose registry compatibility stops at Julia 1.11.
 
 Submit the recipe upstream, complete all four validation rows, and wait for
 General registration before adopting the JLL. An existing upstream

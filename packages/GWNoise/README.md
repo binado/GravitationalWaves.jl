@@ -53,9 +53,9 @@ not produce a continuous stream. Use the transform above for matching FD and TD
 realizations; successive sampler calls draw independent noise. Omit the RNG to use
 `Random.default_rng()`. RNGs are never reseeded by this package.
 
-`noise_fd!([rng], out, model)` and `noise_td!([rng], out, model)`
-fill existing vectors. The TD method still allocates FFT temporaries; neither FFT
-plans nor mutable scratch buffers are cached in the model.
+`noise_fd!([rng], out, model)` fills an existing complex vector. `noise_td`
+allocates its output and FFT temporaries; neither FFT plans nor mutable scratch
+buffers are cached in the model.
 
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.

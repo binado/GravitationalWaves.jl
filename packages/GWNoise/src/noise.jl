@@ -82,19 +82,6 @@ noise_td(model::GaussianNoise) = noise_td(default_rng(), model)
 noise_td(rng::AbstractRNG, model::GaussianNoise) =
     to_timedomain(model.time_domain, noise_fd(rng, model))
 
-"""
-    noise_td!([rng], out, model)
-
-Fill a real vector with a new TD draw. This convenience method allocates FFT
-temporaries; it does not cache scratch buffers or FFT plans in the model.
-"""
-noise_td!(out::AbstractVector{<:Real}, model::GaussianNoise) =
-    noise_td!(default_rng(), out, model)
-
-function noise_td!(rng::AbstractRNG, out::AbstractVector{<:Real}, model::GaussianNoise)
-    return copyto!(out, noise_td(rng, model))
-end
-
 """Validate a stationary noise model against sampling and channels, ignoring epoch."""
 function check_compatible(d::TimeDomain, model::GaussianNoise)
     nsamples(d) == nsamples(model.time_domain) || throw(DimensionMismatch("noise sample count differs"))

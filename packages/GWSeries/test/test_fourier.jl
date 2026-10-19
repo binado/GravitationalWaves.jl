@@ -45,3 +45,38 @@ using FFTW
     @test parent(to_timeseries(dirty)) == parent(to_timeseries(h))
     @test parent(to_frequencyseries(TimeSeries(view(parent(x), :); epoch = 0, sampling_frequency = 16, channels = (:H1,)))) ≈ parent(h)
 end
+
+@testset "Fourier conversion rejects unsupported storage with a clear error" begin
+    x = TimeSeries(ones(Float64, 8, 3); epoch = 0, sampling_frequency = 8, channels = (:H1, :L1, :V1))
+    h = to_frequencyseries(x)
+    strided = TimeSeries(view(ones(16), 1:2:16); epoch = 0, sampling_frequency = 8, channels = (:H1,))
+    @test nsamples(to_frequencyseries(strided)) == 5
+    indexed = TimeSeries(view(parent(x), :, [1, 3]); epoch = 0, sampling_frequency = 8, channels = (:H1, :V1))
+    for call in (
+            () -> to_frequencyseries(indexed),
+            () -> to_frequencyseries(TimeSeries(collect(1:8); epoch = 0, sampling_frequency = 8, channels = (:H1,))),
+            () -> to_frequencyseries(TimeSeries(ones(ComplexF64, 8); epoch = 0, sampling_frequency = 8, channels = (:H1,))),
+            () -> to_frequencyseries(h),
+            () -> to_timeseries(x),
+        )
+        err = try
+            call()
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("needs", err.msg) && occursin("got", err.msg)
+    end
+end
+
+@testset "Analytic Fourier amplitudes" begin
+    # A unit impulse at t = 0 has spectrum dt at every bin; a tone has amplitude N*dt/2 at its bin.
+    n, fs = 64, 32.0
+    impulse = TimeSeries([1.0; zeros(n - 1)]; epoch = 0, sampling_frequency = fs, channels = (:H1,))
+    @test all(parent(to_frequencyseries(impulse)) .≈ 1 / fs)
+    tone = TimeSeries(cos.(2π * 4 / n .* (0:(n - 1))); epoch = 0, sampling_frequency = fs, channels = (:H1,))
+    spectrum = to_frequencyseries(tone)
+    @test abs(parent(spectrum)[5]) ≈ n / fs / 2
+    @test frequencies(spectrum)[5] ≈ 2.0
+    @test sum(abs, parent(spectrum)[[1:4; 6:end]]) < 1.0e-12
+end

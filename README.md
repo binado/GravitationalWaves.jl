@@ -195,5 +195,5 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and the waveform, conversion, and detector packages use GPL-2.0-or-later.
+The root [LICENSE](LICENSE) and every package except `GWDistributions` use GPL-2.0-or-later.
 `GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).

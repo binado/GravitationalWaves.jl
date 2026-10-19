@@ -19,7 +19,8 @@ require one unique label per column. Strings canonicalize to symbols. Epochs are
 explicit timestamps in seconds (GPS for detector data). Metadata uses at least
 Float64 precision, preserving BigFloat inputs, regardless of sample precision.
 `parent` returns the original array. Mutating it is visible; resizing it is
-unsupported. `copy` copies samples; `with_data` retains replacement storage and
+unsupported. Use the accessors (`parent`, `epoch`, `channels`, ...) and treat the
+struct fields and the internal `Validated` constructor as private. `copy` copies samples; `with_data` retains replacement storage and
 requires identical complete shape. One-based axes are required.
 
 `nsamples` counts rows, including frequency bins. `times` and `frequencies` return
@@ -33,10 +34,17 @@ zero-fills sample/bin counts; padding before shifts the time epoch or frequency
 origin. Frequency padding cannot create negative frequencies.
 
 Alignment subtracts origins before scaling. Its tolerance is four ulps of each
-absolute coordinate plus eight ulps of the relative displacement and spacing.
-Coordinates whose tolerance reaches half a sample/bin are ambiguous and rejected.
-`check_same_grid` checks counts, spacing, accumulated drift, origins, epochs, and
-ordered channels. Frequency-series epoch comparison uses the inferred even FFT
+absolute coordinate plus eight ulps of the relative displacement and spacing;
+identical coordinates always match. At a GPS epoch (about 1.2e9 s) this is roughly
+2 microseconds, so epochs closer than that compare equal: Float64 cannot resolve
+finer offsets, and a 1 microsecond offset shifts a 1 kHz phase by about 0.006 rad.
+Use BigFloat metadata when sub-microsecond timing matters. Coordinates whose
+tolerance reaches half a sample/bin are ambiguous and rejected, naming the
+coordinate. `check_same_grid` checks counts, spacing, accumulated drift, origins,
+epochs, and ordered channels; errors report both values and the tolerance.
+Epochs must match even for frequency series, whose phases are referenced to the
+epoch. `check_same_frequency_grid(a, b)` applies the same tolerance to bare
+frequency ranges, for consumers such as noise metrics that have no epoch. Frequency-series epoch comparison uses the inferred even FFT
 sample spacing; this does not give the container an observed duration. Cropping and padding are host operations; compiled support is not claimed. There is
 no implicit alignment, rephasing, resampling, or channel reordering.
 
@@ -65,4 +73,5 @@ restored (for example with `pad`). Removing high bins lowers the inverse samplin
 frequency while keeping duration `1/df`; pad back to restore the earlier rate.
 Conversion allocates output storage and retains FFTW sample precision (Float32 or
 Float64); metadata precision remains independent. Unsupported devices/AD element types do not
-fall back to host materialization.
+fall back to host materialization; they, non-strided views, and a missing `FFTW`
+raise an `ArgumentError` saying what is supported.

@@ -3,8 +3,10 @@ module GWSeriesFFTWExt
 using GWSeries
 using FFTW: rfft, irfft
 
-const RealCPU = Union{Array{Float32}, Array{Float64}, SubArray{<:Union{Float32, Float64}, N, <:Array} where {N}}
-const ComplexCPU = Union{Array{ComplexF32}, Array{ComplexF64}, SubArray{<:Union{ComplexF32, ComplexF64}, N, <:Array} where {N}}
+# Views must be strided (integer and range indices); FFTW rejects index-vector views.
+const StridedIndices = Tuple{Vararg{Union{Int, AbstractRange{Int}}}}
+const RealCPU = Union{Array{Float32}, Array{Float64}, SubArray{<:Union{Float32, Float64}, N, <:Array, <:StridedIndices} where {N}}
+const ComplexCPU = Union{Array{ComplexF32}, Array{ComplexF64}, SubArray{<:Union{ComplexF32, ComplexF64}, N, <:Array, <:StridedIndices} where {N}}
 
 function GWSeries.to_frequencyseries(x::TimeSeries{<:RealCPU})
     n = nsamples(x)

@@ -12,8 +12,11 @@ end
 
 check_array(a::AbstractVector, metric::FrequencyDomainMetric) = check_array(reshape(a, :, 1), metric)
 
+check_array(a::GWSeries.AbstractSeries, ::FrequencyDomainMetric) =
+    throw(ArgumentError("matched filtering needs a FrequencySeries; convert time series with to_frequencyseries"))
+
 function check_array(a::FrequencySeries, metric::FrequencyDomainMetric)
-    GWSeries.check_frequency_grid(frequencies(a), metric.frequencies)
+    check_same_frequency_grid(frequencies(a), metric.frequencies)
     channels(a) == metric.channels || throw(ArgumentError("strain and metric channel orders differ"))
     return check_array(parent(a), metric)
 end
@@ -69,8 +72,12 @@ end
     complex_inner_product(a, b, metric)
 
 Compute `4Δf Σ a[k,:]' * inv(S[k,:,:]) * b[k,:]` on active bins.
-Accept strain containers or arrays; raw arrays implicitly use the metric's grid
-and channel order. A vector denotes one channel. The first argument is conjugated.
+Accept two `GWSeries.FrequencySeries` or two arrays; mixing them, or passing a
+`TimeSeries`, throws `ArgumentError`. Series must pass `check_same_grid` with each
+other (including the epoch, since frequency-domain phases are referenced to it)
+and match the metric's channel order and grid within `check_same_frequency_grid`'s
+ulp tolerance. Raw arrays implicitly use the metric's grid and channel order. A
+vector denotes one channel. The first argument is conjugated.
 """
 function complex_inner_product(a, b, metric::FrequencyDomainMetric)
     check_operands(a, b)

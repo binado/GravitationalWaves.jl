@@ -12,7 +12,7 @@ versions, dependencies, and licenses.
 
 Julia packages live in `packages/`:
 
-- `GWSeries`: explicit time/frequency containers, channel and sampling metadata, grid operations, and optional FFTW conversion. Arrays remain the numerical kernel interface.
+- `GWSeries`: explicit time/frequency containers, channel and sampling metadata, grid operations, and optional FFTW conversion. Arrays remain the numerical kernel interface. Grid comparison is few-ulp tolerant (`check_same_grid`, `check_same_frequency_grid`); `GWNoise`, `GWDetectors`, and `GWMatchedFiltering` depend on it via `[sources]` paths and accept series alongside arrays.
 - `GWNoise`: native one-sided PSD/ASD text readers, tabulated interpolation and finite Gaussian noise segments. Independent of LAL/Python; tests cover physical Fourier normalization. PSD estimation and streaming remain out of scope.
 - `GWMatchedFiltering`: joint frequency-domain metrics over ordered channels, real/complex inner products, SNRs and fixed-PSD Gaussian likelihood statistics. GWSeries/LinearAlgebra/StaticArrays runtime; independent PSDs use diagonal weights, correlated spectra use cached whitening factors per frequency. Shapes are `(frequency, channel)`; layout measurements live in `benchmarks/GWMatchedFiltering`. Native host matrices and views use allocation-free kernels; traced arrays use broadcast/reduction kernels. Heavy AD and waveform/projection composition live in `integration/GWMatchedFiltering`. Only strain parameters, not metric preparation, are in the initial AD contract. Compiled matched-filter SNR uses `check=false` after host validation of nonzero templates.
 - `AbstractGWWaveforms`: dependency-free interface owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
@@ -25,7 +25,7 @@ Julia packages live in `packages/`:
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
 Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
-The waveform/conversion/detector packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
+The waveform, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `GWDistributions` retains MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands

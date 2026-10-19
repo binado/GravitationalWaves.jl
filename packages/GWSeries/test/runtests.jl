@@ -81,10 +81,66 @@ end
         @test_throws ArgumentError check_same_grid(h, shifted)
     end
     fine = TimeSeries(ones(4); epoch = t0, sampling_frequency = 1.0e9, channels = (:H1,))
-    @test_throws ArgumentError crop(fine; start = t0, stop = t0)
+    @test nsamples(crop(fine; start = t0, stop = t0)) == 0
+    @test_throws ArgumentError crop(fine; start = t0, stop = t0 + 1.0e-6)
     x = TimeSeries(ones(8, 2); epoch = t0, sampling_frequency = 10, channels = (:H1, :L1))
     @test_throws ArgumentError check_same_grid(x, TimeSeries(ones(8, 2); epoch = t0, sampling_frequency = 10, channels = (:L1, :H1)))
     @test_throws DimensionMismatch check_same_grid(x, TimeSeries(ones(7, 2); epoch = t0, sampling_frequency = 10, channels = (:H1, :L1)))
+end
+
+@testset "Grid compatibility tolerance" begin
+    t0 = 1126259460.1
+    x = TimeSeries(ones(8); epoch = t0, sampling_frequency = 16, channels = (:H1,))
+    mismatch(; epoch = t0, fs = 16, n = 8) =
+        TimeSeries(ones(n); epoch, sampling_frequency = fs, channels = (:H1,))
+    @test check_same_grid(x, mismatch(; epoch = nextfloat(t0))) === nothing
+    @test check_same_grid(x, mismatch(; epoch = prevfloat(t0, 2))) === nothing
+    @test_throws ArgumentError check_same_grid(x, mismatch(; epoch = t0 + 1.0e-3))
+    # Documented resolution: offsets of a few ulp of a GPS epoch are the same epoch.
+    @test check_same_grid(x, mismatch(; epoch = t0 + 1.0e-6)) === nothing
+    @test_throws ArgumentError check_same_grid(x, mismatch(; epoch = t0 + 1.0e-5))
+    @test_throws ArgumentError check_same_grid(x, mismatch(; fs = 32))
+    @test check_same_grid(x, mismatch(; fs = nextfloat(16.0))) === nothing
+    @test_throws DimensionMismatch check_same_grid(x, mismatch(; n = 7))
+    err = try
+        check_same_grid(x, mismatch(; epoch = t0 + 0.5))
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin("epochs differ", err.msg) && occursin("same start time", err.msg)
+
+    h = FrequencySeries(ones(9); frequencies = 0:0.5:4, epoch = t0, channels = (:H1,))
+    other(; f = 0:0.5:4, epoch = t0) = FrequencySeries(ones(length(f)); frequencies = f, epoch, channels = (:H1,))
+    @test check_same_grid(h, other(; f = range(0.0; step = 0.5, length = 9))) === nothing
+    @test check_same_grid(h, other(; f = LinRange(0, 4, 9))) === nothing
+    @test check_same_grid(h, other(; epoch = nextfloat(t0))) === nothing
+    @test_throws ArgumentError check_same_grid(h, other(; f = 0:0.25:2))
+    @test_throws ArgumentError check_same_grid(h, other(; f = 0.5:0.5:4.5))
+    @test_throws ArgumentError check_same_grid(h, other(; f = 0:0.5001:4.0008))
+    @test_throws ArgumentError check_same_grid(h, other(; epoch = t0 + 0.01))
+    @test check_same_frequency_grid(0:0.5:4, LinRange(0, 4, 9)) === nothing
+    @test_throws DimensionMismatch check_same_frequency_grid(0:0.5:4, 0:0.5:3.5)
+    @test_throws ArgumentError check_same_frequency_grid(0:0.5:4, 0:0.25:2)
+end
+
+@testset "Identical coordinates at high rates" begin
+    gps = 1.2e9
+    fast = TimeSeries(ones(4); epoch = gps, sampling_frequency = 1.0e6, channels = (:H1,))
+    @test check_same_grid(fast, copy(fast)) === nothing
+    @test nsamples(crop(fast; start = gps, stop = gps)) == 0
+    err = try
+        crop(fast; start = gps, stop = gps + 2.0e-6)
+    catch e
+        e
+    end
+    @test err isa ArgumentError && occursin("crop boundary", err.msg) && occursin("spacing", err.msg)
+end
+
+@testset "Internal constructor and parameter constraints" begin
+    @test_throws TypeError TimeSeries{String, Float64, Float64, Tuple{Symbol}}
+    @test_throws TypeError FrequencySeries{Vector{Float64}, Float64, Vector{Float64}, Tuple{Symbol}}
+    @test_throws MethodError TimeSeries(ones(4), 0.0, 0.25, (:H1,), Val(:validated))
 end
 
 include("test_fourier.jl")

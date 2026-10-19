@@ -2,7 +2,7 @@
 module GWMatchedFiltering
 
 import GWSeries
-using GWSeries: FrequencySeries, check_same_grid, frequencies, channels
+using GWSeries: FrequencySeries, check_same_grid, check_same_frequency_grid, frequencies, channels
 
 using LinearAlgebra: Hermitian, I, cholesky, ishermitian
 using StaticArrays: SMatrix, SVector

@@ -5,7 +5,9 @@ This directory contains the candidate Yggdrasil recipe for `LALSuite_jll`.
 external-library configuration. Adoption is blocked until the JLL is registered
 and all four required platforms pass binary audits and native validation.
 
-Upstream draft: [Yggdrasil #15187](https://github.com/JuliaPackaging/Yggdrasil/pull/15187).
+The recipe is kept local while it is tested. The earlier upstream draft
+([Yggdrasil #15187](https://github.com/JuliaPackaging/Yggdrasil/pull/15187)) was closed
+and will be resubmitted once validation is complete.
 
 ## Source and build contract
 

@@ -1,5 +1,4 @@
 Disable Python embedding and remove build-machine flags from public version metadata.
-Recipe PR: https://github.com/JuliaPackaging/Yggdrasil/pull/15187
 
 --- a/lalsimulation/configure.ac
 +++ b/lalsimulation/configure.ac

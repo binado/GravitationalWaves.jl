@@ -1,6 +1,11 @@
 """Read one-sided spectral densities and sample stationary Gaussian strain noise."""
 module GWNoise
 
+import GWTimeFrequencyDomains
+
+using GWTimeFrequencyDomains: TimeDomain, FrequencyDomain, nsamples, sampling_frequency, channels, check_same_frequency_grid
+import GWTimeFrequencyDomains: frequencies, check_compatible
+
 using DelimitedFiles: readdlm
 using FFTW: irfft
 using Random: AbstractRNG, default_rng, randn

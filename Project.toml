@@ -1,2 +1,2 @@
 [workspace]
-projects = ["packages/AbstractGWWaveforms", "packages/LALWaveforms", "packages/GWParameterConversion", "packages/GWWaveforms", "packages/GWDistributions", "packages/GWDetectors", "packages/GWNoise", "packages/GWMatchedFiltering"]
+projects = ["packages/AbstractGWWaveforms", "packages/LALWaveforms", "packages/GWParameterConversion", "packages/GWWaveforms", "packages/GWDistributions", "packages/GWDetectors", "packages/GWTimeFrequencyDomains", "packages/GWNoise", "packages/GWMatchedFiltering"]

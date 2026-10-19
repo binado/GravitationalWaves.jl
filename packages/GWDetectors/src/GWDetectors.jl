@@ -1,5 +1,8 @@
 module GWDetectors
 
+import GWTimeFrequencyDomains
+using GWTimeFrequencyDomains: FrequencyDomain, frequencies, frequency_spacing, nsamples, epoch
+
 using LinearAlgebra: cross, dot
 using StaticArrays: SVector, @SMatrix
 

@@ -87,37 +87,34 @@ function light_travel_time(d1::Detector, d2::Detector)
 end
 
 """
-    project_fd(f, polarizations, sky, detector;
-               start_time, reference_time=sky.geocent_time)
+    project_fd(domain::FrequencyDomain, polarizations, sky, detector;
+               reference_time=sky.geocent_time)
 
-Allocate `(Fplus*hplus + Fcross*hcross) * exp(-2π*im*f*dt)`, with
-`dt = (sky.geocent_time - start_time) + time_delay_from_geocenter(sky, detector)`.
-Antenna factors are evaluated at `reference_time`; delay at `sky.geocent_time`.
-Epochs are subtracted before adding the delay to preserve timing precision.
-
-Accept any finite nonnegative frequency vector, including ranges, irregular or
-empty grids, in input order. Both polarization vectors must have the same axes as
-`f`; no frequency mask is applied. `sky` provides `ra`, `dec`, `psi`, `geocent_time`.
-Frequencies are in Hz; polarizations are finite complex Fourier-domain strains in LAL's
-convention. `ra` is right ascension (radians, conventionally `[0, 2π)`), `dec` is
-declination (radians, `[-π/2, π/2]`), and `psi` is the polarization angle (radians,
-periodic modulo `π`). `geocent_time`, `start_time`, and `reference_time` are finite,
-real GPS seconds, including fractions; epochs used to evaluate GMST follow
-[`greenwich_mean_sidereal_time`](@ref). Argument values are not validated;
-polarization vector types and matching axes are checked. Broadcast preserves
-compiled array execution.
+Project raw polarization vectors onto a uniform frequency domain. The phase is
+relative to `epoch(domain)`. Antenna factors use `reference_time`, delays use
+`sky.geocent_time`. Requires a single-channel domain and matching polarization
+vectors; run `check_data(domain, polarization)` on each vector before inference.
+No metadata or sample-value validation occurs here. Broadcast over integer bin
+indices avoids constructing float ranges or materializing coordinates in AD.
 """
 function project_fd(
-        f::AbstractVector, polarizations, sky, d::Detector;
-        start_time, reference_time = sky.geocent_time
+        domain::FrequencyDomain, polarizations, sky, d::Detector;
+        reference_time = sky.geocent_time,
     )
+    return _project_fd(first(frequencies(domain)), frequency_spacing(domain), nsamples(domain), epoch(domain), polarizations, sky, d, reference_time)
+end
+function _project_fd(f0, df, n, start_time, polarizations, sky, d, reference_time)
     hp, hc = polarizations.plus, polarizations.cross
-    hp isa AbstractVector && hc isa AbstractVector || throw(ArgumentError("polarizations must be vectors"))
-    axes(f) == axes(hp) == axes(hc) || throw(DimensionMismatch("frequency and polarization axes must match"))
     gmst = greenwich_mean_sidereal_time(reference_time)
     factors = antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d)
     delay = time_delay_from_geocenter(sky, d)
     dt = (sky.geocent_time - start_time) + delay
     phase_scale = ((-2 * Float64(π)) * dt) * im
-    return @. (factors.plus * hp + factors.cross * hc) * exp(phase_scale * f)
+    indices = Base.OneTo(n)
+    # One scalar broadcast function prevents Base's range arithmetic shortcuts
+    # from constructing a floating-point range inside differentiated code.
+    return project_bin.(hp, hc, indices, factors.plus, factors.cross, phase_scale, f0, df)
 end
+
+@inline project_bin(hp, hc, i, fp, fc, phase_scale, f0, df) =
+    (fp * hp + fc * hc) * exp(phase_scale * (f0 + df * (i - 1)))

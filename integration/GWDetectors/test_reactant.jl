@@ -1,5 +1,5 @@
 # Exercise array inputs and every numerical public API with dynamic geometry.
-function numerical_api(x, f, hp, hc)
+function numerical_api(x, hp, hc)
     d = ad_detector(x)
     other = detectors.L1
     sky = (; ra = x[1], dec = x[2], psi = x[3], geocent_time = 1126259462 + x[4])
@@ -12,7 +12,7 @@ function numerical_api(x, f, hp, hc)
         time_delay_from_geocenter(x[1], x[2], x[5], d),
         time_delay(sky, d, other), light_travel_time(d, other),
         project_fd(
-            f, (; plus = hp, cross = hc), sky, d; start_time = 1126259462.0,
+            AD_DOMAIN, (; plus = hp, cross = hc), sky, d;
             reference_time = 1126259462 + x[5]
         ),
     )
@@ -32,14 +32,13 @@ end
 
 @testset "reused array executable" begin
     samples = (AD_INPUT, AD_INPUT .+ [0.1, 0.02, -0.03, 0.125, 0.25, 0.01, -0.02, 0.04, -0.01, 0.001, 0.002, 10.0])
-    compiled_api(x, f, hp, hc) = Reactant.@allowscalar numerical_api(x, f, hp, hc)
-    args = Reactant.to_rarray.((AD_INPUT, AD_F, AD_POL.plus, AD_POL.cross))
+    compiled_api(x, hp, hc) = Reactant.@allowscalar numerical_api(x, hp, hc)
+    args = Reactant.to_rarray.((AD_INPUT, AD_POL.plus, AD_POL.cross))
     executable = Reactant.@compile compiled_api(args...)
     for sample in samples
-        f = sample === first(samples) ? AD_F : [0.0, 19.5, 35.0, 110.0]
         hp, hc = AD_POL.plus .* sample[1], AD_POL.cross .* sample[2]
-        args = Reactant.to_rarray.((sample, f, hp, hc))
-        compare_host(executable(args...), numerical_api(sample, f, hp, hc))
+        args = Reactant.to_rarray.((sample, hp, hc))
+        compare_host(executable(args...), numerical_api(sample, hp, hc))
     end
 end
 

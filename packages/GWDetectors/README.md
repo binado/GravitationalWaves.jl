@@ -1,7 +1,7 @@
 # GWDetectors
 
 Native Julia geometry, antenna factors, arrival delays, and frequency-domain projection
-for ground-based interferometers. Requires Julia 1.12 and StaticArrays.jl.
+for ground-based interferometers. Requires Julia 1.12, StaticArrays.jl, and GWTimeFrequencyDomains.
 The response uses the long-wavelength approximation at one reference time.
 
 ```julia
@@ -33,22 +33,26 @@ LAL's UTC-based approximation without a UT1 correction. At a positive leap secon
 Both waveform backends return the `(; plus, cross)` accepted by `project_fd`:
 
 ```julia
-using GWWaveforms, LALWaveforms, GWDetectors
+using GWWaveforms, LALWaveforms, GWDetectors, GWTimeFrequencyDomains
 
 f = range(0, 512; step = 0.25)
+fd = FrequencyDomain(;frequencies=f, epoch=1126259460.0, channels=(:H1,))
 p = (; mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
       theta_jn = 0.4, phase = 1.3)
 for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
     polarizations = hphc_fd(f, p, generator)
-    strain = project_fd(f, polarizations, sky, detector;
-                        start_time = 1126259460.0)
+    check_data(fd, polarizations.plus)  # validate outside inference
+    check_data(fd, polarizations.cross)
+    strain = project_fd(fd, polarizations, sky, detector)
 end
 ```
 
-`project_fd` allocates a complex vector in input order for any finite nonnegative
-frequency vector (ranges, irregular, unsorted, repeated, and empty grids included).
-Both polarization vectors must have the same axes as the frequencies. It applies
-no additional frequency mask. The expression is
+`project_fd(fd, polarizations, sky, detector)` allocates a complex vector on a
+uniform nonnegative frequency domain, including offset and empty grids. Its phase
+origin is `epoch(fd)`; the domain has one explicit output channel label. Both
+polarizations must be one-based vectors matching the frequency count. Validation
+is separate (`check_data` on each vector); numerical evaluation performs no
+metadata or sample-value checks and applies no additional frequency mask. The expression is
 
 ```math
 (F_+ h_+ + F_\times h_\times)
@@ -92,8 +96,7 @@ The factors are `Fplus = A[1, 1] - A[2, 2]` and
 
 ForwardDiff, Enzyme, Mooncake, and compiled Enzyme through Reactant are tested.
 Response, timing, and projection functions assume the argument domains documented
-in their docstrings and do not validate values. Projection checks polarization
-vector types and matching axes. Geometry constructors accept `check=false` to
+in their docstrings and do not validate values. Projection assumes prevalidated polarization vectors and a fixed domain. Geometry constructors accept `check=false` to
 bypass numerical geometry validation inside compiled calls with prevalidated
 inputs; vector sizes and numeric element types are still checked. GPS derivatives
 are tested away from integer-second rounding
@@ -101,27 +104,28 @@ boundaries and leap transitions. Scalar geometry uses StaticArrays; projection u
 broadcast so device arrays stay in compiled execution.
 
 ```julia
-using Reactant, Enzyme
+using Reactant, Enzyme, GWTimeFrequencyDomains
 Reactant.set_default_backend("cpu")
 
-function projected(angles, f, hp, hc)
+const PROJECTION_DOMAIN = FrequencyDomain(;frequencies=0:20:40,epoch=1126259460.0,channels=(:H1,))
+function projected(angles, hp, hc)
     Reactant.@allowscalar begin
-        source = (; ra = angles[1], dec = angles[2], psi = angles[3],
-                    geocent_time = angles[4])
-        project_fd(f, (; plus = hp, cross = hc), source, detectors.H1;
-                   start_time = 1126259460.0)
+        source = (;ra=angles[1],dec=angles[2],psi=angles[3],geocent_time=angles[4])
+        project_fd(PROJECTION_DOMAIN,(;plus=hp,cross=hc),source,detectors.H1)
     end
 end
 angles = Reactant.to_rarray([sky.ra, sky.dec, sky.psi, sky.geocent_time])
-frequencies = Reactant.to_rarray([0.0, 20.0, 35.5])
-hp = Reactant.to_rarray(ComplexF64[0, 1, 0.5im])
-hc = Reactant.to_rarray(ComplexF64[0, 0.3im, 0.2])
-executable = Reactant.@compile projected(angles, frequencies, hp, hc)
-strain = executable(angles, frequencies, hp, hc)
+hp_host = ComplexF64[0,1,0.5im]
+hc_host = ComplexF64[0,0.3im,0.2]
+check_data(PROJECTION_DOMAIN,hp_host)
+check_data(PROJECTION_DOMAIN,hc_host)
+hp, hc = Reactant.to_rarray.((hp_host,hc_host))
+executable = Reactant.@compile projected(angles,hp,hc)
+strain = executable(angles,hp,hc)
 ```
 
 `just test-integration-detectors` exercises reused CPU executables with changing
-sky, GPS, Cartesian/geodetic geometry, and polarization/frequency arrays, including
+sky, GPS, Cartesian/geodetic geometry, and polarization arrays at fixed frequency domains, including
 phase-sensitive compiled gradients. GPU compilation and compilation of waveform
 generators are outside this package's acceptance scope.
 
@@ -146,3 +150,11 @@ fixtures warn locally and fail when `CI=true`.
 
 Finite-arm transfer functions, rotating time-domain response, extra polarizations,
 noise, calibration, and a network container remain future work.
+
+## Migration to 0.2
+
+Construct `FrequencyDomain(;frequencies=f,epoch=start_time,channels=(:H1,))`
+once, validate polarization vectors, then call `project_fd(fd, polarizations,
+sky, detector)`. The raw frequency-vector overload and series-output overload have
+been removed. Irregular frequency grids and runtime-changing frequency grids are
+outside the initial domain-first compiled contract. Waveform APIs remain unchanged.

@@ -45,7 +45,11 @@ using JSON
             sky = (; ra = s["ra"], dec = s["dec"], psi = s["psi"], geocent_time = s["geocent_time"])
             d = detectors[Symbol(c["name"])]
             p = (; plus = complex_vector(c["plus"]), cross = complex_vector(c["cross"]))
-            actual = project_fd(c["f"], p, sky, d; start_time = c["start_time"], reference_time = c["reference_time"])
+            f = range(first(c["f"]); step = c["f"][2] - c["f"][1], length = length(c["f"]))
+            domain = FrequencyDomain(; frequencies = f, epoch = c["start_time"], channels = (Symbol(c["name"]),))
+            check_data(domain, p.plus)
+            check_data(domain, p.cross)
+            actual = project_fd(domain, p, sky, d; reference_time = c["reference_time"])
             expected = complex_vector(c["strain"])
             # Bilby reduces sidereal angles internally; timing differences of
             # ~1e-13 s accumulate phase at the largest frequency.

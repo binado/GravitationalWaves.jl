@@ -1,14 +1,18 @@
 """Joint frequency-domain noise metrics, inner products, and SNR statistics."""
 module GWMatchedFiltering
 
+import GWTimeFrequencyDomains
+using GWTimeFrequencyDomains: FrequencyDomain, check_data, check_same_frequency_grid, frequencies, channels, frequency_spacing
+import GWTimeFrequencyDomains: check_compatible
+
 using LinearAlgebra: Hermitian, I, cholesky, ishermitian
 using StaticArrays: SMatrix, SVector
 
 export AbstractMetric, DiagonalMetric, BlockDiagonalMetric
-export FrequencyDomainMetric, FrequencyDomainStrain
+export FrequencyDomainMetric
 export complex_inner_product, noise_weighted_inner_product
 export optimal_snr_squared, optimal_snr, matched_filter_snr, residual_squared
-export likelihood_statistics, log_likelihood_ratio
+export likelihood_statistics, log_likelihood_ratio, check_template
 
 include("types.jl")
 include("metric.jl")

@@ -57,3 +57,38 @@ measurements, not CI timing thresholds. Rerun on deployment hardware; compiled
 Reactant performance is a separate backend measurement. The initial allocating
 broadcast implementation was substantially slower on the host, motivating the
 native specialization and the StaticArrays runtime dependency.
+
+## Domain-first inference
+
+For a focused comparison of domain-first evaluation against the underlying array
+contraction kernel, including native matrix views:
+
+```sh
+julia --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/domains.jl
+```
+
+The comparison uses one and three channels, vector/matrix storage and their views,
+and 8,193 active frequency bins. It validates data
+and metric compatibility before timing, and checks equal numerical results. Both
+paths include the same physical `4df` normalization. No compatibility checks or
+coordinate-array construction occur during evaluation. Metric/domain construction
+is excluded. Measurements are hardware-specific, not CI timing thresholds.
+
+Measured after integration checks on Apple M4, Julia 1.12.7, one Julia/BLAS
+thread. Median microseconds; every case allocated zero bytes and zero objects:
+
+| Channels | Metric | Storage | Kernel | Domain-first |
+| --- | --- | --- | --- | --- |
+| 1 | Diagonal | Vector | 5.000 | 5.000 |
+| 1 | Diagonal | Vector view | 5.000 | 5.000 |
+| 1 | Blocks | Vector | 5.584 | 5.584 |
+| 1 | Blocks | Vector view | 5.625 | 5.625 |
+| 3 | Diagonal | Matrix | 15.000 | 15.000 |
+| 3 | Diagonal | Matrix view | 15.000 | 15.041 |
+| 3 | Blocks | Matrix | 26.417 | 26.375 |
+| 3 | Blocks | Matrix view | 26.375 | 26.375 |
+
+Domain-first timings were within 0.3% of the raw kernel in these measurements,
+including small variations in both directions. See [raw results](domains_results.csv).
+This is representative host evidence, not a guarantee for other sizes, storage,
+hardware, or compiled backends. Previous series-wrapper measurements have been retired.

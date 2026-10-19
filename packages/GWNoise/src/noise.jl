@@ -1,40 +1,45 @@
 """
-    GaussianNoise(curve; sampling_frequency, nsamples,
+    GaussianNoise(curve, domain::TimeDomain;
                   minimum_frequency=first(curve.frequencies),
-                  maximum_frequency=min(last(curve.frequencies), sampling_frequency/2))
+                  maximum_frequency=min(last(curve.frequencies), sampling_frequency(domain)/2))
 
-Prepare a finite stationary Gaussian noise segment. `nsamples` and
-`sampling_frequency` (Hz) determine the duration and one-sided FFT grid.
+Prepare a finite stationary Gaussian noise segment. The domain sample count and
+sampling frequency (Hz) determine the duration and one-sided FFT grid.
 The active band must be covered by the curve; other bins have zero power.
 DC and, for even sample counts, Nyquist are zero. No taper is applied.
 Draws are independent periodic FFT segments, not a continuous noise stream.
 """
-struct GaussianNoise{F <: AbstractRange}
+struct GaussianNoise{F <: AbstractRange, C <: Tuple}
     sampling_frequency::Float64
     nsamples::Int
     frequencies::F
     spectrum::Vector{Float64}
     scales::Vector{Float64}
+    channels::C
 end
 
 function GaussianNoise(
-        curve::TabulatedPSD; sampling_frequency, nsamples::Integer,
+        curve::TabulatedPSD, domain::TimeDomain;
         minimum_frequency = first(curve.frequencies),
-        maximum_frequency = min(last(curve.frequencies), sampling_frequency / 2),
+        maximum_frequency = min(last(curve.frequencies), GWTimeFrequencyDomains.sampling_frequency(domain) / 2),
     )
+    length(channels(domain)) == 1 || throw(ArgumentError("GaussianNoise requires a single-channel domain"))
+    sampling_frequency = GWTimeFrequencyDomains.sampling_frequency(domain)
+    nsamples = GWTimeFrequencyDomains.nsamples(domain)
     isfinite(sampling_frequency) && sampling_frequency > 0 && nsamples >= 2 ||
         throw(ArgumentError("need a positive sampling frequency and at least two samples"))
     first(curve.frequencies) <= minimum_frequency <= maximum_frequency <=
         min(last(curve.frequencies), sampling_frequency / 2) ||
         throw(ArgumentError("requested band must lie within PSD coverage and Nyquist"))
     fs = Float64(sampling_frequency)
+    isfinite(fs) && fs > 0 || throw(ArgumentError("noise sampling frequency must be representable as positive finite Float64"))
     df = fs / nsamples
     f = range(0.0; step = df, length = nsamples ÷ 2 + 1)
     s = [minimum_frequency <= x <= maximum_frequency ? psd(x, curve) : 0.0 for x in f]
     s[1] = 0.0
     iseven(nsamples) && (s[end] = 0.0)
     scales = sqrt.(s ./ df) ./ 2
-    return GaussianNoise(fs, Int(nsamples), f, s, scales)
+    return GaussianNoise(fs, Int(nsamples), f, s, scales, channels(domain))
 end
 
 """`frequencies(model)` returns the one-sided FFT frequency range in Hz."""
@@ -51,15 +56,17 @@ For each active interior bin, the real and imaginary parts independently have
 variance `PSD/(4Δf)`. Each call draws a new realization.
 """
 noise_fd(model::GaussianNoise) = noise_fd(default_rng(), model)
-noise_fd(rng::AbstractRNG, model::GaussianNoise) =
-    noise_fd!(rng, Vector{ComplexF64}(undef, length(model.frequencies)), model)
+function noise_fd(rng::AbstractRNG, model::GaussianNoise)
+    destination = Vector{ComplexF64}(undef, length(model.frequencies))
+    noise_fd!(rng, destination, model)
+    return destination
+end
 
 """`noise_fd!([rng], destination, model)` fills a complex vector with a new FD draw."""
 noise_fd!(destination::AbstractVector{<:Complex}, model::GaussianNoise) =
     noise_fd!(default_rng(), destination, model)
 
 function noise_fd!(rng::AbstractRNG, destination::AbstractVector{<:Complex}, model::GaussianNoise)
-    length(destination) == length(model.scales) || throw(DimensionMismatch("wrong FD output length"))
     for i in eachindex(destination, model.scales)
         destination[i] = model.scales[i] * complex(randn(rng), randn(rng))
     end
@@ -86,6 +93,18 @@ noise_td!(destination::AbstractVector{<:Real}, model::GaussianNoise) =
     noise_td!(default_rng(), destination, model)
 
 function noise_td!(rng::AbstractRNG, destination::AbstractVector{<:Real}, model::GaussianNoise)
-    length(destination) == model.nsamples || throw(DimensionMismatch("wrong TD output length"))
     return copyto!(destination, noise_td(rng, model))
+end
+
+"""Validate a stationary noise model against sampling and channels, ignoring epoch."""
+function check_compatible(d::TimeDomain, model::GaussianNoise)
+    nsamples(d) == model.nsamples || throw(DimensionMismatch("noise sample count differs"))
+    GWTimeFrequencyDomains.check_coordinate(sampling_frequency(d), model.sampling_frequency, model.sampling_frequency, "sampling frequencies")
+    channels(d) == model.channels || throw(ArgumentError("noise channel orders differ"))
+    return nothing
+end
+function check_compatible(d::FrequencyDomain, model::GaussianNoise)
+    check_same_frequency_grid(frequencies(d), frequencies(model))
+    channels(d) == model.channels || throw(ArgumentError("noise channel orders differ"))
+    return nothing
 end

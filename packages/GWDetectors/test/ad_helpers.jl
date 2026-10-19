@@ -1,7 +1,8 @@
 # Shared by the default suite and every heavy AD backend. Local epoch offsets keep
 # finite differences resolvable, while GMST still receives full GPS epochs.
 const AD_INPUT = [1.2, -0.4, 0.7, 0.25, 0.15, 0.6, -1.1, 0.2, 1.3, 0.03, -0.02, 50.0]
-const AD_F = [0.0, 17.25, 31.0, 93.75]
+const AD_F = 0.0:17.25:51.75
+const AD_DOMAIN = FrequencyDomain(; frequencies = AD_F, epoch = 1126259462.0, channels = (:H1,))
 const AD_POL = (;
     plus = [1.0 + 0.2im, -0.3 + 0.7im, 0.5 - 0.2im, -0.1 + 0.4im],
     cross = [0.3 - 0.8im, 0.9 + 0.1im, -0.4 + 0.6im, 0.7 + 0.2im],
@@ -38,7 +39,7 @@ end
 function projection_loss(x)
     sky = (; ra = x[1], dec = x[2], psi = x[3], geocent_time = 1126259462 + x[4])
     h = project_fd(
-        AD_F, AD_POL, sky, ad_detector(x); start_time = 1126259462.0,
+        AD_DOMAIN, AD_POL, sky, ad_detector(x);
         reference_time = 1126259462 + x[5]
     )
     return sum(real.(h) .+ 0.3 .* imag.(h))

@@ -55,7 +55,7 @@
             @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_2 = -1.0)), g)
             @test_throws ArgumentError validate_parameters(f, merge(base, (; luminosity_distance = 0.0)), g)
             @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
-            # The compiled path has no checks; the host reference is `validate_parameters`.
+            # Parameter checks are explicit through `validate_parameters`.
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 0.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 450.0, maximum_frequency = 400.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; reference_frequency = -1.0))

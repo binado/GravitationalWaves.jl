@@ -5,63 +5,26 @@ const XAS_G4 = (0.0, 0.25, 0.75, 1.0)
 const XAS_G5 = (0.0, 0.5 - 1 / (2sqrt(2.0)), 0.5, 0.5 + 1 / (2sqrt(2.0)), 1.0)
 const XAS_DPHASE0 = 5 / (128 * Float64(π)^(5 / 3))
 
-# Tiny partial-pivoting Gaussian elimination, expanded into scalar arithmetic.
-# Comparisons select rows using ifelse; no traced indices, foreign calls or
-# parameter-dependent control flow enter AD. N is fixed (3, 4, or 5).
-@generated function xas_solve(A::NTuple{N, Any}, b::NTuple{N, Any}) where {N}
-    a = [gensym(:a) for i in 1:N, j in 1:N]
-    rhs = [gensym(:b) for i in 1:N]
-    c = [gensym(:c) for i in 1:N]
-    code = Expr(:block)
-    for i in 1:N
-        push!(code.args, :($(rhs[i]) = b[$i]))
-        for j in 1:N
-            push!(code.args, :($(a[i, j]) = A[$i][$j]))
-        end
-    end
-    for k in 1:(N - 1)
-        for r in (k + 1):N
-            swap = gensym(:swap)
-            push!(code.args, :($swap = abs($(a[r, k])) > abs($(a[k, k]))))
-            for (u, v) in [(a[k, j], a[r, j]) for j in k:N] ∪ [(rhs[k], rhs[r])]
-                old = gensym(:old)
-                push!(code.args, :($old = $u), :($u = ifelse($swap, $v, $u)), :($v = ifelse($swap, $old, $v)))
-            end
-        end
-        for r in (k + 1):N
-            factor = gensym(:factor)
-            push!(code.args, :($factor = $(a[r, k]) / $(a[k, k])))
-            for j in (k + 1):N
-                push!(code.args, :($(a[r, j]) = $(a[r, j]) - $factor * $(a[k, j])))
-            end
-            push!(code.args, :($(rhs[r]) = $(rhs[r]) - $factor * $(rhs[k])))
-        end
-    end
-    for i in N:-1:1
-        value = rhs[i]
-        for j in (i + 1):N
-            value = :($value - $(a[i, j]) * $(c[j]))
-        end
-        push!(code.args, :($(c[i]) = $value / $(a[i, i])))
-    end
-    push!(code.args, Expr(:tuple, c...))
-    return code
+# The tiny collocation systems retain pivoting and differentiate both A and b.
+function xas_solve(rows::NTuple{N, Any}, b::NTuple{N, Any}) where {N}
+    A = SMatrix{N, N}(ntuple(k -> rows[mod1(k, N)][cld(k, N)], Val(N * N)))
+    return Tuple(lu(A) \ SVector(b))
 end
 
 function xas_isco(a)
-    small = abs(a) < 1.0e-4
-    s = ifelse(small, oftype(a, 0.1), a)
-    z1 = 1 + cbrt(1 - s * s) * (cbrt(1 + s) + cbrt(1 - s))
-    z1 = ifelse(z1 > 3, oftype(z1, 3), z1)
-    z2 = sqrt(3s * s + z1 * z1)
-    classic = 3 + z2 - sign(s) * sqrt((3 - z1) * (3 + z1 + 2z2))
-    # Regular implicit ISCO equation removes sign(a)*sqrt(a^2) at a=0.
-    t = ifelse(small, a, zero(a))
-    r = 6 - 4sqrt(2 / 3) * t - (7 / 18) * t * t
-    for _ in 1:3
-        r -= (r * r - 6r + 8t * sqrt(r) - 3t * t) / (2r - 6 + 4t / sqrt(r))
+    r = if abs(a) < 1.0e-4
+        # Regular implicit ISCO equation removes sign(a)*sqrt(a^2) at a=0.
+        value = 6 - 4sqrt(2 / 3) * a - (7 / 18) * a * a
+        for _ in 1:3
+            value -= (value * value - 6value + 8a * sqrt(value) - 3a * a) / (2value - 6 + 4a / sqrt(value))
+        end
+        value
+    else
+        z1 = 1 + cbrt(1 - a * a) * (cbrt(1 + a) + cbrt(1 - a))
+        z1 = min(z1, oftype(z1, 3))
+        z2 = sqrt(3a * a + z1 * z1)
+        3 + z2 - sign(a) * sqrt((3 - z1) * (3 + z1 + 2z2))
     end
-    r = ifelse(small, r, classic)
     return inv((sqrt(r)^3 + a) * Float64(π))
 end
 
@@ -158,17 +121,25 @@ function xas_phase_coefficients(r, chi1, chi2)
 end
 
 function phenomxas_phase(p, f)
-    ins = xas_inspiral_phase(p.ins, f)
-    int = xas_int_phase(p.int, f) + p.alpha0 + p.alpha1 * f
-    rd = xas_rd_phase(p.rd, f) + p.beta0 + p.beta1 * f
-    return ifelse(f < p.f1, ins, ifelse(f > p.f2, rd, int)) / p.eta
+    value = if f < p.f1
+        xas_inspiral_phase(p.ins, f)
+    elseif f > p.f2
+        xas_rd_phase(p.rd, f) + p.beta0 + p.beta1 * f
+    else
+        xas_int_phase(p.int, f) + p.alpha0 + p.alpha1 * f
+    end
+    return value / p.eta
 end
 
 function xas_dphase(p, f)
-    return ifelse(
-        f < p.f1, xas_dinspiral_phase(p.ins, f),
-        ifelse(f > p.f2, xas_drd_phase(p.rd, f) + p.beta1, xas_dint_phase(p.int, f) + p.alpha1)
-    ) / p.eta
+    value = if f < p.f1
+        xas_dinspiral_phase(p.ins, f)
+    elseif f > p.f2
+        xas_drd_phase(p.rd, f) + p.beta1
+    else
+        xas_dint_phase(p.int, f) + p.alpha1
+    end
+    return value / p.eta
 end
 
 function xas_inspiral_amp(p, f)
@@ -192,9 +163,8 @@ function xas_amplitude_coefficients(r, chi1, chi2)
     ins = (; pn = xas_pn_amplitude(r.eta, r.delta, chi1, chi2), rho)
     gamma2 = xas_amp_cv(5, r, r.StotR)
     gamma3 = xas_amp_cv(6, r, r.StotR)
-    below = gamma2 <= 1
-    root = sqrt(ifelse(below, 1 - gamma2^2, one(gamma2)))
-    f4 = abs(r.fRD + r.fdamp * gamma3 * ifelse(below, (root - 1) / gamma2, -inv(gamma2)))
+    shift = gamma2 <= 1 ? (sqrt(1 - gamma2^2) - 1) / gamma2 : -inv(gamma2)
+    f4 = abs(r.fRD + r.fdamp * gamma3 * shift)
     vrd = xas_amp_cv(7, r, r.StotR)
     gamma1 = vrd / (r.fdamp * gamma3) * ((f4 - r.fRD)^2 + (r.fdamp * gamma3)^2) * exp((f4 - r.fRD) * gamma2 / (r.fdamp * gamma3))
     rd = (; fRD = r.fRD, gammaR = gamma2 / (r.fdamp * gamma3), gammaD2 = (gamma3 * r.fdamp)^2, gammaD13 = r.fdamp * gamma1 * gamma3)
@@ -216,15 +186,15 @@ function xas_amplitude_coefficients(r, chi1, chi2)
 end
 
 function phenomxas_amplitude(a, f)
-    # Each inactive ansatz is evaluated in its own region to avoid rational
-    # poles/overflow in eager selections and their reverse-mode intermediates.
-    fi = ifelse(f <= a.f1, f, a.f1)
-    fr = ifelse(f >= a.f4, f, a.f4)
-    fm = ifelse(f < a.f1, a.f1, ifelse(f > a.f4, a.f4, f))
-    t = (fm - a.f1) / a.width
-    p = evalpoly(t, a.delta)
-    int = fm^(7 / 6) / p
-    return ifelse(f < a.f1, xas_inspiral_amp(a.ins, fi), ifelse(f > a.f4, xas_rd_amp(a.rd, fr), int)) * f^(-7 / 6)
+    value = if f < a.f1
+        xas_inspiral_amp(a.ins, f)
+    elseif f > a.f4
+        xas_rd_amp(a.rd, f)
+    else
+        t = (f - a.f1) / a.width
+        f^(7 / 6) / evalpoly(t, a.delta)
+    end
+    return value * f^(-7 / 6)
 end
 
 function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
@@ -249,14 +219,18 @@ function waveform_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) wh
     M = p.mass_1 + p.mass_2
     amp0 = 2sqrt(5 / (64Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / (p.luminosity_distance * 1.0e6 * PC_SI)
     norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
-    index = collect(lo:hi)
-    keep = (index .* Float64(step(f))) .<= (0.3 / m.M_sec)
-    Mf = ifelse.(keep, m.M_sec .* (index .* Float64(step(f))), m.M_sec * f_start)
-    amp = norm .* phenomxas_amplitude.(Ref(m.amplitude), Mf)
-    phi = phenomxas_phase.(Ref(m.phase), Mf) .+ m.linb .* Mf .+ m.phiref
-    re = ifelse.(keep, amp .* cos.(phi), 0.0)
-    im = ifelse.(keep, amp .* sin.(phi), 0.0)
-    return complex.(vcat(zeros(T, lo), re, zeros(T, length(f) - hi - 1)), vcat(zeros(T, lo), im, zeros(T, length(f) - hi - 1)))
+    h = zeros(Complex{T}, length(f))
+    cutoff = 0.3 / m.M_sec
+    for i in lo:hi
+        frequency = i * Float64(step(f))
+        if frequency <= cutoff
+            Mf = m.M_sec * frequency
+            amp = norm * phenomxas_amplitude(m.amplitude, Mf)
+            phi = phenomxas_phase(m.phase, Mf) + m.linb * Mf + m.phiref
+            h[i + 1] = complex(amp * cos(phi), amp * sin(phi))
+        end
+    end
+    return h
 end
 
 function check_waveform_inputs(g::IMRPhenomXAS, deltaF, p, f_start, f_max)

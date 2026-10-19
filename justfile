@@ -43,7 +43,7 @@ test-integration: test-integration-conversion test-integration-waveforms test-in
 test-integration-conversion:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWParameterConversion -e 'using Pkg; Pkg.instantiate(); include("integration/GWParameterConversion/runtests.jl")'
 
-# ForwardDiff, Enzyme and Mooncake waveform gradients against finite differences, and Reactant CPU TaylorF2.
+# ForwardDiff and Mooncake waveform gradients against finite differences.
 test-integration-waveforms:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWWaveforms -e 'using Pkg; Pkg.instantiate(); include("integration/GWWaveforms/runtests.jl")'
 

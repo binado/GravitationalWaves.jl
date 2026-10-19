@@ -6,6 +6,8 @@ authors = ["binado <bernardopveronese@gmail.com>"]
 [deps]
 AbstractGWWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 GWParameterConversion = "8025f710-d0ad-4738-9700-57195c00f751"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
 AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
@@ -22,6 +24,7 @@ GWParameterConversion = "0.1"
 JET = "0.11, 0.12"
 LALWaveforms = "0.3"
 LinearAlgebra = "1"
+StaticArrays = "1"
 Test = "1"
 julia = "1.12"
 
@@ -32,8 +35,7 @@ FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 LALWaveforms = "46d55bfd-a6ec-4788-a7e2-8ddbff47c71c"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DifferentiationInterface", "FiniteDifferences", "ForwardDiff", "JET", "LALWaveforms", "LinearAlgebra", "Test"]
+test = ["Aqua", "DifferentiationInterface", "FiniteDifferences", "ForwardDiff", "JET", "LALWaveforms", "Test"]

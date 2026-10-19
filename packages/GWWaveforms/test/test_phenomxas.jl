@@ -2,7 +2,7 @@ using ForwardDiff
 using LinearAlgebra
 
 @testset "IMRPhenomXAS internals and boundaries" begin
-    @testset "scalar partial-pivoting solves" begin
+    @testset "small pivoted solves" begin
         for n in (3, 4, 5), shift in 0:(n - 1)
             A = [sin(i * j) + (i == j ? 3.0 : 0.0) for i in 1:n, j in 1:n]
             A = A[circshift(collect(1:n), shift), :]

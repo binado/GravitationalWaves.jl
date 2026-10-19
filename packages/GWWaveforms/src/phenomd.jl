@@ -135,19 +135,12 @@ end
 """
     spline_eval(s::NaturalCubicSpline, x)
 
-Evaluate the spline, extrapolating the first and last cubic outside the knots. The segment
-`x[i] ≤ t < x[i+1]` (`searchsortedlast`, clamped to the valid segments) is found by counting
-knots and its coefficients are selected by a one-hot sum, rather than by indexing with
-`i`: that keeps the evaluation free of branches and of scalar indexing, so Reactant can trace
-it with a tracked `x`. The sum has a single nonzero term, so the result is exact.
+Evaluate the spline, extrapolating the first and last cubic outside the knots.
 """
 function spline_eval(s::NaturalCubicSpline, x)
-    nseg = length(s.xlo)
-    i = clamp(sum(ifelse.(s.x .<= x, 1, 0)), 1, nseg)
-    onehot = (1:nseg) .== i
-    pick(v) = sum(ifelse.(onehot, v, zero(eltype(v))))
-    delx = x - pick(s.xlo)
-    return pick(s.ylo) + delx * (pick(s.b) + delx * (pick(s.c) + delx * pick(s.d)))
+    i = clamp(searchsortedlast(s.x, x), 1, length(s.xlo))
+    delx = x - s.xlo[i]
+    return s.ylo[i] + delx * (s.b[i] + delx * (s.c[i] + delx * s.d[i]))
 end
 
 include("phenomd_qnm.jl")
@@ -337,17 +330,16 @@ function phenomd_amplitude_coefficients(eta, chi1, chi2, finspin)
     )
 end
 
-# All three regions are evaluated and one is selected, so the kernel has no data-dependent
-# branch (Reactant traces it with tracked parameters). Every piece is finite for `Mf > 0`, so the
-# unselected ones cannot poison the value or the gradient.
 function _phenomd_amplitude(a, Mf, pm)
     AmpPreFac = a.amp0 * pm.m_seven_sixths
-    inspiral = amp_ins_ansatz(Mf, pm, a.pre)
-    intermediate = amp_int_ansatz(Mf, a)
-    merger_ringdown = amp_mrd_ansatz(Mf, a)
-    return AmpPreFac * ifelse(
-        Mf < AMP_FJOIN_INS, inspiral, ifelse(Mf >= a.fmaxCalc, merger_ringdown, intermediate)
-    )
+    value = if Mf < AMP_FJOIN_INS
+        amp_ins_ansatz(Mf, pm, a.pre)
+    elseif Mf >= a.fmaxCalc
+        amp_mrd_ansatz(Mf, a)
+    else
+        amp_int_ansatz(Mf, a)
+    end
+    return AmpPreFac * value
 end
 
 # --- phase ------------------------------------------------------------------------------
@@ -483,12 +475,13 @@ end
 
 function _phenomd_phase(m, Mf, pm)
     p = m.phi
-    inspiral = phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
-    intermediate = p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
-    merger_ringdown = p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
-    return ifelse(
-        Mf < PHI_FJOIN_INS, inspiral, ifelse(Mf >= m.conn.fMRDJoin, merger_ringdown, intermediate)
-    )
+    if Mf < PHI_FJOIN_INS
+        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
+    elseif Mf >= m.conn.fMRDJoin
+        return p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
+    else
+        return p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
+    end
 end
 
 # 3PN spin-spin term that LAL's TaylorF2 has but PhenomD was tuned without.
@@ -539,7 +532,7 @@ end
 Set up IMRPhenomD for component masses `m1`, `m2` (solar masses, any order) with aligned
 spins `chi1`, `chi2`, fixing the orbital phase `phi0` at the reference frequency `f_ref`
 (Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`. The inputs are trusted and
-nothing here branches or throws; [`check_waveform_inputs`](@ref) checks eta and the final spin.
+[`check_waveform_inputs`](@ref) checks eta and the final spin before numerical evaluation.
 """
 function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
     m1, m2, chi1, chi2 = order_by_mass(m1_in, m2_in, chi1_in, chi2_in)
@@ -603,7 +596,7 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 
 The inputs are trusted (see [`validate_parameters`](@ref)).
-This is the host reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref), which Reactant can also trace.
+This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref) to apply the public frequency bounds.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
@@ -637,15 +630,9 @@ end
 """
     phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
 
-The same strain as [`phenomd_fd`](@ref), but evaluated on the static index slice `lo:hi` of the
-grid (from [`taylorf2_slice`](@ref)) and padded with zeros, so that Reactant can trace it with
-tracked scalars in `p`. Both edges of the slice are static: it starts at
-`ceil(f_start / deltaF) ≥ 1`, so `f = 0` never reaches the kernels, and ends at the grid or
-`f_max`, whichever comes first. The only edge that depends on the masses is `fCut = 0.2 / M`, which
-is applied as a mask: sample `i` is kept iff `i < floor(min(fCut, f_max) / deltaF)`, so the sample at
-the upper end itself stays zero, as in LAL's loop. Masked samples are evaluated at an in-band
-frequency (the kernels are finite for any `Mf > 0`, but not worth evaluating far past the merger)
-and then zeroed, which also zeroes their gradients.
+The same strain as [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
+[`taylorf2_slice`](@ref). The loop skips bins at and beyond
+`floor(min(fCut, f_max) / deltaF)`, preserving LAL's exclusive upper edge.
 """
 function phenomd_fd_slice(
         ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
@@ -663,14 +650,18 @@ function phenomd_fd_slice(
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
     amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
 
-    index = collect(lo:hi)
-    keep = Float64.(index) .< floor(f_max_eff / deltaF)
-    Mf = ifelse.(keep, model.M_sec .* (index .* deltaF), model.M_sec * f_start)
-    amp = amp0 .* phenomd_amplitude.(Ref(model), Mf)
-    phi = phenomd_phase.(Ref(model), Mf) .- (model.t0 .* (Mf .- model.MfRef) .+ model.phi_precalc)
-    re = ifelse.(keep, amp .* cos.(phi), 0.0)
-    im = ifelse.(keep, .-(amp .* sin.(phi)), 0.0)
-    return complex.(vcat(zeros(T, lo), re, zeros(T, nout - hi - 1)), vcat(zeros(T, lo), im, zeros(T, nout - hi - 1)))
+    h = zeros(Complex{T}, nout)
+    stop = floor(f_max_eff / deltaF)
+    for i in lo:hi
+        if i < stop
+            Mf = model.M_sec * (i * deltaF)
+            pm = useful_powers(Mf)
+            amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
+            phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
+            h[i + 1] = complex(amp * cos(phi), -(amp * sin(phi)))
+        end
+    end
+    return h
 end
 
 # Inputs `phenomd_fd` does not check; run by `validate_parameters`.

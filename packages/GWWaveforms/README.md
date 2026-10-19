@@ -3,7 +3,7 @@
 Pure-Julia frequency-domain compact-binary waveforms with the interface of
 [`LALWaveforms`](../LALWaveforms): the generic `hphc_fd(f, params, generator)` of [`AbstractGWWaveforms`](../AbstractGWWaveforms), and [bilby](https://bilby-dev.github.io/bilby/)'s
 parameter names, units and mass conversions. The code is generic over `Real`, so it differentiates with
-[ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl), [Enzyme](https://github.com/EnzymeAD/Enzyme.jl) and
+[ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl) and
 [Mooncake](https://github.com/chalk-lab/Mooncake.jl), needs no LAL install, and the compiler can specialise it.
 
 | generator    | model |
@@ -38,38 +38,20 @@ loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = 
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 
-Parameter values are not checked by `hphc_fd`, so that it can be compiled (below). Call
+Parameter values are not checked by `hphc_fd`. Call
 `validate_parameters(f, params, generator)` once on the host: it throws `ArgumentError` for unknown
 keys, spins that are not (anti-)aligned, a nonzero `eccentricity`, non-positive masses or distance,
 and frequency ranges the model cannot produce, and returns `nothing` otherwise.
 
-## Compiled inference with Reactant
+## Automatic differentiation
 
-`hphc_fd(f, params, generator)` compiles, for `TaylorF2`, `IMRPhenomD` and `IMRPhenomXAS`, with [Reactant](https://github.com/EnzymeAD/Reactant.jl)
-on CPU, with scalar `params` tracked and the grid `f` and the generator static. One executable then
-serves every parameter draw, and Enzyme differentiates it:
-
-```julia
-using Reactant, GWWaveforms
-
-validate_parameters(f, params, generator)   # on the host, once
-tracked = Reactant.to_rarray(params; track_numbers = true)
-compiled = Reactant.@compile hphc_fd(f, tracked, generator)
-compiled(f, Reactant.to_rarray(other_params; track_numbers = true), generator)
-```
-
-This works because everything that shapes the output (start and end indices, the in-band
-mask) comes from the grid and the generator, so the waveform is evaluated on a static slice of `f`
-and padded with zeros. The slice starts at `ceil(minimum_frequency / Δf) ≥ 1`, so `f = 0` is never
-evaluated. `IMRPhenomD` has one more edge, its cutoff `0.2 / M`, which depends on the masses; it is
-applied as a mask inside the slice, and its region blending and spline lookup are branch free, so
-one executable serves draws on both sides of it. The cost is that `maximum_frequency` must be
-positive: stopping at the ISCO (`TaylorF2`) or at `0.2 / M` (`IMRPhenomD`) by default depends on the
-masses and throws `ArgumentError`. The compiled results match the host ones to about 1e-12 relative.
-
-`IMRPhenomXAS` likewise masks its mass-dependent cutoff (`0.3 / M_sec`) within the static slice.
-Its collocation solves and region selections use scalar arithmetic that Reactant can differentiate.
-Inactive amplitude expressions are evaluated at safe frequencies in their own regions.
+AD support is restricted to ForwardDiff and Mooncake. The frequency grid and generator
+are fixed configuration; masses, spins, distance, inclination and phase may be differentiated.
+Kernels use ordinary Julia loops, branches and small matrix solves.
+IMRPhenomD's reconstruction of `sqrt(1 - 4eta)` has singular derivatives at exact
+equal component masses; use unequal masses when differentiating that model.
+`maximum_frequency` must be positive; intrinsic mass-dependent cutoffs are applied within
+the configured frequency interval.
 
 ## Scope
 
@@ -84,9 +66,8 @@ Inactive amplitude expressions are evaluated at safe frequencies in their own re
 
 ### IMRPhenomXAS differentiation
 
-The collocation systems use small, pivoted Gaussian eliminations expanded into scalar arithmetic.
-This keeps the matrix and right-hand-side dependence visible to AD without adding a runtime
-dependency or requiring an adjoint for a backend LU primitive. The intermediate amplitude uses
+The collocation systems use StaticArrays matrices and pivoted solves, differentiating both
+the matrix and the right-hand side. The intermediate amplitude uses
 a normalized polynomial coordinate to avoid large powers of nearby frequency nodes.
 
 Mass differences are calculated directly from component masses, avoiding the singular derivative
@@ -123,9 +104,8 @@ Without them the comparison warns and is skipped (with `CI=true` it fails). The 
 AD tests differentiate a scalar loss with ForwardDiff through DifferentiationInterface
 and compare against finite differences.
 
-Run the separate integration suite from the repository root to check ForwardDiff,
-Enzyme and Mooncake against finite differences and each other, and the Reactant CPU
-compilation and gradients against the host result:
+Run the separate integration suite from the repository root to check ForwardDiff
+and Mooncake against finite differences and each other:
 
 ```sh
 just test-integration-waveforms

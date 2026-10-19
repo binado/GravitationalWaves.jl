@@ -2,12 +2,15 @@
     GWWaveforms
 
 Pure-Julia frequency-domain compact-binary waveforms, generic over `Real` and so
-differentiable with ForwardDiff, Enzyme and Mooncake. Each model is a generator type
+differentiable with ForwardDiff and Mooncake. Each model is a generator type
 (`TaylorF2`, `IMRPhenomD`, `IMRPhenomXAS`) implementing the `AbstractGWWaveforms` interface (`hphc_fd`, bilby's
 parameter names) shared with `LALWaveforms`. The implementations are ports of LALSimulation's
 TaylorF2, IMRPhenomD and IMRPhenomXAS, with `LALWaveforms` as the testing oracle.
 """
 module GWWaveforms
+
+using StaticArrays: SMatrix, SVector
+using LinearAlgebra: lu
 
 using GWParameterConversion: MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
     is_aligned, aligned_spins_to_lal_frame

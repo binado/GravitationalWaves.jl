@@ -78,10 +78,11 @@ operation in an inference loop.
 
 Fixed domains and prepared metrics are captured during compilation. Runtime
 samples and physical parameters are differentiated; metric preparation and
-metadata are outside the AD contract. ForwardDiff, Enzyme, Mooncake, and Reactant
-CPU integration covers waveform → domain-first projection → correlated likelihood,
-plus a separately validated inference boundary. Dynamic whole-domain Reactant
-arguments and GPU execution have not been established.
+metadata are outside the AD contract. Metric kernels and the separately validated
+inference boundary are checked with ForwardDiff, Enzyme, Mooncake, and Reactant CPU.
+Waveform → domain-first projection → correlated likelihood composition is checked
+with ForwardDiff and Mooncake, matching GWWaveforms' supported AD backends.
+Dynamic whole-domain Reactant arguments and GPU execution have not been established.
 
 Native host matrices and their views retain the allocation-free contraction
 specializations. Traced arrays use frequency-wise broadcast/reduction kernels.

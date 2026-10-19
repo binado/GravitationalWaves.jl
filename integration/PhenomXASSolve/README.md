@@ -3,9 +3,9 @@
 An isolated experiment for the three phase coefficient systems used by IMRPhenomXAS:
 4×4 inspiral, 5×5 intermediate, and 5×5 ringdown. This directory preserves the solve
 investigation; the complete waveform now lives in `packages/GWWaveforms` and its
-compiled acceptance tests in `integration/GWWaveforms`. Production uses scalar,
-partial-pivoting elimination to make automatic AD possible without a backend LU
-adjoint. The dependencies and explicit pullback below belong to this experiment.
+ForwardDiff/Mooncake acceptance tests in `integration/GWWaveforms`. Production now
+uses StaticArrays and pivoted solves. The Reactant/Enzyme dependencies and explicit
+pullback below belong to this historical experiment, outside the supported waveform AD contract.
 
 `collocation.jl` reconstructs the actual solve matrices with StaticArrays and
 uses pivoted LU through `A \ b`. It also assembles dense columns directly for
@@ -98,9 +98,9 @@ the full model's calibration domain. No performance comparison was made.
 
 The experiment established StaticArrays as a viable CPU starting point. Direct dense assembly plus the
 implicit solve pullback gives a working first-order compiled gradient pipeline
-in this prototype. Production instead expands the tiny pivoted solves into scalar
-arithmetic, so no custom pullback registration is required. Automatic AD through
-the LU primitive itself is still unsupported in the tested Reactant version.
+in this prototype. Production now targets ForwardDiff and Mooncake only, so it uses
+ordinary StaticArrays pivoted solves without a custom pullback. Automatic AD through
+the LU primitive was unsupported in the Reactant version tested here.
 
 To regenerate the fixtures, download `IMRPhenomXAS.py` and `IMRPhenomX_utils.py`
 from the pinned revision into a directory and run:

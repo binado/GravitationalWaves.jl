@@ -114,16 +114,17 @@ end
     m2 = (r2 * a33 - h2 * r3) / det
     m3 = (a22 * r3 - h2 * r2) / det
     z = zero(m2)
-    # Select the segment's endpoints with ifelse instead of indexing tuples at a runtime
-    # position.
-    in2 = x >= t2
-    in3 = x >= t3
-    tlo = ifelse(in3, t3, ifelse(in2, t2, t1))
-    thi = ifelse(in3, t4, ifelse(in2, t3, t2))
-    ulo = ifelse(in3, u3, ifelse(in2, u2, u1))
-    uhi = ifelse(in3, u4, ifelse(in2, u3, u2))
-    mlo = ifelse(in3, m3, ifelse(in2, m2, z))
-    mhi = ifelse(in3, z, ifelse(in2, m3, m2))
+    return if x >= t3
+        cubic_segment(t3, t4, u3, u4, m3, z, x)
+    elseif x >= t2
+        cubic_segment(t2, t3, u2, u3, m2, m3, x)
+    else
+        cubic_segment(t1, t2, u1, u2, z, m2, x)
+    end
+end
+
+# Cubic through the segment [tlo, thi] with end values `ulo`, `uhi` and second derivatives `mlo`, `mhi`.
+@inline function cubic_segment(tlo, thi, ulo, uhi, mlo, mhi, x)
     h = thi - tlo
     a = (thi - x) / h
     b = (x - tlo) / h

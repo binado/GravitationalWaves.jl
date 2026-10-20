@@ -68,8 +68,6 @@ Rules the implementation follows (each was a real failure while porting):
   kink there); `rescale_to_norm` returns a zero vector unchanged instead of `NaN`.
 - No branches on differentiated values inside a recurrence (the Thomas sweep of the spline starts
   from zeroed buffers instead of special-casing its first row).
-- Never index a tuple of vectors at a runtime position (`interp4` selects the segment with
-  `ifelse`).
 - Derive the element type of a spin tuple with `element_type`: `eltype` of a tuple that mixes dual
   numbers and floats is an abstract union and slows everything down by orders of magnitude.
 - `t_ref_from_omega` (used when you pass `f_ref`) is only C⁰, so pass `t_ref` when differentiating.

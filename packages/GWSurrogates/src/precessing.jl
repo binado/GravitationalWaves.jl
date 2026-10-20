@@ -177,13 +177,8 @@ function inertial_modes(
         collect(times)
     else
         t0 = t_low === nothing ? t_coorb[1] : t_low
-        # A plain loop rather than the float range `t0 .+ dt .* (0:N-1)`.
         nt = ceil(Int, (t_coorb[end] - t0) / dt)
-        grid = Vector{typeof(t0 + dt)}(undef, nt)
-        for k in 1:nt
-            grid[k] = t0 + dt * (k - 1)
-        end
-        grid
+        t0 .+ dt .* (0:(nt - 1))
     end
     t_out[end] <= t_coorb[end] + 0.01 || throw(ArgumentError("times extend beyond the end of the model"))
     t_out[1] >= t_coorb[1] || throw(ArgumentError("times start before the start of the model"))

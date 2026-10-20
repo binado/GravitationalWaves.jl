@@ -623,7 +623,7 @@ Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to
 is rounded down to a multiple of `step(f)` and excluded, preserving LAL's cutoff convention.
 """
 function phenomd_amplitude_phase_slice(
-        ::Type{T}, f::AbstractRange, lo::Integer, hi::Integer, p, g, f_start, f_max
+        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, p, g, f_start, f_max
     ) where {T}
     lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
     m1 = p.mass_1

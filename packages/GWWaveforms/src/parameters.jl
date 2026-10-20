@@ -51,7 +51,7 @@ function check_parameters(params::NamedTuple)
 end
 
 """
-    validate_parameters(f::AbstractRange, params::NamedTuple, generator::Approximant) -> nothing
+    validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, generator::Approximant) -> nothing
 
 Everything [`hphc_fd`](@ref) assumes but does not check: the grid, the parameter names, redundant mass parameters, spins that are not aligned
 or anti-aligned with the orbital angular momentum, a nonzero `eccentricity`, and the ranges of the
@@ -61,7 +61,7 @@ quasi-circular and aligned-spin, and LAL rejects such input too.
 
 Call it on the host with the parameters of one draw, before differentiating or sampling `hphc_fd`.
 """
-function validate_parameters(f::AbstractRange, params::NamedTuple, g::Approximant)
+function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::Approximant)
     if g isa TaylorF2
         check_frequency_grid(f)
     else

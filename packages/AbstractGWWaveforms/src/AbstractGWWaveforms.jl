@@ -47,7 +47,7 @@ Generators retain fixed configuration; parameter-dependent coefficients are eval
 abstract type AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator end
 
 """
-    amplitude_phase(f::AbstractRange, params::NamedTuple,
+    amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple,
                     generator::AlignedSpinQuadrupolarWaveformGenerator) -> (; amplitude, phase)
 
 Inclination-independent frequency-domain strain represented as `amplitude .* exp.(im .* phase)`.
@@ -67,7 +67,7 @@ must support this method under the same conditions as their `hphc_fd` implementa
 function amplitude_phase end
 
 """
-    hphc_fd(f::AbstractRange, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
+    hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz).
 
@@ -93,7 +93,7 @@ once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
 """
 function hphc_fd end
 
-function hphc_fd(f::AbstractRange, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
+function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
     a = amplitude_phase(f, params, g)
     cfac = cos(params.theta_jn)
     pfac = 0.5 * (1.0 + cfac * cfac)
@@ -105,7 +105,7 @@ function hphc_fd(f::AbstractRange, params::NamedTuple, g::AlignedSpinQuadrupolar
 end
 
 """
-    validate_parameters(f::AbstractRange, params::NamedTuple, generator::AbstractWaveformGenerator) -> nothing
+    validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> nothing
 
 Check that `hphc_fd(f, params, generator)` is well defined: the grid, the parameter names, and the
 parameter values (positive masses and distance, aligned spins, ...). Throws `ArgumentError` (or
@@ -114,7 +114,7 @@ a more specific error) on invalid input and returns `nothing` otherwise.
 Meant to run once on the host, before compiling `hphc_fd` or sampling with it, for the backends
 whose `hphc_fd` does not check parameter values. The fallback accepts everything.
 """
-validate_parameters(f::AbstractRange, params::NamedTuple, ::AbstractWaveformGenerator) = nothing
+validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, ::AbstractWaveformGenerator) = nothing
 
 """
     approximant(generator) -> String
@@ -178,7 +178,7 @@ is_differentiable(::AbstractWaveformGenerator) = false
 Throw `ArgumentError` unless `f` starts at 0, has a positive step and at least two points, as
 bilby assumes.
 """
-function check_frequency_grid(f::AbstractRange)
+function check_frequency_grid(f::AbstractRange{Float64})
     first(f) == 0 || throw(ArgumentError("frequency grid must start at 0, got $(first(f))"))
     df = step(f)
     df > 0 || throw(ArgumentError("frequency grid must have a positive step, got $df"))
@@ -191,7 +191,7 @@ end
 
 Support `[f_min, f_max]` of the waveform on the grid `f`.
 """
-function frequency_bounds(g::AbstractWaveformGenerator, f::AbstractRange)
+function frequency_bounds(g::AbstractWaveformGenerator, f::AbstractRange{Float64})
     return (minimum_frequency(g), something(maximum_frequency(g), Float64(last(f))))
 end
 

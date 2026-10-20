@@ -9,7 +9,7 @@ the waveform is evaluated: `i ≥ ceil(f_start / Δf)`,
 `i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
 generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
 """
-function waveform_slice(f::AbstractRange, f_start, f_min, f_max)
+function waveform_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
     deltaF = Float64(step(f))
     n = floor(Int, f_max / deltaF + 1)
     i_start = ceil(Int, f_start / deltaF)
@@ -47,7 +47,7 @@ function canonical_amplitude_phase(amplitude, phase)
 end
 
 """
-    amplitude_phase(f::AbstractRange, params::NamedTuple, generator::Approximant)
+    amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, generator::Approximant)
 
 Nonnegative amplitude and analytic unwrapped phase of the inclination-independent strain,
 following the [`AbstractGWWaveforms.amplitude_phase`](@ref) convention `h = A * exp(im * Φ)`.
@@ -58,7 +58,7 @@ Phenom models evaluate the supplied frequencies directly; the uniform range may 
 TaylorF2 retains its zero-start grid convention.
 The real element type is the floating-point type promoted from the parameters, including duals.
 """
-function amplitude_phase(f::AbstractRange, params::NamedTuple, g::Approximant)
+function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::Approximant)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
@@ -78,20 +78,22 @@ end
 
 # One-based indices into the requested grid; no relationship between index and frequency
 # is assumed. Grid and generator validation runs separately on the host.
-function phenom_frequency_slice(f::AbstractRange, f_start, f_min, f_max)
+function phenom_frequency_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
     return (searchsortedfirst(f, max(f_start, f_min)), searchsortedlast(f, f_max))
 end
 
 # Fill each output array with a scalar broadcast. Keep signed amplitudes until phase
 # canonicalization has consumed their signs, then take absolute values in place.
-function broadcast_amplitude_phase(amp_kernel::A, phase_kernel::P, ::Type{T}, f, lo, hi, model, scale, cutoff) where {A, P, T}
+function broadcast_amplitude_phase(
+    amp_kernel::A, phase_kernel::P, ::Type{T}, f::AbstractRange{Float64}, lo, hi, model, scale, cutoff
+) where {A, P, T}
     amplitude = zeros(T, length(f))
     phase = zeros(T, length(f))
     frequencies = f[lo:hi]
     signed_amplitudes = view(amplitude, lo:hi)
     model_ref = Ref(model)
-    signed_amplitudes .= amp_kernel.(Float64.(frequencies), model_ref, scale, cutoff)
-    phase[lo:hi] .= phase_kernel.(Float64.(frequencies), model_ref, signed_amplitudes)
+    signed_amplitudes .= amp_kernel.(frequencies, model_ref, scale, cutoff)
+    phase[lo:hi] .= phase_kernel.(frequencies, model_ref, signed_amplitudes)
     amplitude .= abs.(amplitude)
     return (; amplitude, phase)
 end

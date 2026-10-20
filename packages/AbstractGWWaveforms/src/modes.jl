@@ -82,7 +82,7 @@ function hphc_td(g::HigherModesWaveformGenerator, params::NamedTuple; kwargs...)
     return (; t = r.t, hplus = real.(h), hcross = -imag.(h))
 end
 
-function hphc_fd(f::AbstractRange, params::NamedTuple, g::HigherModesWaveformGenerator)
+function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::HigherModesWaveformGenerator)
     r = waveform_modes_fd(f, params, g)
     theta, phi = mode_angles(params, g)
     coefficients = mode_coefficients(r.mode_indices, theta, phi)

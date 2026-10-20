@@ -1,6 +1,5 @@
 using Test
 using DifferentiationInterface
-using Enzyme: Enzyme
 using FiniteDifferences: central_fdm, grad
 using ForwardDiff: ForwardDiff
 using GWSurrogates
@@ -11,13 +10,7 @@ const G = GWSurrogates
 const BACKENDS = Pair{String, Any}[
     "ForwardDiff" => AutoForwardDiff(),
     "Mooncake" => AutoMooncake(; config = nothing),
-    "Enzyme" => AutoEnzyme(; function_annotation = Enzyme.Const),
 ]
-
-# Enzyme with runtime activity: the documented fallback when static analysis rejects a change.
-const ENZYME_RUNTIME_ACTIVITY = AutoEnzyme(;
-    mode = Enzyme.set_runtime_activity(Enzyme.Reverse), function_annotation = Enzyme.Const,
-)
 
 # Compare the gradient of `f` at `x` from every backend with 5th-order finite differences.
 function check_gradients(f, x; backends = BACKENDS, rtol = 1.0e-6, atol = 1.0e-8)
@@ -36,8 +29,7 @@ end
     @testset "kernels" begin
         t = [0.0, 0.3, 0.9, 1.4, 2.2, 3.0, 3.1, 4.5]
         u0 = @. sin(2t) + 0.1t^2
-        # The functional kernels: the `NaturalCubicSpline` struct returns the constant knots together
-        # with the differentiated data, which Enzyme's static activity analysis rejects.
+        # The functional kernels behind `NaturalCubicSpline`.
         @testset "spline, data" begin
             check_gradients(u -> G.spline_eval(t, u, G.spline_second_derivatives(t, u), 1.234), u0)
         end
@@ -111,10 +103,6 @@ end
                 end
                 x = [2.2, 0.3, 0.2, 0.4, -0.1, 0.7, 0.3]
                 check_gradients(objective, x)
-                @testset "Enzyme runtime activity" begin
-                    reference = DifferentiationInterface.gradient(objective, AutoForwardDiff(), x)
-                    @test DifferentiationInterface.gradient(objective, ENZYME_RUNTIME_ACTIVITY, x) ≈ reference rtol = 1.0e-8
-                end
             end
 
             @testset "SI strain with f_ref and dt" begin

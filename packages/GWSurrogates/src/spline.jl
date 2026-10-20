@@ -7,9 +7,8 @@ increasing reals) with values `u` (real or complex). Mirrors `gwsurrogate`'s
 whose element type is promoted from the inputs, so the construction differentiates with respect
 to both `t` and `u`.
 
-For reverse-mode AD with Enzyme prefer the functional kernels [`spline_second_derivatives`](@ref) and
-`spline_eval(t, u, m, x)`: this struct returns the (constant) knots together with the differentiated
-data, which Enzyme's static activity analysis rejects.
+The functional kernels [`spline_second_derivatives`](@ref) and `spline_eval(t, u, m, x)` are the
+unchecked building blocks of this struct.
 """
 struct NaturalCubicSpline{T <: AbstractVector, U <: AbstractVector, M <: AbstractVector}
     t::T
@@ -31,9 +30,7 @@ end
 Second derivatives at the knots of the natural cubic spline through `(t, u)` (zero at both ends),
 solved with the Thomas algorithm in buffers whose element type is promoted from the inputs. This
 and the four-argument [`spline_eval`](@ref) are the unchecked functional kernels behind
-[`NaturalCubicSpline`](@ref); they return plain arrays, which keeps the constant knots and the
-differentiated data from sharing one returned struct (Enzyme's static activity analysis rejects
-that).
+[`NaturalCubicSpline`](@ref); they return plain arrays.
 """
 function spline_second_derivatives(t::AbstractVector, u::AbstractVector)
     n = length(t)
@@ -48,8 +45,7 @@ function spline_second_derivatives(t::AbstractVector, u::AbstractVector)
         hl = t[i] - t[i - 1]
         hr = t[i + 1] - t[i]
         rhs = 6 * ((u[i + 1] - u[i]) / hr - (u[i] - u[i - 1]) / hl)
-        # cp[1] = dp[1] = 0 start the recursion, so the first row needs no special case (a branch
-        # here defeats Enzyme's static activity analysis).
+        # cp[1] = dp[1] = 0 start the recursion, so the first row needs no special case.
         denom = 2 * (hl + hr) - hl * cp[i - 1]
         cp[i] = hr / denom
         dp[i] = (rhs - hl * dp[i - 1]) / denom

@@ -115,7 +115,7 @@ end
     m3 = (a22 * r3 - h2 * r2) / det
     z = zero(m2)
     # Select the segment's endpoints with ifelse instead of indexing tuples at a runtime
-    # position, which Enzyme cannot type.
+    # position.
     in2 = x >= t2
     in3 = x >= t3
     tlo = ifelse(in3, t3, ifelse(in2, t2, t1))
@@ -302,8 +302,7 @@ Evolve the dynamics surrogate from the initial conditions at the reference time 
 (default: the first node). `chiA0`, `chiB0` are the spin 3-vectors in the LAL source frame at
 the reference epoch. Returns a named tuple `(quat, orbphase, chiA, chiB)` sampled at
 [`output_times`](@ref): `quat` is `(n, 4)`, the spins are `(n, 3)` in the coprecessing frame. (The
-times are not returned: mixing the model's constant time vector with the differentiated outputs
-makes Enzyme's static activity analysis fail.)
+times are not returned; they are the constant [`output_times`](@ref).)
 
 If `t_ref` is not a node, one forward-Euler step to the nearest node is taken first. Magnitudes
 of the spins are preserved by the per-step renormalization.

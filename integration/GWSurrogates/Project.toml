@@ -1,6 +1,5 @@
 [deps]
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GWSurrogates = "1e29a2e4-8621-4e56-af62-04cc6fe99f1b"
@@ -13,7 +12,6 @@ GWSurrogates = {path = "../../packages/GWSurrogates"}
 
 [compat]
 DifferentiationInterface = "0.7"
-Enzyme = "0.13"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
 GWSurrogates = "0.1"

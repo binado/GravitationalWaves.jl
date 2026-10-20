@@ -58,7 +58,7 @@ test-integration-detectors:
 test-integration-inference:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate(); include("integration/GWMatchedFiltering/runtests.jl")'
 
-# NRSur7dq4/v2 AD: ForwardDiff, Mooncake and Enzyme (static activity). Downloads the model data on first use (or set GWSURROGATES_DATA_DIR); the compile times are several minutes.
+# NRSur7dq4/v2 AD: ForwardDiff and Mooncake. Downloads the model data on first use (or set GWSURROGATES_DATA_DIR); the compile times are several minutes.
 test-integration-surrogates:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSurrogates -e 'using Pkg; Pkg.instantiate(); include("integration/GWSurrogates/runtests.jl")'
 

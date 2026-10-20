@@ -8,7 +8,7 @@ The coorbital waveform surrogate loads its model data (HDF5) lazily from a cache
 from Zenodo on first use unless `GWSURROGATES_DATA_DIR` points at a local copy.
 
 The kernels (natural cubic splines, closed-form Wigner-D matrices, guarded norms) are written
-for ForwardDiff, Enzyme and Mooncake: no `try`/`catch`, no `Dict`, and branches only through
+for ForwardDiff and Mooncake: no `try`/`catch`, no `Dict`, and branches only through
 `ifelse` on values.
 """
 module GWSurrogates

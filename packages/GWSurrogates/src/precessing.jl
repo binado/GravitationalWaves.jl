@@ -177,7 +177,7 @@ function inertial_modes(
         collect(times)
     else
         t0 = t_low === nothing ? t_coorb[1] : t_low
-        # A plain loop: Enzyme cannot differentiate the float range `t0 .+ dt .* (0:N-1)`.
+        # A plain loop rather than the float range `t0 .+ dt .* (0:N-1)`.
         nt = ceil(Int, (t_coorb[end] - t0) / dt)
         grid = Vector{typeof(t0 + dt)}(undef, nt)
         for k in 1:nt

@@ -2,7 +2,7 @@
 
 Differentiable Julia ports of the NRSur7dq4 / NRSur7dq4v2 numerical-relativity surrogates from
 [`gwsurrogate`](https://github.com/sxs-collaboration/gwsurrogate), designed to work with
-ForwardDiff, Enzyme and Mooncake.
+ForwardDiff and Mooncake.
 
 **Status: coorbital waveform and dynamics surrogates.** The package holds the kernels, the
 coorbital-frame waveform surrogate and the dynamics surrogate of NRSur7dq4 and NRSur7dq4v2; the
@@ -43,7 +43,7 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 
 ## Differentiation
 
-ForwardDiff, Mooncake and Enzyme (reverse mode, static activity) all differentiate the kernels,
+ForwardDiff and Mooncake both differentiate the kernels,
 the coorbital surrogate, the dynamics integration and the full strain for both models, and agree
 with finite differences (`just test-integration-surrogates`, a local suite in
 `integration/GWSurrogates`; CI does not run it). Reactant is out of scope.
@@ -52,15 +52,13 @@ Cost of the gradient of a scalar functional of `hphc_td` (`ell_max = 4`, about 2
 2048 Hz, 8 parameters: mass, mass ratio, six spin/orientation parameters), Apple M-series CPU,
 Julia 1.12:
 
-| | primal | ForwardDiff | Mooncake | Enzyme | Enzyme, runtime activity |
-|---|---|---|---|---|---|
-| NRSur7dq4 | 7 ms | 70 ms | 133 ms | 147 ms | 147 ms |
-| NRSur7dq4v2 | 9 ms | 76 ms | 214 ms | 157 ms | 160 ms |
-| first-call compile | – | ≈ 0.1 s | ≈ 42 s | ≈ 50 s | ≈ 41 s |
+| | primal | ForwardDiff | Mooncake |
+|---|---|---|---|
+| NRSur7dq4 | 7 ms | 70 ms | 133 ms |
+| NRSur7dq4v2 | 9 ms | 76 ms | 214 ms |
+| first-call compile | – | ≈ 0.1 s | ≈ 42 s |
 
-Runtime activity costs nothing measurable here, so it is a safe fallback if a future change
-upsets Enzyme's static analysis. With 8 parameters ForwardDiff is competitive; the reverse modes
-pay off with more parameters (e.g. adding the initial frame or several `ell_max` studies).
+With 8 parameters ForwardDiff is competitive; reverse mode pays off with more parameters (e.g. adding the initial frame or several `ell_max` studies).
 
 Rules the implementation follows (each was a real failure while porting):
 
@@ -70,10 +68,8 @@ Rules the implementation follows (each was a real failure while porting):
   kink there); `rescale_to_norm` returns a zero vector unchanged instead of `NaN`.
 - No branches on differentiated values inside a recurrence (the Thomas sweep of the spline starts
   from zeroed buffers instead of special-casing its first row).
-- Functions do not return a struct that mixes constant model data with differentiated data
-  (`spline_second_derivatives` returns a plain array; `dynamics` does not return the time grid).
 - Never index a tuple of vectors at a runtime position (`interp4` selects the segment with
-  `ifelse`), and build uniform grids with a loop rather than a float `range`.
+  `ifelse`).
 - Derive the element type of a spin tuple with `element_type`: `eltype` of a tuple that mixes dual
   numbers and floats is an abstract union and slows everything down by orders of magnitude.
 - `t_ref_from_omega` (used when you pass `f_ref`) is only C⁰, so pass `t_ref` when differentiating.

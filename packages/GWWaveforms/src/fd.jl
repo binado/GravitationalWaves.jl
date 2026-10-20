@@ -85,7 +85,7 @@ end
 # Fill each output array with a scalar broadcast. Keep signed amplitudes until phase
 # canonicalization has consumed their signs, then take absolute values in place.
 function broadcast_amplitude_phase(
-    amp_kernel::A, phase_kernel::P, ::Type{T}, f::AbstractRange{Float64}, lo, hi, model, scale, cutoff
+    amp_kernel::A, phase_kernel::P, ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, model, scale, cutoff
 ) where {A, P, T}
     amplitude = zeros(T, length(f))
     phase = zeros(T, length(f))

@@ -1,6 +1,6 @@
 # ForwardDiff optimization plan
 
-Status: **baseline measured; no optimization applied yet.** ForwardDiff is the supported
+Status: **baseline and profile measured; candidates 1 and 2 rejected, nothing applied.** ForwardDiff is the supported
 backend, and the Mooncake extension reuses it: its `spectrum_vector` rule runs one
 ForwardDiff Jacobian pass (`GWSEOBNRMooncakeExt`). A faster Dual path therefore speeds
 up both.
@@ -36,18 +36,39 @@ below needs no change.
   pySEOBNR operation order, and the fidelity gates depend on it.
 - Measure on one Julia version. Results differ between 1.12 and 1.13, so state which.
 
+## Profile
+
+Sampling profile of the 7-parameter gradient at M=40, q=1, chunk 7, 5 gradient calls
+(3143 samples). Percentages are the share of samples with the function anywhere on the
+stack, so they overlap:
+
+| function | share |
+| --- | --- |
+| `sample` (per-output-sample jets, `fd.jl`) | 63% |
+| `eob_rhs` (called from the ODE solve and from dense output) | 60% |
+| `radiation_flux` | 39% |
+| `inspiral_mode` | 38% |
+| `evolve` (ODE solve, including its step stages) | 36% |
+| `time_jet` | 29% |
+| `ode_interpolation` (dense output) | 28% |
+| `peak_time` | 1% |
+| `real_fft` | 0.2% |
+| `initial_conditions` | 0.1% |
+
+The cost is in the per-sample evaluation, and within it in dense-output interpolation,
+which for Vern9 lazily computes extra stages with further `eob_rhs` calls on Duals.
+`eob_rhs`, and `radiation_flux` inside it, is the hot kernel for both the solve and the
+samples.
+
 ## Candidates, in order of expected value
 
-1. **Redundant flux coefficients.** `flux_coefficients` fills eight `zeros(T, 9, 9, 11)`
-   arrays in the Dual element type. `initial_residual` (`src/initial.jl`) calls it on
-   every Newton residual evaluation, and `check_initial_solution` calls it again through
-   the Jacobian, while `evolve` computes it once. Compute it once per draw and pass it in.
-   The coefficients depend on the differentiated parameters (`nu`, `chi_S`, `chi_A`),
-   so they cannot be computed in `Float64`. Options are reuse, preallocation, or
-   `SArray` storage if the sizes allow it.
-2. **FFT adapter.** `real_fft` in `src/fft.jl` makes one `rfft` per partial, `P + 1`
-   transforms per chunk. A single batched `rfft` over a matrix of the value and
-   partials, with a preplanned FFT, should do the same work with less overhead.
+1. **Redundant flux coefficients.** Tried and rejected. Building `c` and the flux
+   coefficients once per draw in `initial_solution`, instead of on every Newton residual
+   evaluation, changed chunk-7 allocations by under 0.2% (1585 to 1583 MiB, 688 to
+   690 MiB) and the timing difference was inside run-to-run noise. The profile below shows
+   why: the whole initial-condition solve is 0.1% of the samples.
+2. **FFT adapter.** Not worth doing. `real_fft` is 0.2% of the samples in the profile
+   below, so batching the transforms cannot gain anything measurable.
 3. **Per-sample jets.** `sample(j)` in `src/fd.jl` evaluates five-point `time_jet`s and
    mode evaluations for every output sample. Share the Dual evaluation across samples
    where the inputs coincide, and avoid growing `candidates` in `peak_time`.

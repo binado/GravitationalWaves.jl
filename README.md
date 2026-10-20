@@ -6,7 +6,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | Package | Purpose | License |
 |---------|---------|---------|
 | [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | MIT |
-| [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2 and IMRPhenomD waveforms | GPL-2.0-or-later |
+| [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2, IMRPhenomD and IMRPhenomXAS waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
@@ -77,7 +77,7 @@ no tidal parameters.
 ## GWWaveforms: native, differentiable waveforms
 
 [`packages/GWWaveforms`](packages/GWWaveforms) provides the same interface in pure Julia (no LAL install),
-for TaylorF2 and IMRPhenomD. The code is generic over `Real`, so it works with ForwardDiff, Enzyme and
+for TaylorF2, IMRPhenomD and IMRPhenomXAS. The code is generic over `Real`, with AD support for ForwardDiff and
 Mooncake, and its tests check it against `LALWaveforms` to about 1e-12.
 
 ```julia
@@ -88,10 +88,10 @@ generator = IMRPhenomD()
 ```
 
 Both packages implement the interface of [`AbstractGWWaveforms`](packages/AbstractGWWaveforms): a concrete
-`AbstractWaveformGenerator` (`TaylorF2()`, `IMRPhenomD()`, `LALWaveformGenerator("...")`) and the one generic
+`AbstractWaveformGenerator` (`TaylorF2()`, `IMRPhenomD()`, `IMRPhenomXAS()`, `LALWaveformGenerator("...")`) and the one generic
 `hphc_fd(f, params, generator)`, plus `validate_parameters(f, params, generator)` for the parameter
-checks. `GWWaveforms.hphc_fd` does not check parameter values, so that it can be compiled with Reactant (see its
-[README](packages/GWWaveforms)); run `validate_parameters` on the host first. `LALWaveforms.hphc_fd` still validates.
+checks. `GWWaveforms.hphc_fd` does not check parameter values; run `validate_parameters` on the host first
+(see its [README](packages/GWWaveforms)). `LALWaveforms.hphc_fd` still validates.
 Loading both with `using` is unambiguous, and generic code can take any backend.
 
 ## Detector projection
@@ -151,13 +151,13 @@ julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 
 The waveform tests require the reference setup below for full coverage.
 
-The default suites include ForwardDiff checks. Heavy Reactant/Enzyme conversion tests
-and Enzyme/Mooncake waveform and detector tests run separately, locally, rather than in CI:
+The default suites include ForwardDiff checks. Heavy Reactant/Enzyme conversion tests,
+ForwardDiff/Mooncake waveform tests and Enzyme/Mooncake detector tests run separately, locally, rather than in CI:
 
 ```sh
 just test-integration              # all suites; installs their dependencies on first use
 just test-integration-conversion   # Reactant CPU compilation and Enzyme gradients
-just test-integration-waveforms    # all three waveform AD backends
+just test-integration-waveforms    # ForwardDiff and Mooncake waveform gradients
 just test-integration-detectors    # detector gradients and Reactant CPU acceptance
 ```
 

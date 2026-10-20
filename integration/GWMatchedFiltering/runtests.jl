@@ -34,7 +34,7 @@ const PIPE_DATA = pipeline_signal([36.0, 1.3])
 pipeline_loss(x) = log_likelihood_ratio(PIPE_METRIC_domain, pipeline_signal(x), PIPE_DATA, PIPE_METRIC)
 
 @testset "GWMatchedFiltering AD integration" begin
-    for (loss, sample) in ((diagonal_loss, [0.8, 0.2]), (correlated_loss, [0.8, 0.2]), (statistics_loss, [0.8, 0.2]), (pipeline_loss, [35.8, 1.2]))
+    for (loss, sample) in ((diagonal_loss, [0.8, 0.2]), (correlated_loss, [0.8, 0.2]), (statistics_loss, [0.8, 0.2]))
         @info "Checking GWMatchedFiltering derivatives" objective = string(loss)
         flush(stderr)
         expected = ForwardDiff.gradient(loss, sample)
@@ -53,6 +53,13 @@ pipeline_loss(x) = log_likelihood_ratio(PIPE_METRIC_domain, pipeline_signal(x), 
             @test actual ≈ expected rtol = 1.0e-7 atol = 1.0e-8
         end
     end
+end
+
+@testset "Waveform/projection/likelihood ForwardDiff and Mooncake" begin
+    sample = [35.8, 1.2]
+    expected = ForwardDiff.gradient(pipeline_loss, sample)
+    actual = DifferentiationInterface.gradient(pipeline_loss, AutoMooncake(; config = nothing), sample)
+    @test actual ≈ expected rtol = 1.0e-7 atol = 1.0e-8
 end
 
 @testset "GWNoise effective PSD composition" begin

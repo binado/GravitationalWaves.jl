@@ -6,6 +6,7 @@
     for g in (
             TaylorF2(; minimum_frequency = 30.0, maximum_frequency = 400.0),
             IMRPhenomD(; minimum_frequency = 30.0, maximum_frequency = 400.0),
+            IMRPhenomXAS(; minimum_frequency = 30.0, maximum_frequency = 400.0),
         )
         test_generator_contract(g; params, f)
     end

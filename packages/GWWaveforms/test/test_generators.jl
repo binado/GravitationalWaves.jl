@@ -49,13 +49,13 @@
     end
 
     @testset "parameter values" begin
-        for G in (IMRPhenomD, TaylorF2)
+        for G in (IMRPhenomD, TaylorF2, IMRPhenomXAS)
             g = G(; minimum_frequency = 30.0, maximum_frequency = 400.0)
             @test validate_parameters(f, base, g) === nothing
             @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_2 = -1.0)), g)
             @test_throws ArgumentError validate_parameters(f, merge(base, (; luminosity_distance = 0.0)), g)
             @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
-            # The compiled path has no checks; the host reference is `validate_parameters`.
+            # Parameter checks are explicit through `validate_parameters`.
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 0.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 450.0, maximum_frequency = 400.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; reference_frequency = -1.0))
@@ -78,7 +78,7 @@
     end
 
     @testset "masking and f_max" begin
-        for G in (IMRPhenomD, TaylorF2)
+        for G in (IMRPhenomD, TaylorF2, IMRPhenomXAS)
             h = hphc_fd(f, base, G(; minimum_frequency = 30, maximum_frequency = 200))
             below = f .< 30
             above = f .> 200
@@ -98,7 +98,7 @@
 
     @testset "orientation" begin
         # Face-on: hc = -i hp; edge-on: no cross polarisation, hp halved.
-        for G in (IMRPhenomD, TaylorF2)
+        for G in (IMRPhenomD, TaylorF2, IMRPhenomXAS)
             s = G()
             face = hphc_fd(f, merge(base, (; theta_jn = 0.0)), s)
             @test face.cross ≈ -im .* face.plus

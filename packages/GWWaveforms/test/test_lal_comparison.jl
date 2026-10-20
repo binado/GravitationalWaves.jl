@@ -25,7 +25,7 @@ function lal_twin(g)
     return LALWaveformGenerator(approximant(g); common..., options...)
 end
 
-generator(name; kw...) = name == "TaylorF2" ? TaylorF2(; kw...) : IMRPhenomD(; kw...)
+generator(name; kw...) = getproperty(GWWaveforms, Symbol(name))(; kw...)
 
 # Largest deviation relative to the largest LAL sample.
 relative_error(h, h_lal) = maximum(abs, h .- h_lal) / maximum(abs, h_lal)
@@ -41,6 +41,19 @@ const BNS = (
 
 # (name, approximant, parameters, generator keywords, rtol)
 const CASES = [
+    ("XAS equal mass", "IMRPhenomXAS", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
+    ("XAS unequal mass", "IMRPhenomXAS", BBH, (;), 1.0e-10),
+    ("XAS aligned", "IMRPhenomXAS", merge(BBH, ALIGNED), (;), 1.0e-10),
+    ("XAS antialigned", "IMRPhenomXAS", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
+    ("XAS high spin", "IMRPhenomXAS", merge(BBH, (; a_1 = 0.99, a_2 = 0.99)), (;), 1.0e-10),
+    ("XAS high ratio", "IMRPhenomXAS", merge(BBH, (; mass_1 = 100.0, mass_2 = 1.0, a_1 = 0.2)), (;), 1.0e-10),
+    ("XAS swapped labels", "IMRPhenomXAS", merge(BBH, (; mass_1 = 12.0, mass_2 = 31.0, a_1 = 0.8, a_2 = 0.2)), (;), 1.0e-10),
+    ("XAS light", "IMRPhenomXAS", merge(BNS, (; mass_1 = 5.0, mass_2 = 3.0)), (;), 1.0e-10),
+    ("XAS heavy cutoff", "IMRPhenomXAS", merge(BBH, (; mass_1 = 180.0, mass_2 = 120.0)), (;), 1.0e-10),
+    ("XAS reference zero", "IMRPhenomXAS", merge(BBH, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),
+    ("XAS reference alternate", "IMRPhenomXAS", merge(BBH, ALIGNED), (; reference_frequency = 30.0), 1.0e-10),
+    ("XAS amplitude order", "IMRPhenomXAS", BBH, (; pn_amplitude_order = 3), 1.0e-10),
+    ("XAS noninteger limits", "IMRPhenomXAS", BBH, (; minimum_frequency = 20.1, maximum_frequency = 200.3), 1.0e-10),
     ("D equal mass", "IMRPhenomD", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
     ("D unequal mass", "IMRPhenomD", BBH, (;), 1.0e-10),
     ("D aligned spins", "IMRPhenomD", merge(BBH, ALIGNED), (;), 1.0e-10),
@@ -101,7 +114,7 @@ const CASES = [
         end
 
         @testset "other grids" begin
-            for approximant in ("IMRPhenomD", "TaylorF2"), df in (0.125, 1.0 / 3.0, 1.0)
+            for approximant in ("IMRPhenomD", "TaylorF2", "IMRPhenomXAS"), df in (0.125, 1.0 / 3.0, 1.0)
                 grid = range(0, 512; step = df)
                 params = merge(BBH, ALIGNED)
                 g = generator(approximant)

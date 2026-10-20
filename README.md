@@ -173,7 +173,7 @@ The reference tests compare against bilby output generated locally (not committe
 uv sync --project python
 uv run --project python python python/generate.py
 uv run --project python python python/generate_detectors.py
-export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
+export LALWAVEFORMS_LIBDIR=$(uv run --project python find-lalsimulation-header-files)
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'
 ```
 

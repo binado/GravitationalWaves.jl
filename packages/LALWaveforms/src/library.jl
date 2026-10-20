@@ -173,7 +173,7 @@ function set_libdir!(path::AbstractString)
     return dir
 end
 
-# Keep in sync with test/python/libdir.py.
+# Keep in sync with python/src/gw_fixtures/cli/find_lalsimulation_header_files.py.
 const PYTHON_LIBDIR_SNIPPET = """
 import glob, os, sys
 import lal, lalsimulation

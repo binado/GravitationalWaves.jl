@@ -24,6 +24,10 @@ instantiate:
 update:
     {{ julia }} --startup-file=no --project=. -e 'using Pkg; Pkg.update()'
 
+# Print the directory containing the LALSimulation shared library.
+find-lalsimulation-header-files:
+    uv run --project python find-lalsimulation-header-files
+
 # Format everything in place (CI enforces Runic).
 fmt:
     runic --inplace .
@@ -36,7 +40,7 @@ fixtures:
     uv run --project python python python/generate_inference.py
     uv sync --project python/surrogates
     uv run --project python/surrogates python python/generate_surrogates.py --data-dir reference/surrogates-data --download
-    @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
+    @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python find-lalsimulation-header-files)'
     @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).

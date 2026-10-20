@@ -115,7 +115,7 @@ is below `8e-12` (below `2e-13` for the tested ordinary stellar-mass binaries).
 The comparison with LAL needs the LAL libraries (see the [repository README](../../README.md)):
 
 ```sh
-export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
+export LALWAVEFORMS_LIBDIR=$(uv run --project python find-lalsimulation-header-files)
 julia --project=packages/GWWaveforms -e 'using Pkg; Pkg.test()'
 ```
 

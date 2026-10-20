@@ -41,7 +41,7 @@ LAL is not bundled; tests need `LALWAVEFORMS_LIBDIR` pointing at the `liblal`/`l
 uv sync --project python
 uv run --project python python python/generate.py
 uv run --project python python python/generate_detectors.py
-export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)
+export LALWAVEFORMS_LIBDIR=$(uv run --project python find-lalsimulation-header-files)
 
 julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suite (Aqua, JET, reference, etc.)
 julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'

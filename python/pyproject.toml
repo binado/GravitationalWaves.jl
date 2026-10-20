@@ -1,9 +1,13 @@
 [project]
-name = "lalwaveforms-reference"
+name = "gw-fixtures"
 version = "0.0.0"
-description = "Generates bilby and LAL reference fixtures for the Julia waveform, conversion, and detector packages"
+description = "Tools for generating gravitational-wave reference fixtures and integration data"
 requires-python = ">=3.10,<3.14"
 dependencies = ["bilby", "lalsuite", "numpy"]
 
-[tool.uv]
-package = false
+[project.scripts]
+find-lalsimulation-header-files = "gw_fixtures.cli.find_lalsimulation_header_files:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

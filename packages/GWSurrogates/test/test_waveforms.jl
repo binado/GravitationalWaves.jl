@@ -168,7 +168,7 @@ end
                 @test GWSurrogates.AbstractGWWaveforms.approximant(gen) == String(model)
                 @test GWSurrogates.AbstractGWWaveforms.spin_support(gen) == :precessing
                 @test GWSurrogates.AbstractGWWaveforms.is_differentiable(gen)
-                @test !GWSurrogates.AbstractGWWaveforms.supports_mode_array(gen)
+                @test GWSurrogates.AbstractGWWaveforms.supports_mode_array(gen)
                 @test reference_frequency(gen) == gen.f_ref
                 @test minimum_frequency(gen) == gen.f_low
                 @test maximum_frequency(gen) === nothing

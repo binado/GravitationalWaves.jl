@@ -7,6 +7,8 @@ No transform between domains is implied. Backends document their frame and refer
 """
 abstract type HigherModesWaveformGenerator <: AbstractWaveformGenerator end
 
+supports_mode_array(::HigherModesWaveformGenerator) = true
+
 """
     waveform_modes_fd(f, params, generator) -> (; mode_indices, positive, negative)
 

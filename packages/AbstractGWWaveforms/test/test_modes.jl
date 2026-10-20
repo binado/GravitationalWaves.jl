@@ -34,6 +34,9 @@ end
 dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(x) - 1)) for k in bins]
 
 @testset "higher modes" begin
+    @test supports_mode_array(QuadrupoleModes()) === true
+    @test supports_mode_array(DummyQuadrupole()) === false
+
     @testset "harmonics and Python fixtures" begin
         for line in eachline(joinpath(@__DIR__, "harmonics.csv"))
             startswith(line, "#") && continue

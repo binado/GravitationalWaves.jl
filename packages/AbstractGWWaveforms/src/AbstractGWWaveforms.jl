@@ -155,9 +155,12 @@ spin_support(::AbstractWaveformGenerator) = :aligned
 """
     supports_mode_array(generator) -> Bool
 
-Whether the generator can restrict the harmonic modes it sums. Falls back to `false`.
+Whether the generator exposes individual harmonic modes or can restrict the modes it sums.
+Higher-mode generators return `true`; aligned-spin quadrupole generators return `false`.
+Falls back to `false`.
 """
 supports_mode_array(::AbstractWaveformGenerator) = false
+supports_mode_array(::AlignedSpinQuadrupolarWaveformGenerator) = false
 
 """
     is_differentiable(generator) -> Bool

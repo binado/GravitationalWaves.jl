@@ -64,6 +64,7 @@ not supported: SciMLSensitivity's adjoint rejects its NamedTuple parameters, and
 compiling a Mooncake rule for the flux code alone took about 35 minutes.
 
 Run `just test-integration-seobnr-mooncake` to compare these rules with ForwardDiff.
+Planned ForwardDiff speedups, which Mooncake inherits, are in [OPTIMIZATION.md](OPTIMIZATION.md).
 Probe results, including the unsupported stages, are in
 [diagnostics/mooncake-2026-10-19.toml](diagnostics/mooncake-2026-10-19.toml).
 

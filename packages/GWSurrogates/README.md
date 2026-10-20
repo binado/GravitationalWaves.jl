@@ -33,8 +33,8 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 | `wigner_D`, `wigner_D_element` | Closed-form Wigner-D for `l <= 5` in the spinor entries `a = w + iz`, `b = y + ix`. No square roots, no branch on the rotor. |
 | `guarded_sqrt`, `rescale_to_norm` | Norm and rescaling that stay finite (and differentiable) at zero spin. |
 | `FitSet`, `fit_powers!`, `eval_fit`, `fit_params` | Parametric fits (sum of `coef * prod x_j^n_j` over 7 parameters) in flat, integer-indexed storage. |
-| `DynamicsSurrogate`, `load_dynamics`, `dynamics` | The 11-variable precession ODE: RK4 start-up then variable-step AB4 on the fixed node grid, forward and backward from `t_ref`, with per-step renormalization. Allocation-light (`SVector` state) and about 0.6 ms per trajectory. |
-| `PrecessingSurrogate`, `load_surrogate`, `inertial_modes`, `mode_sum` | The full pipeline: dynamics interpolated onto the coorbital grid, coorbital modes, Wigner-D rotation into the inertial frame, spline resampling and the `₋₂Y_ℓm` sum. About 15 ms for 2000 time samples. |
+| `DynamicsSurrogate`, `load_dynamics`, `dynamics` | The 11-variable precession ODE: RK4 start-up then variable-step AB4 on the fixed node grid, forward and backward from `t_ref`, with per-step renormalization. Allocation-light (`SVector` state) and about 0.5 ms per trajectory. |
+| `PrecessingSurrogate`, `load_surrogate`, `inertial_modes`, `mode_sum` | The full pipeline: dynamics interpolated onto the coorbital grid, coorbital modes, Wigner-D rotation into the inertial frame, spline resampling and the `₋₂Y_ℓm` sum. About 2 ms (NRSur7dq4) and 5 ms (NRSur7dq4v2, up to `ℓ = 5`) for 2000 time samples. |
 | `PrecessingGenerator`, `hphc_td` | SI-unit `h₊`, `h×` from total mass, distance, mass ratio, spin vectors, inclination and reference phase. |
 | `t_ref_from_omega` | Reference time from an orbital frequency by linear interpolation between nodes. Only C⁰: its derivative jumps at every node crossing, so fix `t_ref` for gradient-based work. |
 | `CoorbitalSurrogate`, `load_coorbital`, `coorbital_modes` | Coorbital-frame modes from node fits and the empirical-interpolation basis; v2 blends two time subdomains with stored masks. |
@@ -54,9 +54,15 @@ Julia 1.12:
 
 | | primal | ForwardDiff | Mooncake |
 |---|---|---|---|
-| NRSur7dq4 | 7 ms | 70 ms | 133 ms |
-| NRSur7dq4v2 | 9 ms | 76 ms | 214 ms |
-| first-call compile | – | ≈ 0.1 s | ≈ 42 s |
+| NRSur7dq4 | 2.2 ms | 22 ms | 83 ms |
+| NRSur7dq4v2 | 3.4 ms | 25 ms | 130 ms |
+| first-call compile | ≈ 1.5 s | ≈ 6 s | ≈ 57 s |
+
+The compile row is for NRSur7dq4 in a fresh session; the Mooncake figure includes its one-time
+warm-up, and NRSur7dq4v2 then needs about 8 s more. The Wigner-D rotation of each `ℓ` block is
+generated code (`@generated`, unrolled sums with literal indices): it is 2.2 times faster than
+loops with runtime bounds and bit-identical to them, but it adds roughly 20 to 30 s to the
+Mooncake compile time (adding it lengthened `just test-integration-surrogates` by about 30 s).
 
 With 8 parameters ForwardDiff is competitive; reverse mode pays off with more parameters (e.g. adding the initial frame or several `ell_max` studies).
 

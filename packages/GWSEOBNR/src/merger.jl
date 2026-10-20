@@ -23,12 +23,18 @@ end
 
 # Symmetric five-point derivatives of continuous functions in geometric time.
 # The spacing is fixed configuration, independent of the parameter draw.
-function time_jet(F, t; h = 0.05)
-    fm2, fm1, f0, fp1, fp2 = F(t - 2h), F(t - h), F(t), F(t + h), F(t + 2h)
+# `F(s, args...)` is a named function of its data, never a closure (see `continuous_root`).
+function time_jet(F, t, args...; h = 0.05)
+    fm2, fm1, f0, fp1, fp2 = F(t - 2h, args...), F(t - h, args...), F(t, args...), F(t + h, args...), F(t + 2h, args...)
     d1 = (fm2 - 8 * fm1 + 8 * fp1 - fp2) / (12h)
     d2 = (-fp2 + 16 * fp1 - 30 * f0 + 16 * fm1 - fm2) / (12h^2)
     return SVector(f0, d1, d2)
 end
+
+inspiral_amplitude(s, e) = abs(inspiral_mode(e, s))
+inspiral_amplitude_column(s, e, j) = inspiral_amplitude(s, e) * nqc_basis(e, s)[j]
+inspiral_phase(s, e, h0) = angle(inspiral_mode(e, s) / h0)
+basis_column(s, e, j) = nqc_basis(e, s)[j]
 
 function nqc_basis(e, t)
     u = e.sol(t)
@@ -42,21 +48,30 @@ end
 function nqc_coefficients(e)
     t = e.t_attach
     0.1 < primal(t) < e.sol.t[end] - 0.1 || throw(SolveError("insufficient NQC matching coverage"))
-    amp = s -> abs(inspiral_mode(e, s))
-    ampjet = time_jet(amp, t)
-    Q = hcat((time_jet(s -> amp(s) * nqc_basis(e, s)[j], t) for j in 1:3)...)
+    ampjet = time_jet(inspiral_amplitude, t, e)
+    Q = hcat(
+        time_jet(inspiral_amplitude_column, t, e, 1),
+        time_jet(inspiral_amplitude_column, t, e, 2),
+        time_jet(inspiral_amplitude_column, t, e, 3),
+    )
     c = e.c
     target = c.nu * SVector(iv_habs(c), iv_hdot(c), iv_hdotdot(c))
     a = Q \ (target - ampjet)
     # Local phase differences avoid wrapping; the global phase is never unwrapped by samples.
     h0 = inspiral_mode(e, t)
-    phasejet = time_jet(s -> angle(inspiral_mode(e, s) / h0), t)
+    phasejet = time_jet(inspiral_phase, t, e, h0)
     omega = abs(phasejet[2])
     domega = phasejet[2] * phasejet[3] > 0 ? abs(phasejet[3]) : -abs(phasejet[3])
-    P = -hcat((time_jet(s -> nqc_basis(e, s)[j], t)[2:3] for j in 4:5)...)
+    P = -hcat(time_jet(basis_column, t, e, 4)[SVector(2, 3)], time_jet(basis_column, t, e, 5)[SVector(2, 3)])
     b = P \ (SVector(abs(iv_omega(c)), abs(iv_omegadot(c))) - SVector(omega, domega))
-    all(isfinite, a) && all(isfinite, b) || throw(SolveError("NQC matching system failed"))
+    check_nqc_solution(a, b)
     return (; a, b)
+end
+
+"""Reject non-finite NQC matching solutions."""
+function check_nqc_solution(a, b)
+    all(isfinite, a) && all(isfinite, b) || throw(SolveError("NQC matching system failed"))
+    return nothing
 end
 
 function corrected_mode(e, nqc, t)
@@ -64,14 +79,30 @@ function corrected_mode(e, nqc, t)
     return inspiral_mode(e, t) * (1 + dot(nqc.a, basis[1:3])) * cis(dot(nqc.b, basis[4:5]))
 end
 
+corrected_amplitude(s, e, nqc) = abs(corrected_mode(e, nqc, s))
+corrected_phase(s, e, nqc, h0) = angle(corrected_mode(e, nqc, s) / h0)
+corrected_amplitude_slope(s, e, nqc) = time_jet(corrected_amplitude, s, e, nqc)[2]
+corrected_amplitude_curvature(s, e, nqc) = time_jet(corrected_amplitude, s, e, nqc)[3]
+
+function ringdown_slope(tau, mr)
+    z = mr.c1f * tau + mr.c2f
+    A = mr.c1c * tanh(z) + mr.c2c
+    return mr.c1c * mr.c1f / cosh(z)^2 + mr.sigmaR * A
+end
+
+function ringdown_curvature(tau, mr)
+    z = mr.c1f * tau + mr.c2f
+    return -2mr.c1c * mr.c1f^2 * tanh(z) / cosh(z)^2 + mr.sigmaR * mr.c1c * mr.c1f / cosh(z)^2
+end
+
 function merger_coefficients(e, nqc)
     c, t = e.c, e.t_attach
     Mf = bbh_final_mass_non_precessing_UIB2016(c.X_1, c.X_2, c.chi_1, c.chi_2)
     omega = qnm_220(e.af, Mf)
     sigmaR, sigmaI = imag(omega), -real(omega)
-    ampjet = time_jet(s -> abs(corrected_mode(e, nqc, s)), t)
+    ampjet = time_jet(corrected_amplitude, t, e, nqc)
     h0 = corrected_mode(e, nqc, t)
-    omega_match = time_jet(s -> angle(corrected_mode(e, nqc, s) / h0), t)[2]
+    omega_match = time_jet(corrected_phase, t, e, nqc, h0)[2]
     c1f, c2f = mr_c1f(c), mr_c2f(c)
     if sigmaR > 2c1f * tanh(c2f)
         c1f = sigmaR / (2tanh(c2f))
@@ -99,28 +130,18 @@ function peak_time(e, nqc, mr)
     # constrained MR ansatz preserves that stationary point. Treat the join
     # explicitly; differentiating across the two pieces would move the peak.
     candidates = [e.t_attach]
-    F = t -> time_jet(s -> abs(corrected_mode(e, nqc, s)), t)[2]
     lo = max(e.sol.t[1] + 0.1, primal(e.t_attach) - 100)
     hi = primal(e.t_attach) - 0.15
     grid = range(lo, hi; length = 101)
     for (a, b) in zip(grid[1:(end - 1)], grid[2:end])
-        if primal(F(a)) > 0 && primal(F(b)) <= 0
-            t = continuous_root(F, a, b, s -> time_jet(x -> abs(corrected_mode(e, nqc, x)), s)[3])
+        if primal(corrected_amplitude_slope(a, e, nqc)) > 0 && primal(corrected_amplitude_slope(b, e, nqc)) <= 0
+            t = continuous_root(corrected_amplitude_slope, a, b, corrected_amplitude_curvature, e, nqc)
             push!(candidates, t)
         end
     end
     # Analytic MR amplitude slope; its root is solved within its smooth piece.
-    R = function (tau)
-        z = mr.c1f * tau + mr.c2f
-        A = mr.c1c * tanh(z) + mr.c2c
-        return mr.c1c * mr.c1f / cosh(z)^2 + mr.sigmaR * A
-    end
-    if primal(R(0.01)) > 0 && primal(R(100.0)) < 0
-        tau = continuous_root(
-            R, 0.01, 100.0, t ->
-            -2mr.c1c * mr.c1f^2 * tanh(mr.c1f * t + mr.c2f) / cosh(mr.c1f * t + mr.c2f)^2 +
-                mr.sigmaR * mr.c1c * mr.c1f / cosh(mr.c1f * t + mr.c2f)^2
-        )
+    if primal(ringdown_slope(0.01, mr)) > 0 && primal(ringdown_slope(100.0, mr)) < 0
+        tau = continuous_root(ringdown_slope, 0.01, 100.0, ringdown_curvature, mr)
         push!(candidates, e.t_attach + tau)
     end
     amplitudes = [primal(abs(complete_mode(e, nqc, mr, t))) for t in candidates]

@@ -25,17 +25,16 @@ function bracket_root(F, lo, hi, args...; xtol = 1.0e-11, maxiters = 100)
     throw(SolveError("bracketed root did not converge"))
 end
 
-# Value-preserving stop-gradient: the Enzyme extension marks it inactive.
+# Value-preserving stop-gradient; the Mooncake extension marks it zero-adjoint.
 stopgrad(x::Real) = x
 stopgrad(x::ForwardDiff.Dual) = ForwardDiff.value(x)
 
 # Implicit-function correction at a converged root t0 of F(t, theta) = 0:
 #   t = t0 - (F(t0) - stopgrad(F(t0))) / F'(t0),
-# `F(t, args...)` and `derivative(t, args...)` take their data as arguments
-# rather than captured variables: Enzyme reverse mode handles closures poorly.
-# so t == t0 while dt/dtheta = -dF/dtheta / F'. Bisection sees only
-# stop-gradient float residuals and the slope is a constant first-order factor, so this
-# expresses the implicit pullback with ordinary AD primitives for any backend.
+# so t == t0 while dt/dtheta = -dF/dtheta / F'. Bisection sees only stop-gradient float
+# residuals and the slope is a constant first-order factor, so this expresses the implicit
+# pullback with ordinary AD primitives for any backend. `F(t, args...)` and
+# `derivative(t, args...)` take their data as arguments rather than captured variables.
 function continuous_root(F, lo, hi, derivative, args...)
     t0 = bracket_root(F, lo, hi, args...)
     slope = stopgrad(derivative(t0, args...))

@@ -42,32 +42,32 @@ phase correction. Shared FFT APIs are unchanged.
 The Hamiltonian uses the upstream analytic gradient and Hessian. Initial
 conditions use NonlinearSolve's NewtonRaphson on the three coupled conservative/
 dissipative equations, with residual, conditioning, and physical-branch checks.
-ForwardDiff uses NonlinearSolve's implicit derivatives without requiring
-SciMLSensitivity. Loading optional `SciMLSensitivity` selects the tested
-`SteadyStateAdjoint(autojacvec=false)`, using dense ForwardDiff residual Jacobians
-inside the native Enzyme implicit pullback. Continuous timing partials use
-implicit differentiation through ForwardDiff; reverse timing pullbacks are not
-implemented. Evolution uses Vern9 dense output. The complex
-tail and FFT have package-local ForwardDiff adapters. Timing and matching use
-continuous interpolants, with fixed five-point time derivatives for matching.
+ForwardDiff uses NonlinearSolve's implicit derivatives. Continuous timing partials
+use implicit differentiation through ForwardDiff. Evolution uses Vern9 dense output.
+The complex tail and FFT have package-local ForwardDiff adapters. Timing and matching
+use continuous interpolants, with fixed five-point time derivatives for matching.
 Physical piecewise formulas are retained.
 
-Loading EnzymeCore enables an optional reverse rule for the local real FFT on
-dense Float32/Float64 vectors (one reverse lane). Planning uses scratch storage;
-the pullback applies the constant plan's adjoint. This component rule does not
-establish reverse-mode waveform support: continuous timing pullbacks remain
-outstanding and the complete reverse path remains unvalidated.
-Discrete solver-status validation is inactive under Enzyme while retaining its
-primal error checks; trajectory values and continuous timing remain active.
-Run `just test-integration-seobnr-fft` for direct-DFT and gradient checks.
-Run `just test-integration-seobnr-initial` for nine-case production initial-state
-and Enzyme-gradient comparisons against the frozen sequential solver.
+## Automatic differentiation
 
-## Current numerical and reverse-mode errors
+ForwardDiff is the supported backend. Loading `Mooncake` and `ChainRulesCore` enables
+`GWSEOBNRMooncakeExt`, which provides reverse mode for `hphc_fd` and the spectrum
+used by likelihoods. Mooncake does not differentiate the ODE solve: the extension
+replaces `spectrum_vector` (7 real parameters in, `[plus; cross]` out) with a rule
+that computes its Jacobian in one ForwardDiff pass and applies the transpose in the
+pullback. Reverse mode therefore costs about one forward-mode evaluation and returns
+the same derivatives as ForwardDiff. It adds no independent check of them. The
+extension also provides zero-adjoint rules for `stopgrad` and the solver-status
+validators and a reverse rule for the local real FFT, so those components can be
+differentiated on their own. Differentiating `evolve` directly in reverse mode is
+not supported: SciMLSensitivity's adjoint rejects its NamedTuple parameters, and
+compiling a Mooncake rule for the flux code alone took about 35 minutes.
 
-Measured on 2026-10-19 with Julia 1.12.7, Enzyme 0.13.216, NonlinearSolve
-4.32.0, and SciMLSensitivity 7.119.13. No complete Enzyme waveform gradient has
-been returned, so there is no waveform reverse-gradient numerical error to report.
+Run `just test-integration-seobnr-mooncake` to compare these rules with ForwardDiff.
+Probe results, including the unsupported stages, are in
+[diagnostics/mooncake-2026-10-19.toml](diagnostics/mooncake-2026-10-19.toml).
+
+## Current numerical errors
 
 - **Primal/ForwardDiff acceptance:** 130 checks pass and 13 fail. Nine failures
   concern NQC matching coefficients; four concern the unweighted spectral L²
@@ -75,37 +75,6 @@ been returned, so there is no waveform reverse-gradient numerical error to repor
   mismatches, convergence checks, and offset likelihood gradients pass. See
   [ACCEPTANCE.md](ACCEPTANCE.md) for the cases and diagnostics. The failed gates
   remain required; `is_differentiable=false`.
-- **Production reverse path:** the initial-condition gradients pass all nine
-  tested cases, but the complete waveform fails in automatic ODE sensitivity
-  selection with `ReverseDiffVJP{false} does not support Functors.jl parameter
-  structs`. The ODE parameters are a NamedTuple containing Hamiltonian data and
-  precomputed flux arrays. Enzyme is the outer engine; SciMLSensitivity selects
-  ReverseDiff internally for this ODE adjoint. See the committed
-  [production diagnostics](diagnostics/nonlinearsolve-production-2026-10-19.toml).
-- **Experimental SciMLStructures parameters:** an integration-only wrapper
-  exposes all 7,297 real coefficient values as tunable, including the real and
-  imaginary parts of the multipole prefixes. This gets the full waveform probe
-  past the parameter-container error. Its next observed failure is
-  `IllegalTypeAnalysisException` in `bracket_root`, at
-  `signbit(fa) != signbit(fb)` (`src/roots.jl`). Correct reverse timing requires
-  implicit pullbacks; marking the root inactive would discard physical
-  derivatives. The wrapper is not installed in production.
-- **Packing experiment:** the first short-ODE attempt with the wrapper failed
-  with `Need an adjoint for constructor Base.Generator` during SciMLSensitivity's
-  Zygote reconstruction of structured parameter cotangents. The revised wrapper
-  uses explicit concatenation and gets past that error, but the short ODE now
-  fails with `FieldError: type Active has no field dval` in
-  `DiffEqBaseEnzymeExt.reverse` (`solve_up`): the initial `SVector` is annotated
-  `Active`, while the rule accesses `.dval` on it. No short-ODE reverse gradient is
-  returned. Direct RHS Enzyme gradients agree with ForwardDiff to `1.9e-15`;
-  this component result does not validate the ODE adjoint or complete waveform.
-
-See [the SciMLStructures experiment](../../integration/GWSEOBNR/SCIMLSTRUCTURES.md),
-[committed experiment diagnostics](diagnostics/scimlstructures-2026-10-19.toml),
-and [the Enzyme investigation](../../integration/GWSEOBNR/ENZYME.md) for
-reproduction commands and the distinction between previous and current blockers.
-The initial-condition SVD and FFT-planning errors from earlier probes have been
-resolved for their tested components; they are not the current production blocker.
 
 Small committed component/QNM snapshots run without Python. The separate locked
 oracle environment is documented in [python/seobnr](../../python/seobnr/README.md).

@@ -29,17 +29,9 @@ excluded bins. Diagnostic time/phase optimization never changes primary gates.
 measurement record. NQC matching and several spectral L² comparisons remain
 outside the original tolerances. These failures are not skipped or relaxed.
 
-Exploratory native Enzyme reverse-mode results and reproduction instructions are
-in [ENZYME.md](ENZYME.md). These probes do not establish reverse-mode support.
-`just test-integration-seobnr-fft` tests the optional local FFT reverse rule
-without Python or oracle fixtures, including endpoint weighting and cotangent
-accumulation. The complete waveform/likelihood Enzyme probes remain exploratory.
-`just test-integration-seobnr-validation` checks that inactive solver-status
-validation preserves gradients on valid inputs and errors on invalid solves.
-
-The [NonlinearSolve initial-condition checks](NONLINEARSOLVE.md) compare nine
-physical cases and all initial-state mass/spin derivatives with the frozen old
-solver. Run `just test-integration-seobnr-initial`. The production path uses
-NonlinearSolve; optional SciMLSensitivity selects its native implicit adjoint
-with dense ForwardDiff Jacobians inside Enzyme reverse mode. The original
-standalone prototype remains available for comparison.
+Mooncake reverse mode is checked separately. `just test-integration-seobnr-mooncake`
+compares the extension's FFT, implicit timing-root and spectrum-Jacobian rules with
+ForwardDiff without Python or oracle fixtures. `probe_mooncake.jl` runs the same
+comparison stage by stage (`calibration`, `hamiltonian`, `flux`, `tail`, `fft`,
+`timing`, `waveform`, `likelihood`) and records a TOML result; it shows which stages
+are supported on their own. See `packages/GWSEOBNR/README.md` for the supported scope.

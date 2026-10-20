@@ -1,5 +1,5 @@
 # Exploratory Mooncake reverse-mode checks; failures are recorded rather than treated as support.
-using GWSEOBNR, ForwardDiff, Mooncake, ChainRulesCore, SciMLSensitivity, LinearAlgebra, TOML
+using GWSEOBNR, ForwardDiff, Mooncake, ChainRulesCore, LinearAlgebra, TOML
 using GWDetectors, GWMatchedFiltering, GWTimeFrequencyDomains
 const S = GWSEOBNR
 const GRID = 0:0.125:1024

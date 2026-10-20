@@ -20,17 +20,12 @@ function initial_residual(u, p)
     return [d[4] - p[5], d[1], dissipative]
 end
 
-# Extension hook: no sensitivity dependency is needed for primal/ForwardDiff.
-# Loading SciMLSensitivity selects the tested dense implicit adjoint.
-initial_condition_sensealg(::Type) = nothing
-
 function initial_solution(theta; maxiters = 100)
     r = primal(theta[5])^(-2 / 3)
     problem = NonlinearSolve.NonlinearProblem{false}(initial_residual, [r, sqrt(r), -0.001], theta)
     return solve(
         problem, NonlinearSolve.NewtonRaphson(; autodiff = AutoForwardDiff());
-        abstol = 1.0e-14, reltol = 1.0e-14, maxiters,
-        sensealg = initial_condition_sensealg(eltype(theta))
+        abstol = 1.0e-14, reltol = 1.0e-14, maxiters
     )
 end
 

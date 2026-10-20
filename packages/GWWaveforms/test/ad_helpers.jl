@@ -26,10 +26,10 @@ function ad_loss(generator, template)
     end
 end
 
-function test_waveform_gradients(backends)
+function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, IMRPhenomXAS))
     return @testset "automatic differentiation" begin
         x_template = AD_X0 .* [1.01, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        for G in (TaylorF2, IMRPhenomD)
+        for G in generators
             @testset "$G" begin
                 generator = G(; minimum_frequency = 25.0)
                 template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), generator).cross
@@ -51,6 +51,31 @@ function test_waveform_gradients(backends)
                     reference = gradients["ForwardDiff"]
                     for (name, g) in gradients
                         @test isapprox(g, reference; rtol = 1.0e-10)
+                    end
+                end
+                if G === IMRPhenomD
+                    @testset "equal-mass gradients" begin
+                        function component_loss(x)
+                            p = (;
+                                mass_1 = x[1], mass_2 = x[2], a_1 = x[3], a_2 = x[4],
+                                luminosity_distance = 500.0, theta_jn = 0.4, phase = 0.2,
+                                tilt_1 = 0.0, tilt_2 = Float64(π),
+                            )
+                            h = hphc_fd(AD_GRID, p, generator)
+                            return 1.0e22 * (sum(real, h.plus) + sum(imag, h.cross))
+                        end
+                        for mass in (30.0, 60.0), spins in ((0.0, 0.0), (0.3, 0.3), (0.6, 0.2))
+                            x = [mass, mass, spins...]
+                            expected = grad(central_fdm(5, 1), component_loss, x)[1]
+                            @test all(isfinite, expected)
+                            for (name, backend) in backends
+                                @testset "$name, mass=$mass, spins=$spins" begin
+                                    g = DifferentiationInterface.gradient(component_loss, backend, x)
+                                    @test all(isfinite, g)
+                                    @test isapprox(g, expected; rtol = 1.0e-5)
+                                end
+                            end
+                        end
                     end
                 end
             end

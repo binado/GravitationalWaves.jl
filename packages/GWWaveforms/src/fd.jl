@@ -27,13 +27,12 @@ parameters are converted by `GWParameterConversion.convert_parameters`),
 
 The parameter values are **not** checked: spins must be (anti-)aligned with the orbital angular
 momentum, `eccentricity` zero, masses and distance positive, and so on. Run
-[`validate_parameters`](@ref) first (once, on the host) for that. In exchange, `hphc_fd` is free of
-data-dependent branches and can be compiled by Reactant with tracked scalar parameters.
-Both `TaylorF2` and `IMRPhenomD` are supported, and `maximum_frequency` must be positive
-(`ArgumentError` otherwise, as the ISCO or `0.2 / M` cutoff depends on the masses).
+[`validate_parameters`](@ref) first (once, on the host) for that.
+`TaylorF2`, `IMRPhenomD` and `IMRPhenomXAS` support ForwardDiff and Mooncake.
+`maximum_frequency` must be positive (`ArgumentError` otherwise).
 
 The element type is `Complex{T}` with `T` the floating-point type promoted from the
-parameters, so dual numbers (ForwardDiff) and Enzyme or Mooncake reverse mode pass through.
+parameters, so dual numbers (ForwardDiff) and Mooncake reverse mode pass through.
 """
 function hphc_fd(f::AbstractRange, params::NamedTuple, g::Approximant)
     check_frequency_grid(f)

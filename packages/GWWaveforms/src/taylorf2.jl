@@ -287,9 +287,9 @@ are applied by `hphc_fd`) on the grid `f_i = i deltaF`, `i = 0 … nout - 1`, ze
 `[f_start, f_max]`. Follows `XLALSimInspiralTaylorF2`: with `f_max == 0` the waveform stops at
 the Schwarzschild ISCO. `p` holds the output of `aligned_parameters`, converted to `T`.
 
-The inputs are trusted (see [`validate_parameters`](@ref)). This loop is the host reference of
-[`taylorf2_fd_slice`](@ref), which `hphc_fd` uses because it can also be traced by Reactant; it is
-the only one that supports `f_max == 0`.
+The inputs are trusted (see [`validate_parameters`](@ref)). This loop is the reference for
+[`taylorf2_fd_slice`](@ref), which applies the public frequency bounds. Only this reference
+supports `f_max == 0`.
 """
 function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
@@ -348,7 +348,7 @@ function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
 end
 
 const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the default cutoff " *
-    "(the ISCO for TaylorF2, 0.2 / M for IMRPhenomD) depends on the masses, which the compiled path cannot do"
+    "is not exposed by hphc_fd; set an explicit upper frequency bound"
 
 """
     taylorf2_slice(f, f_start, f_min, f_max) -> (lo, hi)
@@ -356,14 +356,14 @@ const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the defa
 Indices `lo:hi` (zero based, inclusive; `lo > hi` if empty) of the grid points where
 [`taylorf2_fd`](@ref) is evaluated and `hphc_fd` keeps it: `i ≥ ceil(f_start / Δf)`,
 `i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
-generator, not from the masses, so the slice is static and a traced waveform needs no masks.
+generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
 """
 function taylorf2_slice(f::AbstractRange, f_start, f_min, f_max)
     f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
     deltaF = Float64(step(f))
     n = floor(Int, f_max / deltaF + 1)
     i_start = ceil(Int, f_start / deltaF)
-    # Plain scans over `f[i]`: `findfirst` on a float range takes a path Enzyme cannot differentiate.
+    # Compare actual grid values to preserve exact frequency-bound semantics.
     first_in = 1
     while first_in <= length(f) && f[first_in] < f_min
         first_in += 1
@@ -379,9 +379,7 @@ end
     taylorf2_fd_slice(T, nout, lo, hi, deltaF, p, g)
 
 The same waveform as [`taylorf2_fd`](@ref), restricted to the static indices `lo:hi` of
-[`taylorf2_slice`](@ref) and zero elsewhere. Written with whole-array operations and no
-branches on `p`, so it can be traced by Reactant (`p` holds tracked scalars) as well as run
-on the host, and it never evaluates the model at `f = 0`.
+[`taylorf2_slice`](@ref) and zero elsewhere. The loop never evaluates the model at `f = 0`.
 """
 function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g) where {T}
     lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
@@ -404,13 +402,14 @@ function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, d
     amp0 = -4.0 * m1 * m2 / r * MRSUN_SI * MTSUN_SI * sqrt(Float64(π) / 12.0)
     ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(piM * f_ref)) : zero(amp0)
 
-    f = collect(lo:hi) .* deltaF
-    v = cbrt.(piM .* f)
-    phasing = taylorf2_phasing.(Ref(pn), v)
-    amp = amp0 .* taylorf2_amplitude_factor.(Ref(amplitude), v) .* v
-    # Note the factor of 2 because phi_ref is the orbital phase.
-    x = (phasing .+ ((shft .* f .- 2.0 .* p.phase) .- ref_phasing)) .- PI_4
-    re = amp .* cos.(x)
-    im = .-(amp .* sin.(x))
-    return complex.(vcat(zeros(T, lo), re, zeros(T, nout - hi - 1)), vcat(zeros(T, lo), im, zeros(T, nout - hi - 1)))
+    h = zeros(Complex{T}, nout)
+    for i in lo:hi
+        frequency = i * deltaF
+        v = cbrt(piM * frequency)
+        phasing = taylorf2_phasing(pn, v)
+        amp = amp0 * taylorf2_amplitude_factor(amplitude, v) * v
+        x = (phasing + ((shft * frequency - 2.0 * p.phase) - ref_phasing)) - PI_4
+        h[i + 1] = complex(amp * cos(x), -(amp * sin(x)))
+    end
+    return h
 end

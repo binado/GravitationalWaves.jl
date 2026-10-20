@@ -11,7 +11,7 @@ Convert `params` (bilby's names and units, as for `LALWaveforms.hphc_fd`) to
 masses in solar masses, distance in Mpc, and the dimensionless spin components along the
 orbital angular momentum. Element types are promoted from the inputs, so dual numbers pass through.
 
-Pure and branch free, so it can be traced by compilers: the values are not checked, see
+The values are not checked; see
 [`validate_parameters`](@ref) for that. The spin components are `a cos(tilt)`, which is exact
 for the (anti-)aligned spins the models support.
 """
@@ -53,14 +53,13 @@ end
 """
     validate_parameters(f::AbstractRange, params::NamedTuple, generator::Approximant) -> nothing
 
-Everything [`hphc_fd`](@ref) assumes but does not check, so that it can be traced by compilers
-(Reactant): the grid, the parameter names, redundant mass parameters, spins that are not aligned
+Everything [`hphc_fd`](@ref) assumes but does not check: the grid, the parameter names, redundant mass parameters, spins that are not aligned
 or anti-aligned with the orbital angular momentum, a nonzero `eccentricity`, and the ranges of the
 masses, distance and frequencies. Throws `ArgumentError` (`InconsistentParametersError` for
-redundant mass parameters that disagree) and returns `nothing` otherwise. Both models are
+redundant mass parameters that disagree) and returns `nothing` otherwise. All models are
 quasi-circular and aligned-spin, and LAL rejects such input too.
 
-Call it on the host with the parameters of one draw, before compiling or sampling `hphc_fd`.
+Call it on the host with the parameters of one draw, before differentiating or sampling `hphc_fd`.
 """
 function validate_parameters(f::AbstractRange, params::NamedTuple, g::Approximant)
     check_frequency_grid(f)

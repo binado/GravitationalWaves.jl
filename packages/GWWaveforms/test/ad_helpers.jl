@@ -56,7 +56,7 @@ function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, I
                 @testset "amplitude and phase gradients" begin
                     for component in (:amplitude, :phase)
                         function component_loss(x)
-                            a = amplitude_phase(AD_GRID, ad_params(x), generator)
+                            a = amplitude_phase_fd(AD_GRID, ad_params(x), generator)
                             values = getproperty(a, component)
                             scale = component === :amplitude ? 1.0e22 : inv(length(AD_GRID))
                             return scale * sum(values)

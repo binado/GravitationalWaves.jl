@@ -21,7 +21,7 @@ if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
         )
         for generator in (TaylorF2(), IMRPhenomD(), IMRPhenomXAS())
             JET.@test_opt target_modules = (GWWaveforms, AbstractGWWaveforms) hphc_fd(f, params, generator)
-            JET.@test_opt target_modules = (GWWaveforms,) amplitude_phase(f, params, generator)
+            JET.@test_opt target_modules = (GWWaveforms,) amplitude_phase_fd(f, params, generator)
         end
     end
 end

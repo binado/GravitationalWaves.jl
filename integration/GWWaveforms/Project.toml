@@ -14,7 +14,7 @@ GWParameterConversion = {path = "../../packages/GWParameterConversion"}
 GWWaveforms = {path = "../../packages/GWWaveforms"}
 
 [compat]
-AbstractGWWaveforms = "0.2"
+AbstractGWWaveforms = "0.3"
 DifferentiationInterface = "0.7"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"

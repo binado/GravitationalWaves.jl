@@ -22,7 +22,7 @@ struct QuadrupoleModes <: HigherModesWaveformGenerator end
 AbstractGWWaveforms.minimum_frequency(::QuadrupoleModes) = 20.0
 AbstractGWWaveforms.maximum_frequency(::QuadrupoleModes) = 60.0
 function AbstractGWWaveforms.waveform_modes_fd(f, p, ::QuadrupoleModes)
-    a = amplitude_phase(f, p, DummyQuadrupole())
+    a = amplitude_phase_fd(f, p, DummyQuadrupole())
     h = a.amplitude .* cis.(a.phase)
     # Each branch contains one helicity; sqrt(16π/5) makes the usual face-on strain.
     z = zero.(h)
@@ -72,7 +72,7 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
     order = (3, 1, 4, 2)
     @test mode_sum(modes[:, collect(order)], labels[collect(order)] |> Tuple, 0.9, p.azimuth) ≈ direct
 
-    f = 0:1:(n ÷ 2)
+    f = 0.0:1.0:(n ÷ 2)
     positive = hcat((dft(modes[:, j], f) for j in eachindex(labels))...)
     negative = hcat((dft(modes[:, j], -f) for j in eachindex(labels))...)
     fd = (; mode_indices = labels, positive, negative)
@@ -93,7 +93,7 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
         for theta_jn in (0.0, 0.4, π / 2, Float64(π)), phase in (0.0, 0.37, 1.2)
             p = (; theta_jn, phase)
             r = hphc_fd(f, p, QuadrupoleModes())
-            a = amplitude_phase(f, p, DummyQuadrupole())
+            a = amplitude_phase_fd(f, p, DummyQuadrupole())
             h = a.amplitude .* cis.(a.phase)
             quadrupole = hphc_fd(f, p, DummyQuadrupole())
             @test r.plus ≈ quadrupole.plus

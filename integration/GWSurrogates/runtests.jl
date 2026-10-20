@@ -51,7 +51,7 @@ end
     for theta in (0.0, 0.7, Float64(π))
         check_gradients(
             x -> begin
-                h = hphc_fd(0:1:4, (; x, theta_jn = x[3]), ADModes())
+                h = hphc_fd(0.0:1.0:4.0, (; x, theta_jn = x[3]), ADModes())
                 sum(real, h.plus) + 0.2 * sum(imag, h.cross)
             end,
             [0.7, 0.2, theta],

@@ -1,5 +1,5 @@
 using Test
-using AbstractGWWaveforms: AlignedSpinQuadrupolarWaveformGenerator, amplitude_phase
+using AbstractGWWaveforms: AlignedSpinQuadrupolarWaveformGenerator, amplitude_phase_fd
 
 # Shared checks for every `AbstractWaveformGenerator`. Backends `include` this file from their
 # tests, with the interface (`hphc_fd`, the accessors, ...) in scope.
@@ -25,7 +25,7 @@ function test_generator_contract(g; params, f)
         end
 
         if g isa AlignedSpinQuadrupolarWaveformGenerator
-            test_amplitude_phase_contract(g; params, f)
+            test_amplitude_phase_fd_contract(g; params, f)
         end
 
         @testset "output" begin
@@ -50,9 +50,9 @@ function test_generator_contract(g; params, f)
 end
 
 # Additional contract for the optional aligned-spin quadrupole interface.
-function test_amplitude_phase_contract(g; params, f)
+function test_amplitude_phase_fd_contract(g; params, f)
     return @testset "amplitude/phase contract" begin
-        a = amplitude_phase(f, params, g)
+        a = amplitude_phase_fd(f, params, g)
         @test keys(a) == (:amplitude, :phase)
         @test a.amplitude isa AbstractVector{<:Real}
         @test a.phase isa AbstractVector{<:Real}
@@ -65,7 +65,7 @@ function test_amplitude_phase_contract(g; params, f)
         f_max = something(maximum_frequency(g), Float64(last(f)))
         outside = [!(f_min <= fi <= f_max) for fi in f]
         @test all(iszero, a.amplitude[outside]) && all(iszero, a.phase[outside])
-        face = amplitude_phase(f, merge(params, (; theta_jn = 0.0)), g)
+        face = amplitude_phase_fd(f, merge(params, (; theta_jn = 0.0)), g)
         @test a.amplitude == face.amplitude
         @test a.phase == face.phase
         h = hphc_fd(f, params, g)

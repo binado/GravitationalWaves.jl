@@ -24,21 +24,21 @@ params = (
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),   # (anti-)aligned spins only
 )
 (; plus, cross) = hphc_fd(f, params, generator)
-(; amplitude, phase) = amplitude_phase(f, params, generator)
+(; amplitude, phase) = amplitude_phase_fd(f, params, generator)
 ```
 
 Each model is its own generator type with only the options it uses; the generators and `hphc_fd` are the
 ones `LALWaveforms` shares, so code can switch between the native and the LAL-backed implementation.
 
 All three generators subtype `AlignedSpinQuadrupolarWaveformGenerator`. Their
-`amplitude_phase` methods return nonnegative amplitude (including distance normalization)
+`amplitude_phase_fd` methods return nonnegative amplitude (including distance normalization)
 and analytic, unwrapped phase in radians. The inclination-independent strain is
 `amplitude .* exp.(im .* phase)`; `hphc_fd` applies the shared inclination factors.
 Both vectors are zero at DC and outside waveform support, with phase set to zero wherever
 amplitude vanishes. TaylorF2's signed LAL amplitude is absorbed into the phase by a π shift.
 Changing the inclination does not change amplitude or phase.
 
-Each model implements `amplitude_phase` directly. The Phenom models prepare their coefficients
+Each model implements `amplitude_phase_fd` directly. The Phenom models prepare their coefficients
 once, then a plain loop evaluates one scalar kernel per frequency and fills the amplitude and
 phase vectors, which are returned in a named tuple. The method trusts its inputs; run
 `validate_parameters` on the host first.
@@ -52,7 +52,7 @@ loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = 
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 
-Parameter values are not checked by `hphc_fd` or `amplitude_phase`. Call
+Parameter values are not checked by `hphc_fd` or `amplitude_phase_fd`. Call
 `validate_parameters(f, params, generator)` once on the host: it throws `ArgumentError` for unknown
 keys, spins that are not (anti-)aligned, a nonzero `eccentricity`, non-positive masses or distance,
 and frequency ranges the model cannot produce, and returns `nothing` otherwise.

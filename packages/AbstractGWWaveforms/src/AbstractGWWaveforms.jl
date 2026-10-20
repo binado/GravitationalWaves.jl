@@ -3,7 +3,7 @@
 
 The interface shared by the waveform backends (`GWWaveforms`, `LALWaveforms`): the supertype
 [`AbstractWaveformGenerator`](@ref), the generic functions [`hphc_fd`](@ref),
-[`amplitude_phase`](@ref) and [`validate_parameters`](@ref), and the accessors
+[`amplitude_phase_fd`](@ref) and [`validate_parameters`](@ref), and the accessors
 and capability queries every generator provides. Dependency-free, so generic code can depend
 on it alone.
 """
@@ -11,7 +11,7 @@ module AbstractGWWaveforms
 
 export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
 export HigherModesWaveformGenerator, waveform_modes_fd, waveform_modes_td, hphc_td
-export hphc_fd, amplitude_phase, validate_parameters
+export hphc_fd, amplitude_phase_fd, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 
@@ -30,7 +30,7 @@ A concrete subtype implements [`hphc_fd`](@ref), optionally [`validate_parameter
 [`reference_frequency`](@ref), [`minimum_frequency`](@ref) and [`maximum_frequency`](@ref). It
 may override the capability queries [`spin_support`](@ref), [`supports_mode_array`](@ref) and
 [`is_differentiable`](@ref). Aligned-spin quadrupole backends can instead subtype
-[`AlignedSpinQuadrupolarWaveformGenerator`](@ref) and implement [`amplitude_phase`](@ref)
+[`AlignedSpinQuadrupolarWaveformGenerator`](@ref) and implement [`amplitude_phase_fd`](@ref)
 to inherit polarization assembly. Higher-mode backends can subtype
 [`HigherModesWaveformGenerator`](@ref) and implement modes in either domain.
 """
@@ -39,7 +39,7 @@ abstract type AbstractWaveformGenerator end
 """
     AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator
 
-Generator for aligned-spin, quadrupole-only radiation. Implement [`amplitude_phase`](@ref)
+Generator for aligned-spin, quadrupole-only radiation. Implement [`amplitude_phase_fd`](@ref)
 with the usual generator accessors to obtain the default [`hphc_fd`](@ref) assembly.
 The inclination is `params.theta_jn`, since the orbital and total angular momenta are aligned.
 Generators retain fixed configuration; parameter-dependent coefficients are evaluated per call.
@@ -47,7 +47,7 @@ Generators retain fixed configuration; parameter-dependent coefficients are eval
 abstract type AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator end
 
 """
-    amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple,
+    amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple,
                     generator::AlignedSpinQuadrupolarWaveformGenerator) -> (; amplitude, phase)
 
 Inclination-independent frequency-domain strain represented as `amplitude .* exp.(im .* phase)`.
@@ -64,7 +64,7 @@ Parameters, grid requirements and host validation follow [`hphc_fd`](@ref). The 
 inclination factors; changing `theta_jn` does not change their values. Differentiable backends
 must support this method under the same conditions as their `hphc_fd` implementation.
 """
-function amplitude_phase end
+function amplitude_phase_fd end
 
 """
     hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
@@ -87,14 +87,14 @@ The returned arrays have `length(f)` entries and are zero outside
 `minimum_frequency(generator) ≤ f ≤ maximum_frequency(generator)`, where a `nothing` maximum
 means the last grid point ([`frequency_bounds`](@ref)).
 
-For [`AlignedSpinQuadrupolarWaveformGenerator`](@ref), the default calls [`amplitude_phase`](@ref)
+For [`AlignedSpinQuadrupolarWaveformGenerator`](@ref), the default calls [`amplitude_phase_fd`](@ref)
 once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
 `-im * cos(theta_jn)` for cross.
 """
 function hphc_fd end
 
 function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
-    a = amplitude_phase(f, params, g)
+    a = amplitude_phase_fd(f, params, g)
     cfac = cos(params.theta_jn)
     pfac = 0.5 * (1.0 + cfac * cfac)
     re = a.amplitude .* cos.(a.phase)

@@ -279,7 +279,7 @@ function gps_time_shift(delta_f)
     return 2 * Float64(π) * (seconds + 1.0e-9 * nanoseconds)
 end
 
-# Inputs `amplitude_phase` does not check; run by `validate_parameters`.
+# Inputs `amplitude_phase_fd` does not check; run by `validate_parameters`.
 function check_waveform_inputs(g::TaylorF2, delta_f, params::NamedTuple, f_start, f_max)
     m1 = params.mass_1
     m2 = params.mass_2
@@ -323,7 +323,7 @@ end
 # nonnegative amplitude and unwrapped phase, zero outside `[f_start, f_max]`. The loop never
 # evaluates the model at `f = 0`. The inclination factors are applied by `hphc_fd`. Inputs are
 # trusted; run `validate_parameters` on the host first.
-function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::TaylorF2)
+function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::TaylorF2)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = start_frequency(g, f_min)

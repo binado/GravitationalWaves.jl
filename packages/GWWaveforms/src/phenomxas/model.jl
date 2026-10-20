@@ -214,7 +214,7 @@ end
 # IMRPhenomXAS on the supplied frequencies: nonnegative amplitude and unwrapped phase, zero
 # outside `[f_start, f_max]` and above the inclusive cutoff `0.3 / M_sec`. The inclination
 # factors are applied by `hphc_fd`. Inputs are trusted; run `validate_parameters` on the host first.
-function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomXAS)
+function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomXAS)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = start_frequency(g, f_min)

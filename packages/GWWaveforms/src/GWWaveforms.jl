@@ -17,11 +17,11 @@ using GWParameterConversion: MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
 
 using AbstractGWWaveforms: AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator,
     check_frequency_grid, frequency_bounds
-import AbstractGWWaveforms: hphc_fd, amplitude_phase, validate_parameters, approximant, reference_frequency, minimum_frequency,
+import AbstractGWWaveforms: hphc_fd, amplitude_phase_fd, validate_parameters, approximant, reference_frequency, minimum_frequency,
     maximum_frequency, spin_support, supports_mode_array, is_differentiable
 
 export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
-export hphc_fd, amplitude_phase, validate_parameters
+export hphc_fd, amplitude_phase_fd, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 export TaylorF2, IMRPhenomD, IMRPhenomXAS

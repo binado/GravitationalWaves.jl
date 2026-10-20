@@ -130,7 +130,7 @@ import ForwardDiff as FD
     end
 end
 
-@testset "TaylorF2 amplitude_phase is zero outside the band" begin
+@testset "TaylorF2 amplitude_phase_fd is zero outside the band" begin
     f = range(0, 256; step = 0.25)
     params = (
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -142,13 +142,13 @@ end
             TaylorF2(; minimum_frequency = 20.0, pn_phase_order = 4, pn_spin_order = 3, reference_frequency = 0),
         )
         f_min, f_max = GWWaveforms.frequency_bounds(g, f)
-        ap = amplitude_phase(f, params, g)
+        ap = amplitude_phase_fd(f, params, g)
         inband = [f_min <= fi <= f_max for fi in f]
         @test all(iszero, ap.amplitude[.!inband]) && all(iszero, ap.phase[.!inband])
         @test all(>(0), ap.amplitude[inband])
     end
     # Nothing in band.
-    @test all(iszero, amplitude_phase(f, params, TaylorF2(; minimum_frequency = 300.0, maximum_frequency = 400.0)).amplitude)
+    @test all(iszero, amplitude_phase_fd(f, params, TaylorF2(; minimum_frequency = 300.0, maximum_frequency = 400.0)).amplitude)
 end
 
 @testset "IMRPhenomD requires mass_1 ≥ mass_2" begin
@@ -162,7 +162,7 @@ end
     )
 end
 
-@testset "IMRPhenomD amplitude_phase band and cutoff" begin
+@testset "IMRPhenomD amplitude_phase_fd band and cutoff" begin
     f = range(0, 256; step = 0.25)
     base = (
         luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -180,7 +180,7 @@ end
             )
             f_min, f_max = GWWaveforms.frequency_bounds(g, f)
             fcut(m1, m2) > f_min || continue
-            ap = amplitude_phase(f, merge(base, (; mass_1 = m1, mass_2 = m2)), g)
+            ap = amplitude_phase_fd(f, merge(base, (; mass_1 = m1, mass_2 = m2)), g)
             # LAL excludes the rounded-down upper edge.
             upper = floor(min(fcut(m1, m2), f_max) / df) * df
             for (i, fi) in enumerate(f)
@@ -194,5 +194,5 @@ end
     end
     # Nothing in band.
     g = IMRPhenomD(; minimum_frequency = 300.0, maximum_frequency = 400.0)
-    @test all(iszero, amplitude_phase(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0)), g).amplitude)
+    @test all(iszero, amplitude_phase_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0)), g).amplitude)
 end

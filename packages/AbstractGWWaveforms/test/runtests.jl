@@ -26,14 +26,14 @@ function AbstractGWWaveforms.validate_parameters(f::AbstractRange{Float64}, para
     return nothing
 end
 
-# Implements only amplitude_phase; polarization assembly comes from the interface.
+# Implements only amplitude_phase_fd; polarization assembly comes from the interface.
 struct DummyQuadrupole <: AlignedSpinQuadrupolarWaveformGenerator end
 AbstractGWWaveforms.approximant(::DummyQuadrupole) = "DummyQuadrupole"
 AbstractGWWaveforms.reference_frequency(::DummyQuadrupole) = 50.0
 AbstractGWWaveforms.minimum_frequency(::DummyQuadrupole) = 20.0
 AbstractGWWaveforms.maximum_frequency(::DummyQuadrupole) = 60.0
 
-function AbstractGWWaveforms.amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::DummyQuadrupole)
+function AbstractGWWaveforms.amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::DummyQuadrupole)
     check_frequency_grid(f)
     lo, hi = frequency_bounds(g, f)
     amplitude = [lo <= fi <= hi ? 2.0 : 0.0 for fi in f]

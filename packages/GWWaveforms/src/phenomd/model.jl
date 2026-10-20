@@ -583,7 +583,7 @@ phenomd_phase(model::PhenomDModel, Mf) = _phenomd_phase(model, Mf, useful_powers
 # and unwrapped phase, zero outside `[f_start, f_max]` and above `min(f_max, 0.2 / M)`. The upper
 # edge is rounded down to a multiple of `step(f)` and excluded, as in LAL. The inclination factors
 # are applied by `hphc_fd`. Inputs are trusted; run `validate_parameters` on the host first.
-function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomD)
+function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomD)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = start_frequency(g, f_min)
@@ -619,7 +619,7 @@ function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
     return canonical_amplitude_phase(amp, -phi)
 end
 
-# Inputs `amplitude_phase` does not check; run by `validate_parameters`.
+# Inputs `amplitude_phase_fd` does not check; run by `validate_parameters`.
 function check_waveform_inputs(g::IMRPhenomD, delta_f, params::NamedTuple, f_start, f_max)
     m1 = params.mass_1
     m2 = params.mass_2

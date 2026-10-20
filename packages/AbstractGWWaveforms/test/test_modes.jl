@@ -1,4 +1,4 @@
-using AbstractGWWaveforms: mode_sum, sylm_m2, check_mode_indices
+using AbstractGWWaveforms: mode_sum, sylm_m2
 
 struct SyntheticModes{T, F} <: HigherModesWaveformGenerator
     td::T
@@ -107,13 +107,7 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
         end
     end
 
-    @testset "malformed metadata" begin
-        for bad in ((), ((1, 0),), ((6, 0),), ((2, 3),), ((2, 0), (2, 0)), ((2.0, 0),), [(2, 0)])
-            @test_throws ArgumentError check_mode_indices(bad)
-        end
-        @test_throws DimensionMismatch mode_sum(modes[:, 1:2], labels, 0.1, 0.2)
-        @test_throws ArgumentError mode_sum(real.(modes), labels, 0.1, 0.2)
-        @test_throws DimensionMismatch hphc_fd(f, p, SyntheticModes(td, merge(fd, (; negative = negative[1:2, :]))))
+    @testset "invalid frequency grids" begin
         for badgrid in (1:3, 0:-1:-3, range(0, 0; length = 1))
             @test_throws ArgumentError hphc_fd(badgrid, p, SyntheticModes(td, fd))
         end

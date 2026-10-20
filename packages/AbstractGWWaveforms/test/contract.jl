@@ -87,7 +87,11 @@ end
 function test_modes_td_contract(g; params, viewing_params = merge(params, (; theta_jn = 0.2)), kwargs...)
     return @testset "TD mode contract" begin
         r = AbstractGWWaveforms.waveform_modes_td(g, params; kwargs...)
-        @test AbstractGWWaveforms.check_mode_indices(r.mode_indices) === nothing
+        @test r.mode_indices isa Tuple
+        @test !isempty(r.mode_indices)
+        @test all(label -> label isa Tuple{Integer, Integer}, r.mode_indices)
+        @test all(((l, m),) -> 2 <= l <= 5 && abs(m) <= l, r.mode_indices)
+        @test allunique(r.mode_indices)
         @test r.t isa AbstractVector{<:Real}
         @test r.modes isa AbstractMatrix{<:Complex}
         @test size(r.modes) == (length(r.t), length(r.mode_indices))
@@ -107,7 +111,11 @@ function test_modes_fd_contract(g; params, f, viewing_params = merge(params, (; 
     return @testset "FD mode contract" begin
         check_frequency_grid(f)
         r = AbstractGWWaveforms.waveform_modes_fd(f, params, g)
-        @test AbstractGWWaveforms.check_mode_indices(r.mode_indices) === nothing
+        @test r.mode_indices isa Tuple
+        @test !isempty(r.mode_indices)
+        @test all(label -> label isa Tuple{Integer, Integer}, r.mode_indices)
+        @test all(((l, m),) -> 2 <= l <= 5 && abs(m) <= l, r.mode_indices)
+        @test allunique(r.mode_indices)
         @test r.positive isa AbstractMatrix{<:Complex}
         @test r.negative isa AbstractMatrix{<:Complex}
         @test size(r.positive) == size(r.negative) == (length(f), length(r.mode_indices))

@@ -63,33 +63,6 @@ const HARMONIC_COEFFICIENTS = let
     a
 end
 
-"""
-    check_mode_indices(mode_indices)
-
-Validate a nonempty ordered tuple of unique integer `(l,m)` labels with `2 ≤ l ≤ 5`
-and `|m| ≤ l`. Throws `ArgumentError` on invalid metadata.
-"""
-function check_mode_indices(labels)
-    labels isa Tuple || throw(ArgumentError("mode_indices must be an ordered tuple"))
-    isempty(labels) && throw(ArgumentError("mode_indices must be nonempty"))
-    for (j, label) in enumerate(labels)
-        label isa Tuple{Integer, Integer} || throw(ArgumentError("mode labels must be integer (l,m) pairs"))
-        l, m = label
-        2 <= l <= 5 && abs(m) <= l || throw(ArgumentError("need 2 <= l <= 5 and |m| <= l"))
-        for k in 1:(j - 1)
-            labels[k] == label && throw(ArgumentError("mode labels must be unique"))
-        end
-    end
-    return nothing
-end
-
-function check_mode_matrix(labels, modes, n)
-    modes isa AbstractMatrix{<:Complex} || throw(ArgumentError("modes must be a complex matrix"))
-    size(modes) == (n, length(labels)) || throw(DimensionMismatch("mode matrix must have shape (sample, mode)"))
-    Base.require_one_based_indexing(modes)
-    return nothing
-end
-
 # Repeated multiplication avoids problematic derivatives of 0^0 and negative bases at poles.
 function half_angle_powers(x)
     p = Vector{typeof(x)}(undef, 11)
@@ -117,7 +90,6 @@ for all signed modes with `2 ≤ l ≤ 5`. A real half-angle polynomial preserve
 angle derivatives at both poles, without divisions by sin(theta).
 """
 function sylm_m2(l::Integer, m::Integer, theta, phi)
-    check_mode_indices(((l, m),))
     theta, phi = promote(float(theta), float(phi))
     return harmonic_coefficient(l, m, half_angle_powers(cos(theta / 2)), half_angle_powers(sin(theta / 2)), phi)
 end
@@ -126,12 +98,11 @@ end
     mode_sum(modes, mode_indices, theta, phi)
 
 Assemble complex strain H = Σ ₋₂Yₗₘ(theta,phi) hₗₘ from `(sample, mode)` complex
-modes. Validate metadata once, compute angles once, and accumulate without weighted-array
-intermediates. The azimuth `phi` is the actual mode-frame viewing angle.
+modes. Compute angles once and accumulate without weighted-array intermediates.
+Mode labels and matrix dimensions are assumed to satisfy the waveform mode contract.
+The azimuth `phi` is the actual mode-frame viewing angle.
 """
 function mode_sum(modes::AbstractMatrix, labels, theta, phi)
-    check_mode_indices(labels)
-    check_mode_matrix(labels, modes, size(modes, 1))
     theta, phi = promote(float(theta), float(phi))
     coefficients = mode_coefficients(labels, theta, phi)
     return sum_modes(modes, coefficients)
@@ -167,9 +138,6 @@ end
 function hphc_fd(f::AbstractRange, params::NamedTuple, g::HigherModesWaveformGenerator)
     check_frequency_grid(f)
     r = waveform_modes_fd(f, params, g)
-    check_mode_indices(r.mode_indices)
-    check_mode_matrix(r.mode_indices, r.positive, length(f))
-    check_mode_matrix(r.mode_indices, r.negative, length(f))
     theta, phi = mode_angles(params, g)
     coefficients = mode_coefficients(r.mode_indices, theta, phi)
     hp = sum_modes(r.positive, coefficients)

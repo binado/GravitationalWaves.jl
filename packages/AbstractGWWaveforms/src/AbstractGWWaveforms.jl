@@ -17,7 +17,7 @@ export spin_support, supports_mode_array, is_differentiable
 
 # Helpers for backend implementers. The shared contract tests live in `test/contract.jl`, which
 # backends `include` from their own tests.
-public check_frequency_grid, frequency_bounds, mode_angles, mode_sum, sylm_m2, check_mode_indices
+public check_frequency_grid, frequency_bounds, mode_angles, mode_sum, sylm_m2
 
 """
     AbstractWaveformGenerator

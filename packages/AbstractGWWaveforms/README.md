@@ -71,7 +71,7 @@ nonnegative, uniform grid contract applies. The assembler independently sums H(f
 then returns `(H(f) + conj(H(-f)))/2` and `im*(H(f) - conj(H(-f)))/2`. It does not assume
 any symmetry between signed modes. TD assembly returns `real(H)` and `-imag(H)`.
 
-Backend helpers `mode_angles`, `mode_sum`, `sylm_m2`, and `check_mode_indices` are public.
+Backend helpers `mode_angles`, `mode_sum`, and `sylm_m2` are public.
 `mode_angles(params, generator)` defaults to `(params.theta_jn, 0)` with reference phase already
 in the modes. Override it for another viewing convention. The half-angle harmonic polynomial
 supports finite derivatives at the poles and preserves promoted numeric types. Angular

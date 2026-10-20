@@ -71,7 +71,10 @@ function benchmark_gradient(loss, x, reference, sample_points; samples)
     )
 end
 
-function run_gradient_benchmarks(; samples = 100, spacings = (2.0, 0.25))
+function run_gradient_benchmarks(;
+        samples = 100, spacings = (2.0, 0.25),
+        implementations = (("scalar_loop", scalar_loop), ("tuple_broadcast", broadcasted), ("separate_broadcast", separate_broadcast)),
+    )
     x = [36.0, 29.0, 0.5, 0.3, 500.0, 0.4, 0.2]
     points = (
         [180.0, 120.0, 0.3, 0.2, 500.0, 0.4, 0.2],
@@ -101,7 +104,7 @@ function run_gradient_benchmarks(; samples = 100, spacings = (2.0, 0.25))
                 finite_difference = grad(central_fdm(5, 1), baseline, x)[1]
                 @test reference ≈ finite_difference rtol = 1.0e-5
             end
-            for (name, implementation) in (("scalar_loop", scalar_loop), ("tuple_broadcast", broadcasted), ("separate_broadcast", separate_broadcast))
+            for (name, implementation) in implementations
                 loss = WaveformLoss(implementation, f, g, template)
                 @test loss(x) == baseline(x)
                 for point in points

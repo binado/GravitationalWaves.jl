@@ -1,5 +1,10 @@
 # Gradient comparison
 
+The separate-broadcast measurements below used anonymous functions. The later
+[`Ref` comparison](ref_arguments.md) measures the current production implementation
+against that version.
+
+
 ```sh
 julia --project=benchmarks/GWWaveforms -e 'using Pkg; Pkg.instantiate()'
 julia --project=integration/GWWaveforms -e 'using Pkg; Pkg.instantiate()'

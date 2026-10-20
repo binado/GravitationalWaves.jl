@@ -68,6 +68,25 @@ end
 scalar_loop(f, params, g) = broadcasted(f, params, g, scalar_loop_samples)
 const separate_broadcast = amplitude_phase
 
+# Previous production assembly, retained to measure the change from closures to Ref.
+function anonymous_amplitude_phase(amp_kernel::A, phase_kernel::P, ::Type{T}, f, lo, hi, model, scale, cutoff) where {A, P, T}
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    frequencies = f[lo:hi]
+    signed_amplitudes = view(amplitude, lo:hi)
+    signed_amplitudes .= (frequency -> amp_kernel(Float64(frequency), model, scale, cutoff)).(frequencies)
+    phase[lo:hi] .= ((frequency, amp) -> phase_kernel(Float64(frequency), model, amp)).(frequencies, signed_amplitudes)
+    amplitude .= abs.(amplitude)
+    return (; amplitude, phase)
+end
+function anonymous_samples(::typeof(G.phenomd_amplitude_phase), T, f, lo, hi, model, scale, cutoff)
+    return anonymous_amplitude_phase(G.phenomd_signed_amplitude, G.phenomd_canonical_phase, T, f, lo, hi, model, scale, cutoff)
+end
+function anonymous_samples(::typeof(G.phenomxas_amplitude_phase), T, f, lo, hi, model, scale, cutoff)
+    return anonymous_amplitude_phase(G.phenomxas_signed_amplitude, G.phenomxas_canonical_phase, T, f, lo, hi, model, scale, cutoff)
+end
+anonymous_broadcast(f, params, g) = broadcasted(f, params, g, anonymous_samples)
+
 function run_benchmarks()
     params = (;
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,

@@ -1,0 +1,9 @@
+model,bins,implementation,median_us,bytes,allocations
+IMRPhenomD,4017,anonymous_broadcast,97.292,66432,12
+IMRPhenomD,4017,ref_broadcast,137.000,65664,6
+IMRPhenomD,32129,anonymous_broadcast,770.167,525184,12
+IMRPhenomD,32129,ref_broadcast,1101.834,524416,6
+IMRPhenomXAS,4017,anonymous_broadcast,187.500,66432,12
+IMRPhenomXAS,4017,ref_broadcast,225.333,65664,6
+IMRPhenomXAS,32129,anonymous_broadcast,1471.708,525184,12
+IMRPhenomXAS,32129,ref_broadcast,1792.396,524416,6

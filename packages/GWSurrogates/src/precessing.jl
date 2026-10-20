@@ -42,19 +42,6 @@ end
     )
 end
 
-# Natural cubic spline of every column of `Y` (knots `t_in`), evaluated at `t_out`.
-function spline_columns(t_out, t_in, Y::AbstractMatrix)
-    T = promote_type(eltype(Y), typeof(float(first(t_out))))
-    out = Matrix{T}(undef, length(t_out), size(Y, 2))
-    for j in axes(Y, 2)
-        spline = NaturalCubicSpline(t_in, Y[:, j])
-        for (i, x) in enumerate(t_out)
-            out[i, j] = spline_eval(spline, x)
-        end
-    end
-    return out
-end
-
 # Rotate the coorbital-frame modes `h` (n_times × n_modes) into the inertial frame:
 # h_inertial[ell, m′] = Σ_m D^ell_{m′ m}(R) h[ell, m] with the rotor R of each time.
 function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
@@ -127,9 +114,13 @@ function inertial_modes(
     d = dynamics(dyn, q, chiA0, chiB0; init_quat, init_orbphase, t_ref)
 
     # Interpolate to the coorbital time grid, where the coorbital spins oscillate faster than the
-    # coprecessing ones, and rebuild the frame quantities.
-    chiA_copr = spline_columns(t_coorb, dyn.tds, d.chiA)
-    chiB_copr = spline_columns(t_coorb, dyn.tds, d.chiB)
+    # coprecessing ones, and rebuild the frame quantities. All columns share the knots, so they go
+    # through one call: spins A and B, orbital phase, quaternion.
+    resampled = spline_columns(t_coorb, dyn.tds, hcat(d.chiA, d.chiB, d.orbphase, d.quat))
+    chiA_copr = resampled[:, 1:3]
+    chiB_copr = resampled[:, 4:6]
+    orbphase = resampled[:, 7]
+    quat = resampled[:, 8:11]
     n = length(t_coorb)
     for k in 1:n
         a = rescale_to_norm((chiA_copr[k, 1], chiA_copr[k, 2], chiA_copr[k, 3]), chiA_norm)
@@ -137,8 +128,6 @@ function inertial_modes(
         chiA_copr[k, :] .= a
         chiB_copr[k, :] .= b
     end
-    orbphase = vec(spline_columns(t_coorb, dyn.tds, reshape(d.orbphase, :, 1)))
-    quat = spline_columns(t_coorb, dyn.tds, d.quat)
     for k in 1:n
         nq = sqrt(quat[k, 1]^2 + quat[k, 2]^2 + quat[k, 3]^2 + quat[k, 4]^2)
         quat[k, :] ./= nq

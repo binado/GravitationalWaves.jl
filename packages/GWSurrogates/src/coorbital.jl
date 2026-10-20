@@ -18,7 +18,8 @@ Coorbital-frame waveform surrogate. `components` lists the datapieces in the ord
 `starts[ell - 1, m + 1]`, the index of the first datapiece of mode `(ell, m)` with `m >= 0`.
 Each mode contributes 2 parts (`m = 0`: real, imaginary) or 4 parts (`m > 0`: `Re+`, `Re-`,
 `Im+`, `Im-`), each split in `size(masks, 2)` subdomains that are blended with `masks`
-(`n_times × n_subdomains`; a single all-ones column for NRSur7dq4).
+(`n_times × n_subdomains`; a single all-ones column for NRSur7dq4). `support[sub]` is the range of
+times where the mask of subdomain `sub` is nonzero; the model is only evaluated there.
 
 The component layout and its integer indexing follow the AD design rules: no `Dict`, plain
 loops over the flat model data.
@@ -28,9 +29,23 @@ struct CoorbitalSurrogate{P}
     settings::FitSettings
     t::Vector{Float64}
     masks::Matrix{Float64}
+    support::Vector{UnitRange{Int}}
     ell_max::Int
     components::Vector{CoorbitalComponent}
     starts::Matrix{Int}
+end
+
+function CoorbitalSurrogate(params, settings, t, masks, ell_max, components, starts)
+    support = [mask_support(view(masks, :, j)) for j in axes(masks, 2)]
+    return CoorbitalSurrogate(params, settings, t, masks, support, ell_max, components, starts)
+end
+
+# First to last nonzero entry of `mask` (empty if it is all zero). Outside this range the subdomain
+# contributes exactly zero.
+function mask_support(mask::AbstractVector)
+    first_nonzero = findfirst(!iszero, mask)
+    first_nonzero === nothing && return 1:0
+    return first_nonzero:findlast(!iszero, mask)
 end
 
 n_subdomains(s::CoorbitalSurrogate) = size(s.masks, 2)
@@ -44,18 +59,21 @@ mode_column(ell, m) = ell * (ell + 1) - 3 + m
 "Number of modes `(ell, m)` with `2 <= ell <= ell_max`."
 n_modes(ell_max) = ell_max * ell_max + 2 * ell_max - 3
 
+# Fills `out[rows]` only; the other entries are left untouched.
 function eval_component!(
-        out::AbstractVector, s::CoorbitalSurrogate, c::CoorbitalComponent, q, chiA, chiB, powers, nodes,
+        out::AbstractVector, s::CoorbitalSurrogate, c::CoorbitalComponent, q, chiA, chiB, powers, nodes, rows,
     )
     for (n, ni) in enumerate(c.node_indices)
         x = fit_params(s.params, q, (chiA[ni, 1], chiA[ni, 2], chiA[ni, 3]), (chiB[ni, 1], chiB[ni, 2], chiB[ni, 3]))
         fit_powers!(powers, s.settings, x)
         nodes[n] = eval_fit(c.fits, n, powers)
     end
-    fill!(out, zero(eltype(out)))
+    for i in rows
+        out[i] = zero(eltype(out))
+    end
     for n in eachindex(c.node_indices)
         w = nodes[n]
-        for i in eachindex(out)
+        for i in rows
             out[i] += w * c.basis[i, n]
         end
     end
@@ -84,20 +102,21 @@ function coorbital_modes(s::CoorbitalSurrogate, q, chiA::AbstractMatrix, chiB::A
         for m in 0:ell
             nparts = m == 0 ? 2 : 4
             for sub in 1:nsub
+                rows = s.support[sub]
                 for part in 1:nparts
                     c = s.components[component_index(s, ell, m, part, sub)]
-                    eval_component!(parts[part], s, c, q, chiA, chiB, powers, nodes)
+                    eval_component!(parts[part], s, c, q, chiA, chiB, powers, nodes, rows)
                 end
                 mask = view(s.masks, :, sub)
                 if m == 0
                     col = mode_column(ell, 0)
-                    for i in 1:nt
+                    for i in rows
                         modes[i, col] += complex(parts[1][i], parts[2][i]) * mask[i]
                     end
                 else
                     cp = mode_column(ell, m)
                     cn = mode_column(ell, -m)
-                    for i in 1:nt
+                    for i in rows
                         rep, rem, imp, imm = parts[1][i], parts[2][i], parts[3][i], parts[4][i]
                         modes[i, cp] += complex(rep - rem, imm - imp) * mask[i]
                         modes[i, cn] += complex(rep + rem, imp + imm) * mask[i]

@@ -5,6 +5,14 @@ using NPZ
 const FIXTURE_DIR = joinpath(@__DIR__, "..", "..", "..", "reference", "surrogates")
 const MODEL_PARAMS = (NRSur7dq4 = GWSurrogates.NRSur7dq4Params(), NRSur7dq4v2 = GWSurrogates.NRSur7dq4v2Params())
 
+@testset "mask_support" begin
+    @test GWSurrogates.mask_support([0.0, 0.0, 0.3, 1.0, 1.0e-30, 0.0]) == 3:5
+    @test GWSurrogates.mask_support(ones(3)) == 1:3
+    @test isempty(GWSurrogates.mask_support(zeros(4)))
+    # A mask with a zero inside the support keeps the whole range.
+    @test GWSurrogates.mask_support([1.0, 0.0, 1.0]) == 1:3
+end
+
 @testset "fits" begin
     s = GWSurrogates.FitSettings(-0.5, 2.0, 3, 2)
     @test GWSurrogates.n_fit_powers(s) == 4 + 6 * 3

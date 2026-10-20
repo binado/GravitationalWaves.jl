@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering packages/GWSurrogates; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:
@@ -34,10 +34,13 @@ fixtures:
     uv run --project python python python/generate.py
     uv run --project python python python/generate_detectors.py
     uv run --project python python python/generate_inference.py
+    uv sync --project python/surrogates
+    uv run --project python/surrogates python python/generate_surrogates.py --data-dir reference/surrogates-data --download
     @echo 'export LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)'
+    @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference
+test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -54,6 +57,10 @@ test-integration-detectors:
 # Joint metric gradients and waveform/projection/likelihood composition.
 test-integration-inference:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate(); include("integration/GWMatchedFiltering/runtests.jl")'
+
+# NRSur7dq4/v2 AD: ForwardDiff and Mooncake. Downloads the model data on first use (or set GWSURROGATES_DATA_DIR); the compile times are several minutes.
+test-integration-surrogates:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSurrogates -e 'using Pkg; Pkg.instantiate(); include("integration/GWSurrogates/runtests.jl")'
 
 # Layout comparison; output includes timings, allocations, CPU, and Julia version.
 benchmark-inference:

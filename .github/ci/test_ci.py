@@ -15,6 +15,7 @@ class SelectionTests(unittest.TestCase):
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
             "GWMatchedFiltering": ["GWMatchedFiltering"],
+            "GWSurrogates": ["GWSurrogates"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
             "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],
@@ -62,6 +63,15 @@ class SelectionTests(unittest.TestCase):
                     select_packages([f"python/{name}"]),
                     CONVERSION_AFFECTED + ["GWDetectors", "GWMatchedFiltering"],
                 )
+
+    def test_surrogate_python_tooling_selects_only_surrogates(self):
+        for path in (
+            "python/generate_surrogates.py",
+            "python/surrogates/uv.lock",
+            "python/surrogates/pyproject.toml",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(select_packages([path]), ["GWSurrogates"])
 
     def test_documentation_only_and_empty(self):
         self.assertEqual(

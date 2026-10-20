@@ -5,7 +5,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 
 | Package | Purpose | License |
 |---------|---------|---------|
-| [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | GPL-2.0-or-later |
+| [AbstractGWWaveforms](packages/AbstractGWWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | MIT |
 | [GWWaveforms](packages/GWWaveforms) | Native, differentiable TaylorF2, IMRPhenomD and IMRPhenomXAS waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
@@ -14,6 +14,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWTimeFrequencyDomains](packages/GWTimeFrequencyDomains) | Detached sampling domains, explicit validation, and optional physical FFT plans | GPL-2.0-or-later |
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
 | [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
+| [GWSurrogates](packages/GWSurrogates) | Differentiable NRSur7dq4 numerical-relativity surrogate (in progress) | MIT |
 
 ## Installation
 
@@ -197,5 +198,5 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and every package except `GWDistributions` use GPL-2.0-or-later.
-`GWDistributions` retains its [MIT license](packages/GWDistributions/LICENSE).
+The root [LICENSE](LICENSE) and every package except `AbstractGWWaveforms`, `GWDistributions` and `GWSurrogates` use GPL-2.0-or-later.
+`AbstractGWWaveforms` ([LICENSE](packages/AbstractGWWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) and `GWSurrogates` ([LICENSE](packages/GWSurrogates/LICENSE)) are MIT.

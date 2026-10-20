@@ -14,8 +14,10 @@ gradient, other chunk sizes, or allocations. The first task is a benchmark that 
 
 ## Rules
 
-- Add `benchmarks/GWSEOBNR`, following `benchmarks/GWMatchedFiltering` and the repo's
-  benchmark skill. Report wall time, allocations, and the Julia version and CPU.
+- Add a `benchmarks/GWSEOBNR` environment with a `just` recipe, modelled on the
+  `benchmark-inference` recipe. That recipe points at `benchmarks/GWMatchedFiltering`,
+  which is not in the repository, so there is no existing benchmark environment to copy.
+  Report wall time, allocations, and the Julia version and CPU.
   Measure primal, the 7-parameter gradient, and chunk sizes 1, 2, 4 and 7.
 - Keep a change only if it measurably wins and leaves the acceptance gates unchanged
   (130 passing and 13 failing on Julia 1.12.7, the same gates failing; see

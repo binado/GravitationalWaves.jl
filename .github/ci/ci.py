@@ -18,7 +18,7 @@ PACKAGES = (
 )
 AFFECTED = {
     "GWTimeFrequencyDomains": {"GWTimeFrequencyDomains", "GWNoise", "GWDetectors", "GWMatchedFiltering"},
-    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"},
+    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSurrogates"},
     "LALWaveforms": {"LALWaveforms", "GWWaveforms"},
     "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms"},
     "GWWaveforms": {"GWWaveforms"},

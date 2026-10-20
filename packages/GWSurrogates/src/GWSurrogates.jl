@@ -14,12 +14,15 @@ for ForwardDiff and Mooncake: no `try`/`catch`, no `Dict`, and branches only thr
 module GWSurrogates
 
 using StaticArrays: SVector
+import AbstractGWWaveforms
+using AbstractGWWaveforms: HigherModesWaveformGenerator
+import AbstractGWWaveforms: hphc_td, waveform_modes_td
 
 public NaturalCubicSpline, spline_eval, wigner_D, wigner_D_element, guarded_sqrt, rescale_to_norm
 public FitSettings, FitSet, fit_powers!, eval_fit, fit_params, NRSur7dq4Params, NRSur7dq4v2Params
 public CoorbitalSurrogate, coorbital_modes, load_coorbital, data_path
 public DynamicsSurrogate, dynamics, output_times, t_ref_from_omega, load_dynamics
-public PrecessingSurrogate, load_surrogate, inertial_modes, mode_sum, PrecessingGenerator, hphc_td
+public PrecessingSurrogate, load_surrogate, inertial_modes, mode_sum, PrecessingGenerator, hphc_td, waveform_modes_td
 
 include("spline.jl")
 include("wignerd.jl")

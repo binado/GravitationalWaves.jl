@@ -14,7 +14,7 @@ AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 
 [compat]
-AbstractGWWaveforms = "0.2"
+AbstractGWWaveforms = "0.3"
 Aqua = "0.8"
 GWParameterConversion = "0.1"
 JET = "0.11, 0.12"

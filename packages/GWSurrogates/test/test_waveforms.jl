@@ -4,6 +4,8 @@ using JET
 using LinearAlgebra
 using NPZ
 using Random
+using AbstractGWWaveforms
+include("../../AbstractGWWaveforms/test/contract.jl")
 
 @testset "waveform assembly kernels" begin
     @testset "quat_multiply" begin
@@ -86,6 +88,16 @@ using Random
         @test ForwardDiff.value.(real.(wide)) ≈ real.(expected)
     end
 
+    @testset "shared harmonics against retained Wigner-D" begin
+        for theta in (0.0, 1.0e-10, 0.4, 1.7, π - 1.0e-10, Float64(π)), phi in (0.0, 0.7)
+            for l in 2:5, m in (-l):l
+                d = real(GWSurrogates.wigner_D_element(l, m, 2, complex(cos(theta / 2)), complex(sin(theta / 2))))
+                expected = sqrt((2l + 1) / (4π)) * d * cis(m * phi)
+                @test GWSurrogates.sylm_m2(l, m, theta, phi) ≈ expected atol = 3.0e-15 rtol = 2.0e-13
+            end
+        end
+    end
+
     @testset "mode_sum on a single mode" begin
         modes = zeros(ComplexF64, 1, GWSurrogates.n_modes(2))
         modes[1, GWSurrogates.mode_column(2, 2)] = 1.0
@@ -147,6 +159,20 @@ end
                 )
                 gen = GWSurrogates.PrecessingGenerator(sur; f_ref = ref["mks_f_ref"])
                 out = GWSurrogates.hphc_td(gen, params; dt = ref["mks_dt"])
+                modes_si = GWSurrogates.waveform_modes_td(gen, params; dt = ref["mks_dt"])
+                @test modes_si.t == out.t
+                @test modes_si.mode_indices == Tuple((l, m) for l in 2:gen.ell_max for m in (-l):l)
+                unseen = merge(params, (; inclination = 0.1, phi_ref = 0.8))
+                test_modes_td_contract(gen; params, viewing_params = unseen, dt = ref["mks_dt"])
+                @test GWSurrogates.waveform_modes_td(gen, unseen; dt = ref["mks_dt"]) == modes_si
+                @test GWSurrogates.AbstractGWWaveforms.approximant(gen) == String(model)
+                @test GWSurrogates.AbstractGWWaveforms.spin_support(gen) == :precessing
+                @test GWSurrogates.AbstractGWWaveforms.is_differentiable(gen)
+                @test GWSurrogates.AbstractGWWaveforms.supports_mode_array(gen)
+                @test reference_frequency(gen) == gen.f_ref
+                @test minimum_frequency(gen) == gen.f_low
+                @test maximum_frequency(gen) === nothing
+
                 h = out.hplus .- im .* out.hcross
                 expected = ref["mks_h"]
                 @test length(h) == length(expected)

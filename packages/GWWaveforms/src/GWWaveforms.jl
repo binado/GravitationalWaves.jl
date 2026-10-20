@@ -15,11 +15,13 @@ using LinearAlgebra: lu
 using GWParameterConversion: MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
     is_aligned, aligned_spins_to_lal_frame
 
-using AbstractGWWaveforms: AbstractWaveformGenerator, check_frequency_grid, frequency_bounds
-import AbstractGWWaveforms: hphc_fd, validate_parameters, approximant, reference_frequency, minimum_frequency,
+using AbstractGWWaveforms: AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator,
+    frequency_bounds
+import AbstractGWWaveforms: hphc_fd, amplitude_phase_fd, validate_parameters, approximant, reference_frequency, minimum_frequency,
     maximum_frequency, spin_support, supports_mode_array, is_differentiable
 
-export AbstractWaveformGenerator, hphc_fd, validate_parameters
+export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
+export hphc_fd, amplitude_phase_fd, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 export TaylorF2, IMRPhenomD, IMRPhenomXAS
@@ -28,13 +30,15 @@ export TaylorF2, IMRPhenomD, IMRPhenomXAS
 public taylorf2_pn_phasing, taylorf2_phasing, phenomd_model, phenomd_amplitude, phenomd_phase
 
 include("constants.jl")
-include("generators.jl")
+include("utils.jl")
+include("taylorf2/generator.jl")
+include("phenomd/generator.jl")
+include("phenomxas/generator.jl")
 include("parameters.jl")
-include("taylorf2.jl")
-include("phenomd.jl")
-include("phenomxas_fits.jl")
-include("phenomxas_utils.jl")
-include("phenomxas.jl")
-include("fd.jl")
+include("taylorf2/model.jl")
+include("phenomd/model.jl")
+include("phenomxas/fits.jl")
+include("phenomxas/utils.jl")
+include("phenomxas/model.jl")
 
 end

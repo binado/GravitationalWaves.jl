@@ -30,7 +30,7 @@ using LinearAlgebra
             for (fun, dfun, coeff, f) in (
                     (GWWaveforms.xas_inspiral_phase, GWWaveforms.xas_dinspiral_phase, p.ins, p.f1),
                     (GWWaveforms.xas_int_phase, GWWaveforms.xas_dint_phase, p.int, p.f2),
-                    (GWWaveforms.xas_rd_phase, GWWaveforms.xas_drd_phase, p.rd, m.r.fRD),
+                    (GWWaveforms.xas_rd_phase, GWWaveforms.xas_drd_phase, p.rd, m.r.f_rd),
                     (GWWaveforms.xas_inspiral_amp, GWWaveforms.xas_dinspiral_amp, m.amplitude.ins, m.amplitude.f1),
                     (GWWaveforms.xas_rd_amp, GWWaveforms.xas_drd_amp, m.amplitude.rd, m.amplitude.f4),
                 )
@@ -43,14 +43,16 @@ using LinearAlgebra
         end
     end
 
-    @testset "component symmetry and equal-mass derivatives" begin
+    @testset "mass ordering and equal-mass derivatives" begin
         f = range(0, 512; step = 0.5)
         p = (
             mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.7, phase = 1.1,
             a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
         )
-        swapped = merge(p, (mass_1 = p.mass_2, mass_2 = p.mass_1, a_1 = p.a_2, a_2 = p.a_1, tilt_1 = p.tilt_2, tilt_2 = p.tilt_1))
-        @test hphc_fd(f, p, IMRPhenomXAS()).plus == hphc_fd(f, swapped, IMRPhenomXAS()).plus
+        @test_throws ArgumentError validate_parameters(
+            f, merge(p, (mass_1 = p.mass_2, mass_2 = p.mass_1, a_1 = p.a_2, a_2 = p.a_1, tilt_1 = p.tilt_2, tilt_2 = p.tilt_1)),
+            IMRPhenomXAS(),
+        )
         for equal in (false, true)
             x = [36.0, equal ? 36.0 : 29.0, 0.3, 0.2]
             loss(x) = sum(real, hphc_fd(f, merge(p, (mass_1 = x[1], mass_2 = x[2], a_1 = x[3], a_2 = x[4])), IMRPhenomXAS()).plus) * 1.0e22

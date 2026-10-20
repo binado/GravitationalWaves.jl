@@ -74,9 +74,9 @@ function taylorf2_pn_phasing(m1, m2, chi1, chi2; spin_order::Integer = -1)
     chi1dotchi2 = chi1 * chi2
     mtot = m1 + m2
     eta = m1 * m2 / mtot / mtot
-    m1M = m1 / mtot
-    m2M = m2 / mtot
-    pfaN = 3 / (128 * eta)
+    m1_m = m1 / mtot
+    m2_m = m2 / mtot
+    pfa_n = 3 / (128 * eta)
 
     v0 = one(eta)
     v1 = zero(eta)
@@ -91,36 +91,36 @@ function taylorf2_pn_phasing(m1, m2, chi1, chi2; spin_order::Integer = -1)
 
     # The spin orders cascade: each includes all the lower ones.
     so = spin_order == -1 ? 7 : spin_order
-    qm1 = 1.0 # 1 + dQuadMon, zero for black holes
+    qm1 = 1.0 # 1 + d_quad_mon, zero for black holes
     qm2 = 1.0
     if so >= 7
-        v7 += taylorf2_phasing_7pn_so(m1M) * chi1 + taylorf2_phasing_7pn_so(m2M) * chi2
+        v7 += taylorf2_phasing_7pn_so(m1_m) * chi1 + taylorf2_phasing_7pn_so(m2_m) * chi2
     end
     if so >= 6
-        v6 += taylorf2_phasing_6pn_so(m1M) * chi1 + taylorf2_phasing_6pn_so(m2M) * chi2 +
+        v6 += taylorf2_phasing_6pn_so(m1_m) * chi1 + taylorf2_phasing_6pn_so(m2_m) * chi2 +
             taylorf2_phasing_6pn_s1s2o(eta) * chi1 * chi2 +
-            (taylorf2_phasing_6pn_qm2s(m1M) * qm1 + taylorf2_phasing_6pn_self2s(m1M)) * chi1sq +
-            (taylorf2_phasing_6pn_qm2s(m2M) * qm2 + taylorf2_phasing_6pn_self2s(m2M)) * chi2sq
+            (taylorf2_phasing_6pn_qm2s(m1_m) * qm1 + taylorf2_phasing_6pn_self2s(m1_m)) * chi1sq +
+            (taylorf2_phasing_6pn_qm2s(m2_m) * qm2 + taylorf2_phasing_6pn_self2s(m2_m)) * chi2sq
     end
     if so >= 5
-        so5 = taylorf2_phasing_5pn_so(m1M) * chi1 + taylorf2_phasing_5pn_so(m2M) * chi2
+        so5 = taylorf2_phasing_5pn_so(m1_m) * chi1 + taylorf2_phasing_5pn_so(m2_m) * chi2
         v5 += so5
         l5 += 3 * so5
     end
     if so >= 4
         v4 += taylorf2_phasing_4pn_s1s2(eta) * chi1dotchi2 + taylorf2_phasing_4pn_s1s2o(eta) * chi1 * chi2 +
-            (taylorf2_phasing_4pn_qm2so(m1M) * qm1 + taylorf2_phasing_4pn_self2so(m1M)) * chi1 * chi1 +
-            (taylorf2_phasing_4pn_qm2so(m2M) * qm2 + taylorf2_phasing_4pn_self2so(m2M)) * chi2 * chi2 +
-            (taylorf2_phasing_4pn_qm2s(m1M) * qm1 + taylorf2_phasing_4pn_self2s(m1M)) * chi1sq +
-            (taylorf2_phasing_4pn_qm2s(m2M) * qm2 + taylorf2_phasing_4pn_self2s(m2M)) * chi2sq
+            (taylorf2_phasing_4pn_qm2so(m1_m) * qm1 + taylorf2_phasing_4pn_self2so(m1_m)) * chi1 * chi1 +
+            (taylorf2_phasing_4pn_qm2so(m2_m) * qm2 + taylorf2_phasing_4pn_self2so(m2_m)) * chi2 * chi2 +
+            (taylorf2_phasing_4pn_qm2s(m1_m) * qm1 + taylorf2_phasing_4pn_self2s(m1_m)) * chi1sq +
+            (taylorf2_phasing_4pn_qm2s(m2_m) * qm2 + taylorf2_phasing_4pn_self2s(m2_m)) * chi2sq
     end
     if so >= 3
-        v3 += taylorf2_phasing_3pn_so(m1M) * chi1 + taylorf2_phasing_3pn_so(m2M) * chi2
+        v3 += taylorf2_phasing_3pn_so(m1_m) * chi1 + taylorf2_phasing_3pn_so(m2_m) * chi2
     end
 
     return TaylorF2Phasing(
-        (v0 * pfaN, v1 * pfaN, v2 * pfaN, v3 * pfaN, v4 * pfaN, v5 * pfaN, v6 * pfaN, v7 * pfaN),
-        l5 * pfaN, l6 * pfaN,
+        (v0 * pfa_n, v1 * pfa_n, v2 * pfa_n, v3 * pfa_n, v4 * pfa_n, v5 * pfa_n, v6 * pfa_n, v7 * pfa_n),
+        l5 * pfa_n, l6 * pfa_n,
     )
 end
 
@@ -197,7 +197,7 @@ Energy and flux coefficients of the SPA amplitude corrections, `amplitude_order`
 """
 struct TaylorF2Amplitude{T}
     order::Int
-    FTaN::T
+    f_ta_n::T
     FTa2::T
     FTa3::T
     FTa4::T
@@ -205,10 +205,10 @@ struct TaylorF2Amplitude{T}
     FTl6::T
     FTa6::T
     FTa7::T
-    dETaN::T
-    dETa1::T
-    dETa2::T
-    dETa3::T
+    d_e_ta_n::T
+    d_e_ta1::T
+    d_e_ta2::T
+    d_e_ta3::T
 end
 
 function TaylorF2Amplitude(eta, amplitude_order::Integer)
@@ -223,7 +223,7 @@ function TaylorF2Amplitude(eta, amplitude_order::Integer)
     return TaylorF2Amplitude(Int(amplitude_order), c...)
 end
 
-# sqrt(-dE/F) with the corrections up to `order`; multiplies the Newtonian amplitude.
+# sqrt(-d_e/F) with the corrections up to `order`; multiplies the Newtonian amplitude.
 function taylorf2_amplitude_factor(a::TaylorF2Amplitude, v)
     logv = log(v)
     v2 = v * v
@@ -236,42 +236,42 @@ function taylorf2_amplitude_factor(a::TaylorF2Amplitude, v)
     v9 = v * v8
     v10 = v * v9
     flux = zero(v)
-    dEnergy = zero(v)
+    d_energy = zero(v)
     o = a.order
     if o >= 7
         flux += a.FTa7 * v7
     end
     if o >= 6
         flux += (a.FTa6 + a.FTl6 * logv) * v6
-        dEnergy += a.dETa3 * v6
+        d_energy += a.d_e_ta3 * v6
     end
     if o >= 5
         flux += a.FTa5 * v5
     end
     if o >= 4
         flux += a.FTa4 * v4
-        dEnergy += a.dETa2 * v4
+        d_energy += a.d_e_ta2 * v4
     end
     if o >= 3
         flux += a.FTa3 * v3
     end
     if o >= 2
         flux += a.FTa2 * v2
-        dEnergy += a.dETa1 * v2
+        d_energy += a.d_e_ta1 * v2
     end
     flux += 1.0
-    dEnergy += 1.0
-    flux *= a.FTaN * v10
-    dEnergy *= a.dETaN * v
-    return sqrt(-dEnergy / flux)
+    d_energy += 1.0
+    flux *= a.f_ta_n * v10
+    d_energy *= a.d_e_ta_n * v
+    return sqrt(-d_energy / flux)
 end
 
 # --- driver ------------------------------------------------------------------------------
 
-# LAL stores the coalescence time shift -1/deltaF in a `LIGOTimeGPS`, whole seconds plus
+# LAL stores the coalescence time shift -1/delta_f in a `LIGOTimeGPS`, whole seconds plus
 # nanoseconds rounded to the nearest integer, and builds the phase shift from that.
-function gps_time_shift(deltaF)
-    t = -1 / deltaF
+function gps_time_shift(delta_f)
+    t = -1 / delta_f
     ns = round(Int64, rem(t, 1.0) * 1.0e9)
     total = Int64(trunc(t)) * 1_000_000_000 + ns
     seconds = fld(total, 1_000_000_000)
@@ -279,67 +279,15 @@ function gps_time_shift(deltaF)
     return 2 * Float64(π) * (seconds + 1.0e-9 * nanoseconds)
 end
 
-"""
-    taylorf2_fd(T, nout, deltaF, p, g, f_start, f_max)
-
-Frequency-domain TaylorF2 strain for the optimally oriented source (the inclination factors
-are applied by `hphc_fd`) on the grid `f_i = i deltaF`, `i = 0 … nout - 1`, zero outside
-`[f_start, f_max]`. Follows `XLALSimInspiralTaylorF2`: with `f_max == 0` the waveform stops at
-the Schwarzschild ISCO. `p` holds the output of `aligned_parameters`, converted to `T`.
-
-The inputs are trusted (see [`validate_parameters`](@ref)). This loop is the reference for
-[`taylorf2_fd_slice`](@ref), which applies the public frequency bounds. Only this reference
-supports `f_max == 0`.
-"""
-function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
-    m1 = p.mass_1
-    m2 = p.mass_2
-    r = p.luminosity_distance * 1.0e6 * PC_SI
-    f_ref = g.reference_frequency
-    m = m1 + m2
-    m_sec = m * MTSUN_SI
-    eta = m1 * m2 / (m * m)
-    piM = Float64(π) * m_sec
-    vISCO = 1 / sqrt(6.0)
-    fISCO = vISCO * vISCO * vISCO / piM
-    f_end = f_max == 0 ? fISCO : f_max
-
-    n = floor(Int, f_end / deltaF + 1)
-    i_start = ceil(Int, f_start / deltaF)
-    shft = gps_time_shift(deltaF)
-
-    pn = truncate_phasing(
-        taylorf2_pn_phasing(m1, m2, p.chi_1, p.chi_2; spin_order = g.pn_spin_order),
-        g.pn_phase_order,
-    )
-    amplitude = TaylorF2Amplitude(eta, g.pn_amplitude_order)
-    amp0 = -4.0 * m1 * m2 / r * MRSUN_SI * MTSUN_SI * sqrt(Float64(π) / 12.0)
-
-    ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(piM * f_ref)) : zero(T)
-
-    h = zeros(Complex{T}, nout)
-    for i in i_start:(min(n, nout) - 1)
-        f = i * deltaF
-        v = cbrt(piM * f)
-        phasing = taylorf2_phasing(pn, v)
-        amp = amp0 * taylorf2_amplitude_factor(amplitude, v) * v
-        # Note the factor of 2 because phi_ref is the orbital phase.
-        phasing += shft * f - 2.0 * p.phase - ref_phasing
-        x = phasing - PI_4
-        h[i + 1] = complex(amp * cos(x), -(amp * sin(x)))
-    end
-    return h
-end
-
-# Inputs `taylorf2_fd` and `taylorf2_fd_slice` do not check; run by `validate_parameters`.
-function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
-    m1 = p.mass_1
-    m2 = p.mass_2
+# Inputs `amplitude_phase_fd` does not check; run by `validate_parameters`.
+function check_waveform_inputs(g::TaylorF2, delta_f, params::NamedTuple, f_start, f_max)
+    m1 = params.mass_1
+    m2 = params.mass_2
     (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     g.reference_frequency >= 0 || throw(ArgumentError("reference frequency must not be negative"))
-    p.luminosity_distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
-    deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
+    params.luminosity_distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
+    delta_f > 0 || throw(ArgumentError("frequency step must be positive"))
     f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
     f_max > f_start || throw(
         ArgumentError("maximum frequency $f_max must exceed the start frequency $f_start")
@@ -347,42 +295,19 @@ function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
     return nothing
 end
 
-const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the default cutoff " *
-    "is not exposed by hphc_fd; set an explicit upper frequency bound"
-
-"""
-    taylorf2_slice(f, f_start, f_min, f_max) -> (lo, hi)
-
-Indices `lo:hi` (zero based, inclusive; `lo > hi` if empty) of the grid points where
-[`taylorf2_fd`](@ref) is evaluated and `hphc_fd` keeps it: `i ≥ ceil(f_start / Δf)`,
-`i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
-generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
-"""
-function taylorf2_slice(f::AbstractRange, f_start, f_min, f_max)
-    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
-    deltaF = Float64(step(f))
-    n = floor(Int, f_max / deltaF + 1)
-    i_start = ceil(Int, f_start / deltaF)
-    # Compare actual grid values to preserve exact frequency-bound semantics.
-    first_in = 1
-    while first_in <= length(f) && f[first_in] < f_min
-        first_in += 1
-    end
-    last_in = length(f)
-    while last_in >= 1 && f[last_in] > f_max
-        last_in -= 1
-    end
-    return (max(i_start, first_in - 1), min(n, length(f), last_in) - 1)
-end
-
-"""
-    taylorf2_fd_slice(T, nout, lo, hi, deltaF, p, g)
-
-The same waveform as [`taylorf2_fd`](@ref), restricted to the static indices `lo:hi` of
-[`taylorf2_slice`](@ref) and zero elsewhere. The loop never evaluates the model at `f = 0`.
-"""
-function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g) where {T}
-    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
+# TaylorF2 (`XLALSimInspiralTaylorF2`) on the supplied frequencies: nonnegative amplitude and
+# unwrapped phase, zero outside `[f_start, f_max]`. Grids may start above zero; the loop never
+# evaluates the model at `f = 0`. The inclination factors are applied by `hphc_fd`. Inputs are
+# trusted; run `validate_parameters` on the host first.
+function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::TaylorF2)
+    T, p = promote_parameters(aligned_parameters(params))
+    f_min, f_max = frequency_bounds(g, f)
+    f_start = start_frequency(g, f_min)
+    lo, hi = frequency_slice(f, f_start, f_min, f_max)
+    delta_f = step(f)
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    lo > hi && return (; amplitude, phase)
     m1 = p.mass_1
     m2 = p.mass_2
     r = p.luminosity_distance * 1.0e6 * PC_SI
@@ -391,25 +316,24 @@ function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, d
     m = m1 + m2
     m_sec = m * MTSUN_SI
     eta = m1 * m2 / (m * m)
-    piM = Float64(π) * m_sec
-    shft = gps_time_shift(deltaF)
+    pi_m = Float64(π) * m_sec
+    shft = gps_time_shift(delta_f)
 
     pn = truncate_phasing(
         taylorf2_pn_phasing(m1, m2, p.chi_1, p.chi_2; spin_order = g.pn_spin_order),
         g.pn_phase_order,
     )
-    amplitude = TaylorF2Amplitude(eta, g.pn_amplitude_order)
+    correction = TaylorF2Amplitude(eta, g.pn_amplitude_order)
     amp0 = -4.0 * m1 * m2 / r * MRSUN_SI * MTSUN_SI * sqrt(Float64(π) / 12.0)
-    ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(piM * f_ref)) : zero(amp0)
+    ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(pi_m * f_ref)) : zero(amp0)
 
-    h = zeros(Complex{T}, nout)
     for i in lo:hi
-        frequency = i * deltaF
-        v = cbrt(piM * frequency)
+        frequency = f[i]
+        v = cbrt(pi_m * frequency)
         phasing = taylorf2_phasing(pn, v)
-        amp = amp0 * taylorf2_amplitude_factor(amplitude, v) * v
+        amp = amp0 * taylorf2_amplitude_factor(correction, v) * v
         x = (phasing + ((shft * frequency - 2.0 * p.phase) - ref_phasing)) - PI_4
-        h[i + 1] = complex(amp * cos(x), -(amp * sin(x)))
+        amplitude[i], phase[i] = canonical_amplitude_phase(amp, -x)
     end
-    return h
+    return (; amplitude, phase)
 end

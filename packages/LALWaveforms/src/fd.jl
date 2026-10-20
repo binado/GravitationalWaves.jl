@@ -1,5 +1,5 @@
 """
-    hphc_fd(f::AbstractRange, params, generator::LALWaveformGenerator) -> (; plus, cross)
+    hphc_fd(f::AbstractRange{Float64}, params, generator::LALWaveformGenerator) -> (; plus, cross)
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz), following
 bilby's `lal_binary_black_hole`. `params` is a `NamedTuple` with bilby's names and
@@ -14,7 +14,7 @@ Throws [`LALError`](@ref) when LAL rejects the input, and `ArgumentError` for
 malformed `params` or `f`; mass parameters other than `mass_1`, `mass_2` are converted
 with `GWParameterConversion.convert_parameters`.
 """
-function hphc_fd(f::AbstractRange, params, g::LALWaveformGenerator)
+function hphc_fd(f::AbstractRange{Float64}, params, g::LALWaveformGenerator)
     p = bilby_parameters(params)
     check_frequency_grid(f)
     df = step(f)
@@ -112,13 +112,13 @@ function time_shift!(h, f, f_min, f_max, dt)
 end
 
 """
-    validate_parameters(f::AbstractRange, params::NamedTuple, generator::LALWaveformGenerator) -> nothing
+    validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, generator::LALWaveformGenerator) -> nothing
 
 Check the grid and the parameter names and redundant mass parameters, as [`hphc_fd`](@ref) does
 before calling LAL (which itself rejects unphysical values with a [`LALError`](@ref)). Provided
 so generic code can validate with any backend.
 """
-function validate_parameters(f::AbstractRange, params::NamedTuple, ::LALWaveformGenerator)
+function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, ::LALWaveformGenerator)
     check_frequency_grid(f)
     bilby_parameters(params)
     return nothing

@@ -18,7 +18,7 @@ class SelectionTests(unittest.TestCase):
             "GWSurrogates": ["GWSurrogates"],
             "GWWaveforms": ["GWWaveforms"],
             "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
-            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms"],
+            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSurrogates"],
             "GWParameterConversion": CONVERSION_AFFECTED,
         }
         for package, expected in cases.items():

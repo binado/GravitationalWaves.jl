@@ -21,31 +21,28 @@ import ForwardDiff as FD
 
     @testset "IMRPhenomD" begin
         m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
-        swapped = G.phenomd_model(29.0, 36.0, 0.3, 0.5, 50.0, 1.3)
         for Mf in (0.005, 0.02, 0.05, 0.1)
-            @test G.phenomd_amplitude(m, Mf) == G.phenomd_amplitude(swapped, Mf)
-            @test G.phenomd_phase(m, Mf) == G.phenomd_phase(swapped, Mf)
+            @test isfinite(G.phenomd_amplitude(m, Mf))
+            @test isfinite(G.phenomd_phase(m, Mf))
         end
 
         # The amplitude is continuous at the region boundaries, the phase and its derivative too.
         ε = 1.0e-9
-        for Mf in (G.AMP_FJOIN_INS, m.amp.fmaxCalc)
+        for Mf in (G.AMP_FJOIN_INS, m.amp.f_max_calc)
             @test G.phenomd_amplitude(m, Mf - ε) ≈ G.phenomd_amplitude(m, Mf + ε) rtol = 1.0e-6
         end
-        for Mf in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+        for Mf in (G.PHI_FJOIN_INS, m.conn.f_mrd_join)
             @test G.phenomd_phase(m, Mf - ε) ≈ G.phenomd_phase(m, Mf + ε) rtol = 1.0e-6
             d_left = (G.phenomd_phase(m, Mf - ε) - G.phenomd_phase(m, Mf - 2ε)) / ε
             d_right = (G.phenomd_phase(m, Mf + 2ε) - G.phenomd_phase(m, Mf + ε)) / ε
             @test d_left ≈ d_right rtol = 1.0e-3
         end
-        # The Lorentzian-like merger-ringdown ansatz peaks at fmaxCalc.
-        peak = G.amp_mrd_ansatz(m.amp.fmaxCalc, m.amp)
-        @test peak > G.amp_mrd_ansatz(0.99 * m.amp.fmaxCalc, m.amp)
-        @test peak > G.amp_mrd_ansatz(1.01 * m.amp.fmaxCalc, m.amp)
+        # The Lorentzian-like merger-ringdown ansatz peaks at fmax_calc.
+        peak = G.amp_mrd_ansatz(m.amp.f_max_calc, m.amp)
+        @test peak > G.amp_mrd_ansatz(0.99 * m.amp.f_max_calc, m.amp)
+        @test peak > G.amp_mrd_ansatz(1.01 * m.amp.f_max_calc, m.amp)
 
-        # Swapping the components is a branch-free `ifelse`, and eta is snapped only by rounding.
-        @test G.order_by_mass(1.0, 2.0, 0.1, 0.2) == (2.0, 1.0, 0.2, 0.1)
-        @test G.order_by_mass(2.0, 1.0, 0.1, 0.2) == (2.0, 1.0, 0.1, 0.2)
+        # Eta is snapped only by rounding.
         @test G.nudged_eta(1.0, 1.0) == 0.25
         @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
         @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
@@ -69,8 +66,8 @@ import ForwardDiff as FD
                 Mf -> G.amp_int_ansatz(Mf, m.amp),
                 Mf -> G.amp_mrd_ansatz(Mf, m.amp),
                 Mf -> G.phi_ins_ansatz_int(Mf, G.useful_powers(Mf), m.phi_pre, m.phi),
-                Mf -> m.phi.etaInv * G.phi_int_ansatz(Mf, m.phi) + m.conn.C1Int + m.conn.C2Int * Mf,
-                Mf -> m.phi.etaInv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.C1MRD + m.conn.C2MRD * Mf,
+                Mf -> m.phi.eta_inv * G.phi_int_ansatz(Mf, m.phi) + m.conn.c1_int + m.conn.c2_int * Mf,
+                Mf -> m.phi.eta_inv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.c1_mrd + m.conn.c2_mrd * Mf,
             )
             for piece in pieces, Mf in exp10.(range(-4, log10(10.0); length = 60))
                 @test isfinite(piece(Mf))
@@ -82,11 +79,11 @@ import ForwardDiff as FD
     @testset "gradients across the region boundaries" begin
         m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
         ε = 1.0e-7
-        for edge in (G.AMP_FJOIN_INS, m.amp.fmaxCalc), Mf in (edge - ε, edge, edge + ε)
+        for edge in (G.AMP_FJOIN_INS, m.amp.f_max_calc), Mf in (edge - ε, edge, edge + ε)
             @test isfinite(FD.derivative(x -> G.phenomd_amplitude(m, x), Mf))
         end
         # The phase is C¹ across both joins.
-        for edge in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+        for edge in (G.PHI_FJOIN_INS, m.conn.f_mrd_join)
             left = FD.derivative(x -> G.phenomd_phase(m, x), edge - ε)
             right = FD.derivative(x -> G.phenomd_phase(m, x), edge + ε)
             @test isfinite(left) && isfinite(right)
@@ -133,44 +130,39 @@ import ForwardDiff as FD
     end
 end
 
-@testset "TaylorF2 static slice against the loop" begin
+@testset "TaylorF2 amplitude_phase_fd is zero outside the band" begin
     f = range(0, 256; step = 0.25)
     params = (
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
         a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
     )
-    p = GWWaveforms.aligned_parameters(params)
-    df = Float64(step(f))
     for g in (
             TaylorF2(; minimum_frequency = 25.0),
             TaylorF2(; minimum_frequency = 25.0, maximum_frequency = 180.0, pn_amplitude_order = 3),
             TaylorF2(; minimum_frequency = 20.0, pn_phase_order = 4, pn_spin_order = 3, reference_frequency = 0),
         )
         f_min, f_max = GWWaveforms.frequency_bounds(g, f)
-        f_start = g.pn_amplitude_order != 0 ?
-            GWWaveforms.f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-        lo, hi = GWWaveforms.taylorf2_slice(f, f_start, f_min, f_max)
-        expected = GWWaveforms.taylorf2_fd(Float64, length(f), df, p, g, f_start, f_max)
-        expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
-        got = GWWaveforms.taylorf2_fd_slice(Float64, length(f), lo, hi, df, p, g)
-        @test got ≈ expected rtol = 1.0e-12
-        @test all(iszero, got[1:lo]) && all(iszero, got[(hi + 2):end])
+        ap = amplitude_phase_fd(f, params, g)
+        inband = [f_min <= fi <= f_max for fi in f]
+        @test all(iszero, ap.amplitude[.!inband]) && all(iszero, ap.phase[.!inband])
+        @test all(>(0), ap.amplitude[inband])
     end
     # Nothing in band.
-    @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
+    @test all(iszero, amplitude_phase_fd(f, params, TaylorF2(; minimum_frequency = 300.0, maximum_frequency = 400.0)).amplitude)
 end
 
-@testset "IMRPhenomD is symmetric under swapping the components" begin
+@testset "IMRPhenomD requires mass_1 ≥ mass_2" begin
     f = range(0, 512; step = 0.25)
     g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
     base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
     a = hphc_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0, a_1 = 0.5, a_2 = 0.3)), g)
-    b = hphc_fd(f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g)
-    @test a.plus == b.plus
-    @test a.cross == b.cross
+    @test isfinite(sum(abs2, a.plus))
+    @test_throws ArgumentError validate_parameters(
+        f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g,
+    )
 end
 
-@testset "IMRPhenomD static slice against the loop" begin
+@testset "IMRPhenomD amplitude_phase_fd band and cutoff" begin
     f = range(0, 256; step = 0.25)
     base = (
         luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -178,28 +170,29 @@ end
     )
     df = Float64(step(f))
     fcut(m1, m2) = GWWaveforms.F_CUT / ((m1 + m2) * GWWaveforms.MTSUN_SI)
-    # The last pair puts fCut inside the grid; the second-last makes it an exact grid point.
+    # The last pair puts f_cut inside the grid; the second-last makes it an exact grid point.
     for (m1, m2) in ((36.0, 29.0), (29.0, 36.0), (90.0, 85.0), (130.0, 100.0))
-        M = m1 + m2
-        # f_max such that f_max / df is an integer, below and above fCut.
         for g in (
                 IMRPhenomD(; minimum_frequency = 25.0),
                 IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = 180.0),
                 IMRPhenomD(; minimum_frequency = 20.1, maximum_frequency = 200.3, reference_frequency = 0),
                 IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = fcut(m1, m2)),
             )
-            p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
             f_min, f_max = GWWaveforms.frequency_bounds(g, f)
             fcut(m1, m2) > f_min || continue
-            lo, hi = GWWaveforms.taylorf2_slice(f, f_min, f_min, f_max)
-            expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
-            expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
-            got = GWWaveforms.phenomd_fd_slice(Float64, length(f), lo, hi, df, p, g, f_min, f_max)
-            @test maximum(abs, got .- expected) <= 1.0e-12 * maximum(abs, expected)
-            @test iszero.(got) == iszero.(expected)
+            ap = amplitude_phase_fd(f, merge(base, (; mass_1 = m1, mass_2 = m2)), g)
+            # LAL excludes the rounded-down upper edge.
+            upper = floor(min(fcut(m1, m2), f_max) / df) * df
+            for (i, fi) in enumerate(f)
+                if f_min <= fi < upper
+                    @test ap.amplitude[i] > 0
+                else
+                    @test iszero(ap.amplitude[i]) && iszero(ap.phase[i])
+                end
+            end
         end
     end
     # Nothing in band.
-    p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
-    @test all(iszero, GWWaveforms.phenomd_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0))
+    g = IMRPhenomD(; minimum_frequency = 300.0, maximum_frequency = 400.0)
+    @test all(iszero, amplitude_phase_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0)), g).amplitude)
 end

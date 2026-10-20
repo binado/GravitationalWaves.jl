@@ -25,7 +25,10 @@ Julia packages live in `packages/`:
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
-Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
+Waveform scope remains FD only, uniform `AbstractRange` grids, detector-frame masses, no tides.
+Native GWWaveforms models (TaylorF2, Phenom) evaluate supplied frequencies directly and allow
+nonzero grid starts; LALWaveforms retains zero-start grids. TaylorF2's phase keeps LAL's `-1/Δf`
+time shift, so it depends on the grid step. Grid validation runs on the host.
 The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms`, `GWDistributions` and `GWSurrogates` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
@@ -72,7 +75,7 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 `packages/GWWaveforms/src/` is generic over `Real`, with AD support restricted to ForwardDiff and Mooncake. Default tests check ForwardDiff against finite differences; `integration/GWWaveforms` checks both backends. Keep kernels type stable and free of `try`/`catch`. Validation runs separately through `validate_parameters` on the host. Grids and generators are fixed configuration; parameter-dependent branches and ordinary indexing are allowed. `maximum_frequency` must be positive. Preserve exact frequency bounds and LAL operation order.
 
-`taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`. `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with calibrated fits in `phenomd_fits.jl` and QNM tables in `phenomd_qnm.jl`. Its spline uses ordinary segment indexing and its piecewise amplitude/phase use lazy branches. Frequency evaluation uses loops over configured slices, with PhenomD's exclusive upper edge `i < floor(min(0.2 / M, f_max) / Δf)`. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux. LAL wins over Ripple or papers wherever they differ.
+`taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`. `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with calibrated fits in `phenomd_fits.jl` and QNM tables in `phenomd_qnm.jl`. Its spline uses ordinary segment indexing and its piecewise amplitude/phase use lazy branches. Each model owns its `amplitude_phase_fd` method: a plain loop calls one scalar kernel returning `(amplitude, phase)` over the configured slice of the supplied frequencies, with PhenomD's exclusive upper edge `f < Δf * floor(min(0.2 / M, f_max) / Δf)`. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux. LAL wins over Ripple or papers wherever they differ.
 
 `phenomxas.jl` implements the default IMRPhenomXAS calibration, using the pinned Ripple fits in `phenomxas_fits.jl` and remnant/PN expressions in `phenomxas_utils.jl`, checked against LAL 7.26. Tiny collocation systems use StaticArrays and pivoted solves; differentiate both matrix and RHS. Its cutoff is inclusive at `0.3 / M_sec`; lazy branches evaluate only the active amplitude and phase regions. Direct component-mass differences and a regular near-zero-spin ISCO evaluation avoid endpoint derivative singularities. Preserve these numerical regularizations. `integration/PhenomXASSolve` preserves the earlier solve investigation and is not a runtime dependency.
 
@@ -97,7 +100,7 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
-changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
+changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages and `GWSurrogates`. Python tooling changes test all three conversion/waveform
 packages, `GWDetectors`, and `GWMatchedFiltering`. Detector changes select `GWDetectors`. Inference changes select `GWMatchedFiltering`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.

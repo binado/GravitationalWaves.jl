@@ -51,7 +51,7 @@ function check_parameters(params::NamedTuple)
 end
 
 """
-    validate_parameters(f::AbstractRange, params::NamedTuple, generator::Approximant) -> nothing
+    validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, generator::AlignedSpinQuadrupolarWaveformGenerator) -> nothing
 
 Everything [`hphc_fd`](@ref) assumes but does not check: the grid, the parameter names, redundant mass parameters, spins that are not aligned
 or anti-aligned with the orbital angular momentum, a nonzero `eccentricity`, and the ranges of the
@@ -61,13 +61,15 @@ quasi-circular and aligned-spin, and LAL rejects such input too.
 
 Call it on the host with the parameters of one draw, before differentiating or sampling `hphc_fd`.
 """
-function validate_parameters(f::AbstractRange, params::NamedTuple, g::Approximant)
-    check_frequency_grid(f)
+function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::Union{TaylorF2, IMRPhenomD, IMRPhenomXAS})
+    Base.require_one_based_indexing(f)
+    length(f) >= 2 || throw(ArgumentError("frequency grid needs at least two points"))
+    isfinite(first(f)) && isfinite(last(f)) && first(f) >= 0 && step(f) > 0 ||
+        throw(ArgumentError("frequency grid must be finite, nonnegative and increasing"))
     check_parameters(params)
-    p = aligned_parameters(params)
+    aligned_params = aligned_parameters(params)
     f_min, f_max = frequency_bounds(g, f)
-    f_start = g.pn_amplitude_order != 0 ?
-        f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-    check_waveform_inputs(g, step(f), p, f_start, f_max)
+    f_start = start_frequency(g, f_min)
+    check_waveform_inputs(g, step(f), aligned_params, f_start, f_max)
     return nothing
 end

@@ -2,8 +2,12 @@
 #
 # Port of LALSimIMRPhenomD.c and LALSimIMRPhenomD_internals.c from LALSimulation (lalsuite
 # 7.26, GPL-2.0-or-later); model papers: Husa et al., arXiv:1508.07250 and Khan et al.,
-# arXiv:1508.07253. Variable names follow LAL (`fRD`, `fDM`, `delta0`, …) to keep the port
-# easy to compare line by line. Frequencies written `Mf` are geometric, `M f`.
+# arXiv:1508.07253. Variable names follow LAL's coefficient conventions while using Julia's
+# snake_case style to keep the port easy to compare line by line.
+# Frequencies written `Mf` are geometric, `M f`.
+
+include("qnm.jl")
+include("fits.jl")
 
 # Transition frequencies and cutoff, from LALSimIMRPhenomD.h.
 const F_CUT = 0.2
@@ -143,9 +147,6 @@ function spline_eval(s::NaturalCubicSpline, x)
     return s.ylo[i] + delx * (s.b[i] + delx * (s.c[i] + delx * s.d[i]))
 end
 
-include("phenomd_qnm.jl")
-include("phenomd_fits.jl")
-
 const FRING_SPLINE = NaturalCubicSpline(QNM_A, QNM_FRING)
 const FDAMP_SPLINE = NaturalCubicSpline(QNM_A, QNM_FDAMP)
 
@@ -224,28 +225,28 @@ function amp_ins_ansatz(Mf, pm, pre)
 end
 
 function amp_mrd_ansatz(f, a)
-    fDMgamma3 = a.fDM * a.gamma3
-    fminfRD = f - a.fRD
-    return exp(-(fminfRD) * a.gamma2 / (fDMgamma3)) *
-        (fDMgamma3 * a.gamma1) / (pow_2_of(fminfRD) + pow_2_of(fDMgamma3))
+    f_dm_gamma3 = a.f_dm * a.gamma3
+    fminf_rd = f - a.f_rd
+    return exp(-(fminf_rd) * a.gamma2 / (f_dm_gamma3)) *
+        (f_dm_gamma3 * a.gamma1) / (pow_2_of(fminf_rd) + pow_2_of(f_dm_gamma3))
 end
 
 function damp_mrd_ansatz(f, a)
-    fDMgamma3 = a.fDM * a.gamma3
-    pow2_fDMgamma3 = pow_2_of(fDMgamma3)
-    fminfRD = f - a.fRD
-    expfactor = exp(((fminfRD) * a.gamma2) / (fDMgamma3))
-    pow2pluspow2 = pow_2_of(fminfRD) + pow2_fDMgamma3
-    return ((-2 * a.fDM * (fminfRD) * a.gamma3 * a.gamma1) / pow2pluspow2 - (a.gamma2 * a.gamma1)) /
+    f_dm_gamma3 = a.f_dm * a.gamma3
+    pow2_f_dm_gamma3 = pow_2_of(f_dm_gamma3)
+    fminf_rd = f - a.f_rd
+    expfactor = exp(((fminf_rd) * a.gamma2) / (f_dm_gamma3))
+    pow2pluspow2 = pow_2_of(fminf_rd) + pow2_f_dm_gamma3
+    return ((-2 * a.f_dm * (fminf_rd) * a.gamma3 * a.gamma1) / pow2pluspow2 - (a.gamma2 * a.gamma1)) /
         (expfactor * (pow2pluspow2))
 end
 
 # Frequency of the peak of the merger-ringdown amplitude (eq. 20 of arXiv:1508.07253).
-function fmax_calc(fRD, fDM, gamma2, gamma3)
+function fmax_calc(f_rd, f_dm, gamma2, gamma3)
     below = !(gamma2 > 1)
     # The square root is only real for `gamma2 ≤ 1`; give it a safe argument otherwise.
     root = sqrt(ifelse(below, 1 - pow_2_of(gamma2), zero(gamma2)))
-    return abs(fRD + ifelse(below, (fDM * (-1 + root) * gamma3) / gamma2, (-fDM * gamma3) / gamma2))
+    return abs(f_rd + ifelse(below, (f_dm * (-1 + root) * gamma3) / gamma2, (-f_dm * gamma3) / gamma2))
 end
 
 function amp_int_col_fit_coeff(eta, eta2, chi)
@@ -265,36 +266,36 @@ end
 
 # Amplitude coefficients, `ComputeIMRPhenomDAmplitudeCoefficients`; masses are ordered
 # `m1 ≥ m2` and `chi1` is the spin on `m1`.
-function phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, fRD, fDM)
-    etaInv = 1.0 / eta
+function phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, f_rd, f_dm)
+    eta_inv = 1.0 / eta
     chi12 = chi1 * chi1
     chi22 = chi2 * chi2
     eta2 = eta * eta
     eta3 = eta * eta2
-    SetaPlus1 = 1.0 + Seta
+    seta_plus_1 = 1.0 + Seta
     chi = chi_pn(Seta, eta, chi1, chi2)
     xi = -1.0 + chi
 
     gamma1 = gamma1_fun(eta, eta2, xi)
     gamma2 = gamma2_fun(eta, eta2, xi)
     gamma3 = gamma3_fun(eta, eta2, xi)
-    fmaxCalc = fmax_calc(fRD, fDM, gamma2, gamma3)
+    f_max_calc = fmax_calc(f_rd, f_dm, gamma2, gamma3)
     rho1 = rho1_fun(eta, eta2, xi)
     rho2 = rho2_fun(eta, eta2, xi)
     rho3 = rho3_fun(eta, eta2, xi)
 
-    pre0 = amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, SetaPlus1)
+    pre0 = amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, seta_plus_1)
     pre = (; pre0..., seven_thirds = rho1, eight_thirds = rho2, three = rho3)
 
     # Deltas from three collocation points in [f1, f3].
     f1 = AMP_FJOIN_INS
-    f3 = fmaxCalc
+    f3 = f_max_calc
     dfx = 0.5 * (f3 - f1)
     f2 = f1 + dfx
     pm1 = useful_powers(f1)
     v1 = amp_ins_ansatz(f1, pm1, pre)
-    d1 = damp_ins_ansatz(f1, pm1, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, SetaPlus1, rho1, rho2, rho3)
-    mrd = (; fRD, fDM, gamma1, gamma2, gamma3)
+    d1 = damp_ins_ansatz(f1, pm1, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, seta_plus_1, rho1, rho2, rho3)
+    mrd = (; f_rd, f_dm, gamma1, gamma2, gamma3)
     v3 = amp_mrd_ansatz(f3, mrd)
     d2 = damp_mrd_ansatz(f3, mrd)
     v2 = amp_int_col_fit_coeff(eta, eta2, chi)
@@ -318,47 +319,47 @@ function phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, fRD, fDM)
     delta4 = delta4_fun(args...)
 
     return (;
-        amp0 = amp0_func(eta), pre, fRD, fDM, gamma1, gamma2, gamma3, fmaxCalc,
+        amp0 = amp0_func(eta), pre, f_rd, f_dm, gamma1, gamma2, gamma3, f_max_calc,
         delta0, delta1, delta2, delta3, delta4,
     )
 end
 
 function _phenomd_amplitude(a, Mf, pm)
-    AmpPreFac = a.amp0 * pm.m_seven_sixths
+    amp_pre_fac = a.amp0 * pm.m_seven_sixths
     value = if Mf < AMP_FJOIN_INS
         amp_ins_ansatz(Mf, pm, a.pre)
-    elseif Mf >= a.fmaxCalc
+    elseif Mf >= a.f_max_calc
         amp_mrd_ansatz(Mf, a)
     else
         amp_int_ansatz(Mf, a)
     end
-    return AmpPreFac * value
+    return amp_pre_fac * value
 end
 
 # --- phase ------------------------------------------------------------------------------
 
-function phi_mrd_ansatz_int(f, p)
+function phi_mrd_ansatz_int(f, coefficients::NamedTuple)
     sqrootf = sqrt(f)
     fpow1_5 = f * sqrootf
     fpow0_75 = sqrt(fpow1_5)
-    return -(p.alpha2 / f) + (4.0 / 3.0) * (p.alpha3 * fpow0_75) + p.alpha1 * f +
-        p.alpha4 * atan((f - p.alpha5 * p.fRD) / p.fDM)
+    return -(coefficients.alpha2 / f) + (4.0 / 3.0) * (coefficients.alpha3 * fpow0_75) + coefficients.alpha1 * f +
+        coefficients.alpha4 * atan((f - coefficients.alpha5 * coefficients.f_rd) / coefficients.f_dm)
 end
 
-function dphi_mrd(f, p)
+function dphi_mrd(f, coefficients::NamedTuple)
     return (
-        p.alpha1 + p.alpha2 / pow_2_of(f) + p.alpha3 / f^0.25 +
-            p.alpha4 / (p.fDM * (1 + pow_2_of(f - p.alpha5 * p.fRD) / (pow_2_of(p.fDM))))
-    ) * p.etaInv
+        coefficients.alpha1 + coefficients.alpha2 / pow_2_of(f) + coefficients.alpha3 / f^0.25 +
+            coefficients.alpha4 / (coefficients.f_dm * (1 + pow_2_of(f - coefficients.alpha5 * coefficients.f_rd) / (pow_2_of(coefficients.f_dm))))
+    ) * coefficients.eta_inv
 end
 
-phi_int_ansatz(Mf, p) = p.beta1 * Mf - p.beta3 / (3.0 * pow_3_of(Mf)) + p.beta2 * log(Mf)
-dphi_int_ansatz(Mf, p) = (p.beta1 + p.beta3 / pow_4_of(Mf) + p.beta2 / Mf) * p.etaInv
-dphi_int_temp(ff, p, C2Int) = C2Int + (p.beta1 + p.beta3 / pow_4_of(ff) + p.beta2 / ff) * p.etaInv
+phi_int_ansatz(Mf, coefficients::NamedTuple) = coefficients.beta1 * Mf - coefficients.beta3 / (3.0 * pow_3_of(Mf)) + coefficients.beta2 * log(Mf)
+dphi_int_ansatz(Mf, coefficients::NamedTuple) = (coefficients.beta1 + coefficients.beta3 / pow_4_of(Mf) + coefficients.beta2 / Mf) * coefficients.eta_inv
+dphi_int_temp(ff, coefficients::NamedTuple, c2_int) = c2_int + (coefficients.beta1 + coefficients.beta3 / pow_4_of(ff) + coefficients.beta2 / ff) * coefficients.eta_inv
 
 # Prefactors of the inspiral phase that do not depend on frequency (`init_phi_ins_prefactors`).
 # `pn.v[k + 1]` is LAL's `pn->v[k]`.
-function phi_ins_prefactors(p, pn::TaylorF2Phasing)
+function phi_ins_prefactors(coefficients::NamedTuple, pn::TaylorF2Phasing)
     return (;
         initial_phasing = pn.v[6] - PI_4,
         two_thirds = pn.v[8] * PI_POWERS.two_thirds,
@@ -370,14 +371,14 @@ function phi_ins_prefactors(p, pn::TaylorF2Phasing)
         minus_one = pn.v[3] * PI_POWERS.inv,
         minus_four_thirds = pn.v[2] / PI_POWERS.four_thirds,
         minus_five_thirds = pn.v[1] * PI_POWERS.m_five_thirds,
-        one = p.sigma1,
-        four_thirds = p.sigma2 * 0.75,
-        five_thirds = p.sigma3 * 0.6,
-        two = p.sigma4 * 0.5,
+        one = coefficients.sigma1,
+        four_thirds = coefficients.sigma2 * 0.75,
+        five_thirds = coefficients.sigma3 * 0.6,
+        two = coefficients.sigma4 * 0.5,
     )
 end
 
-function phi_ins_ansatz_int(Mf, pm, pre, p)
+function phi_ins_ansatz_int(Mf, pm, pre, coefficients::NamedTuple)
     v = pm.third * PI_POWERS.third
     logv = log(v)
     phasing = pre.initial_phasing
@@ -394,11 +395,11 @@ function phi_ins_ansatz_int(Mf, pm, pre, p)
     phasing += (
         pre.one * Mf + pre.four_thirds * pm.four_thirds + pre.five_thirds * pm.five_thirds +
             pre.two * pm.two
-    ) * p.etaInv
+    ) * coefficients.eta_inv
     return phasing
 end
 
-function dphi_ins_ansatz_int(Mf, p, pn::TaylorF2Phasing)
+function dphi_ins_ansatz_int(Mf, coefficients::NamedTuple, pn::TaylorF2Phasing)
     Pi = Float64(π)
     v = cbrt(Pi * Mf)
     logv = log(v)
@@ -421,68 +422,68 @@ function dphi_ins_ansatz_int(Mf, p, pn::TaylorF2Phasing)
     Dphasing /= v8 * 3.0
     Dphasing *= Pi
     Dphasing += (
-        p.sigma1 + p.sigma2 * v * PI_POWERS.m_third + p.sigma3 * v2 * PI_POWERS.m_two_thirds +
-            (p.sigma4 * PI_POWERS.inv) * v3
-    ) * p.etaInv
+        coefficients.sigma1 + coefficients.sigma2 * v * PI_POWERS.m_third + coefficients.sigma3 * v2 * PI_POWERS.m_two_thirds +
+            (coefficients.sigma4 * PI_POWERS.inv) * v3
+    ) * coefficients.eta_inv
     return Dphasing
 end
 
 # Phase coefficients before the C¹ continuity constants (`ComputeIMRPhenomDPhaseCoefficients`).
-function phenomd_phase_fits(eta, Seta, chi1, chi2, fRD, fDM)
+function phenomd_phase_fits(eta, Seta, chi1, chi2, f_rd, f_dm)
     eta2 = eta * eta
     chi = chi_pn(Seta, eta, chi1, chi2)
     xi = -1.0 + chi
     return (;
-        etaInv = 1.0 / eta,
-        sigma1 = sigma1Fit(eta, eta2, xi), sigma2 = sigma2Fit(eta, eta2, xi),
-        sigma3 = sigma3Fit(eta, eta2, xi), sigma4 = sigma4Fit(eta, eta2, xi),
-        beta1 = beta1Fit(eta, eta2, xi), beta2 = beta2Fit(eta, eta2, xi), beta3 = beta3Fit(eta, eta2, xi),
-        alpha1 = alpha1Fit(eta, eta2, xi), alpha2 = alpha2Fit(eta, eta2, xi),
-        alpha3 = alpha3Fit(eta, eta2, xi), alpha4 = alpha4Fit(eta, eta2, xi),
-        alpha5 = alpha5Fit(eta, eta2, xi),
-        fRD, fDM,
+        eta_inv = 1.0 / eta,
+        sigma1 = sigma1_fit(eta, eta2, xi), sigma2 = sigma2_fit(eta, eta2, xi),
+        sigma3 = sigma3_fit(eta, eta2, xi), sigma4 = sigma4_fit(eta, eta2, xi),
+        beta1 = beta1_fit(eta, eta2, xi), beta2 = beta2_fit(eta, eta2, xi), beta3 = beta3_fit(eta, eta2, xi),
+        alpha1 = alpha1_fit(eta, eta2, xi), alpha2 = alpha2_fit(eta, eta2, xi),
+        alpha3 = alpha3_fit(eta, eta2, xi), alpha4 = alpha4_fit(eta, eta2, xi),
+        alpha5 = alpha5_fit(eta, eta2, xi),
+        f_rd, f_dm,
     )
 end
 
 # Join the inspiral, intermediate and merger-ringdown phases with continuous value and
 # first derivative (`ComputeIMRPhenDPhaseConnectionCoefficients`).
-function phase_connection(p, pn, pre)
-    etaInv = p.etaInv
-    fMRDJoin = 0.5 * p.fRD
+function phase_connection(coefficients::NamedTuple, pn, pre)
+    eta_inv = coefficients.eta_inv
+    f_mrd_join = 0.5 * coefficients.f_rd
 
-    DPhiIns = dphi_ins_ansatz_int(PHI_FJOIN_INS, p, pn)
-    DPhiInt = dphi_int_ansatz(PHI_FJOIN_INS, p)
-    C2Int = DPhiIns - DPhiInt
+    d_phi_ins = dphi_ins_ansatz_int(PHI_FJOIN_INS, coefficients, pn)
+    d_phi_int = dphi_int_ansatz(PHI_FJOIN_INS, coefficients)
+    c2_int = d_phi_ins - d_phi_int
     pm = useful_powers(PHI_FJOIN_INS)
-    C1Int = phi_ins_ansatz_int(PHI_FJOIN_INS, pm, pre, p) -
-        etaInv * phi_int_ansatz(PHI_FJOIN_INS, p) - C2Int * PHI_FJOIN_INS
+    c1_int = phi_ins_ansatz_int(PHI_FJOIN_INS, pm, pre, coefficients) -
+        eta_inv * phi_int_ansatz(PHI_FJOIN_INS, coefficients) - c2_int * PHI_FJOIN_INS
 
-    PhiIntTempVal = etaInv * phi_int_ansatz(fMRDJoin, p) + C1Int + C2Int * fMRDJoin
-    DPhiIntTempVal = dphi_int_temp(fMRDJoin, p, C2Int)
-    DPhiMRDVal = dphi_mrd(fMRDJoin, p)
-    C2MRD = DPhiIntTempVal - DPhiMRDVal
-    C1MRD = PhiIntTempVal - etaInv * phi_mrd_ansatz_int(fMRDJoin, p) - C2MRD * fMRDJoin
-    return (; C1Int, C2Int, C1MRD, C2MRD, fMRDJoin)
+    phi_int_temp_val = eta_inv * phi_int_ansatz(f_mrd_join, coefficients) + c1_int + c2_int * f_mrd_join
+    d_phi_int_temp_val = dphi_int_temp(f_mrd_join, coefficients, c2_int)
+    d_phi_mrd_val = dphi_mrd(f_mrd_join, coefficients)
+    c2_mrd = d_phi_int_temp_val - d_phi_mrd_val
+    c1_mrd = phi_int_temp_val - eta_inv * phi_mrd_ansatz_int(f_mrd_join, coefficients) - c2_mrd * f_mrd_join
+    return (; c1_int, c2_int, c1_mrd, c2_mrd, f_mrd_join)
 end
 
 function _phenomd_phase(m, Mf, pm)
-    p = m.phi
+    coefficients = m.phi
     if Mf < PHI_FJOIN_INS
-        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
-    elseif Mf >= m.conn.fMRDJoin
-        return p.etaInv * phi_mrd_ansatz_int(Mf, p) + m.conn.C1MRD + m.conn.C2MRD * Mf
+        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, coefficients)
+    elseif Mf >= m.conn.f_mrd_join
+        return coefficients.eta_inv * phi_mrd_ansatz_int(Mf, coefficients) + m.conn.c1_mrd + m.conn.c2_mrd * Mf
     else
-        return p.etaInv * phi_int_ansatz(Mf, p) + m.conn.C1Int + m.conn.C2Int * Mf
+        return coefficients.eta_inv * phi_int_ansatz(Mf, coefficients) + m.conn.c1_int + m.conn.c2_int * Mf
     end
 end
 
 # 3PN spin-spin term that LAL's TaylorF2 has but PhenomD was tuned without.
 function subtract_3pn_ss(m1, m2, M, eta, chi1, chi2)
-    m1M = m1 / M
-    m2M = m2 / M
+    m1_m = m1 / M
+    m2_m = m2 / M
     pn_ss3 = (326.75 / 1.12 + 557.5 / 1.8 * eta) * eta * chi1 * chi2
-    pn_ss3 += ((4703.5 / 8.4 + 2935.0 / 6.0 * m1M - 120.0 * m1M * m1M) + (-4108.25 / 6.72 - 108.5 / 1.2 * m1M + 125.5 / 3.6 * m1M * m1M)) * m1M * m1M * chi1 * chi1
-    pn_ss3 += ((4703.5 / 8.4 + 2935.0 / 6.0 * m2M - 120.0 * m2M * m2M) + (-4108.25 / 6.72 - 108.5 / 1.2 * m2M + 125.5 / 3.6 * m2M * m2M)) * m2M * m2M * chi2 * chi2
+    pn_ss3 += ((4703.5 / 8.4 + 2935.0 / 6.0 * m1_m - 120.0 * m1_m * m1_m) + (-4108.25 / 6.72 - 108.5 / 1.2 * m1_m + 125.5 / 3.6 * m1_m * m1_m)) * m1_m * m1_m * chi1 * chi1
+    pn_ss3 += ((4703.5 / 8.4 + 2935.0 / 6.0 * m2_m - 120.0 * m2_m * m2_m) + (-4108.25 / 6.72 - 108.5 / 1.2 * m2_m + 125.5 / 3.6 * m2_m * m2_m)) * m2_m * m2_m * chi2 * chi2
     return pn_ss3
 end
 
@@ -501,13 +502,7 @@ struct PhenomDModel{A, P, N, PF, C, T}
     conn::C
     t0::T
     phi_precalc::T
-    MfRef::T
-end
-
-# Order the components so that `m1 ≥ m2`, carrying the spins along.
-function order_by_mass(m1, m2, chi1, chi2)
-    keep = m1 >= m2
-    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
+    mf_ref::T
 end
 
 # Symmetric mass ratio with `PhenomInternal_nudge`: eta is snapped to 1/4 if it exceeds it only
@@ -521,13 +516,13 @@ end
 """
     phenomd_model(m1, m2, chi1, chi2, f_ref, phi0) -> PhenomDModel
 
-Set up IMRPhenomD for component masses `m1`, `m2` (solar masses, any order) with aligned
+Set up IMRPhenomD for component masses `m1 ≥ m2` (solar masses) with aligned
 spins `chi1`, `chi2`, fixing the orbital phase `phi0` at the reference frequency `f_ref`
-(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`. The inputs are trusted and
+(Hz). The inputs are trusted and
 [`check_waveform_inputs`](@ref) checks eta and the final spin before numerical evaluation.
 """
-function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
-    m1, m2, chi1, chi2 = order_by_mass(m1_in, m2_in, chi1_in, chi2_in)
+function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, f_ref, phi0)
+    m1, m2, chi1, chi2 = m1_in, m2_in, chi1_in, chi2_in
     M = m1 + m2
     eta = nudged_eta(m1, m2)
     M_sec = M * MTSUN_SI
@@ -536,16 +531,16 @@ function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
     Seta = (m1 - m2) / M
     finspin = final_spin_0815(eta, m1, m2, chi1, chi2)
     erad = erad_rational_0815(eta, m1, m2, chi1, chi2)
-    fRD = fring(erad, finspin)
-    fDM = fdamp(erad, finspin)
+    f_rd = fring(erad, finspin)
+    f_dm = fdamp(erad, finspin)
 
-    amp = phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, fRD, fDM)
-    phi = phenomd_phase_fits(eta, Seta, chi1, chi2, fRD, fDM)
+    amp = phenomd_amplitude_coefficients(eta, Seta, chi1, chi2, f_rd, f_dm)
+    phi = phenomd_phase_fits(eta, Seta, chi1, chi2, f_rd, f_dm)
 
     # TaylorF2 phasing to 3.5PN spin order, minus the 3PN spin-spin term (see `subtract_3pn_ss`).
     pn0 = taylorf2_pn_phasing(m1, m2, chi1, chi2; spin_order = 7)
-    testGRcor = 1.0
-    v6 = pn0.v[7] - (subtract_3pn_ss(m1, m2, M, eta, chi1, chi2) * pn0.v[1]) * testGRcor
+    test_g_rcor = 1.0
+    v6 = pn0.v[7] - (subtract_3pn_ss(m1, m2, M, eta, chi1, chi2) * pn0.v[1]) * test_g_rcor
     pn = TaylorF2Phasing(
         (pn0.v[1], pn0.v[2], pn0.v[3], pn0.v[4], pn0.v[5], pn0.v[6], v6, pn0.v[8]),
         pn0.vlogv5, pn0.vlogv6,
@@ -556,15 +551,15 @@ function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
     phi = (; phi..., conn...)
 
     # Time shift so that the peak amplitude sits near t = 0.
-    t0 = dphi_mrd(amp.fmaxCalc, phi)
+    t0 = dphi_mrd(amp.f_max_calc, phi)
 
-    MfRef = M_sec * fRef
-    pmRef = useful_powers(MfRef)
+    mf_ref = M_sec * f_ref
+    pm_ref = useful_powers(mf_ref)
     m0 = (; phi, phi_pre, conn)
-    phifRef = _phenomd_phase(m0, MfRef, pmRef)
+    phif_ref = _phenomd_phase(m0, mf_ref, pm_ref)
     # Factor of 2 because phi0 is the orbital phase.
-    phi_precalc = 2.0 * phi0 + phifRef
-    return PhenomDModel(M_sec, amp, phi, pn, phi_pre, conn, t0, phi_precalc, MfRef)
+    phi_precalc = 2.0 * phi0 + phif_ref
+    return PhenomDModel(M_sec, amp, phi, pn, phi_pre, conn, t0, phi_precalc, mf_ref)
 end
 
 """
@@ -584,107 +579,66 @@ phenomd_phase(model::PhenomDModel, Mf) = _phenomd_phase(model, Mf, useful_powers
 
 # --- driver -----------------------------------------------------------------------------
 
-"""
-    phenomd_fd(T, nout, deltaF, p, g, f_start, f_max)
+# IMRPhenomD (`XLALSimIMRPhenomDGenerateFD`) on the supplied frequencies: nonnegative amplitude
+# and unwrapped phase, zero outside `[f_start, f_max]` and above `min(f_max, 0.2 / M)`. The upper
+# edge is rounded down to a multiple of `step(f)` and excluded, as in LAL. The inclination factors
+# are applied by `hphc_fd`. Inputs are trusted; run `validate_parameters` on the host first.
+function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomD)
+    T, p = promote_parameters(aligned_parameters(params))
+    f_min, f_max = frequency_bounds(g, f)
+    f_start = start_frequency(g, f_min)
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    lo, hi = frequency_slice(f, f_start, f_min, f_max)
+    lo > hi && return (; amplitude, phase)
 
-Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i deltaF`,
-`i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
-`min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
-end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
-
-The inputs are trusted (see [`validate_parameters`](@ref)).
-This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref) to apply the public frequency bounds.
-"""
-function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
     m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = g.reference_frequency
-    fRef = fRef_in == 0.0 ? f_start : fRef_in
-    fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
-    f_max_prime = f_max == 0 ? fCut : f_max
-    f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
+    f_cut = F_CUT / ((m1 + m2) * MTSUN_SI)
+    f_max_eff = ifelse(f_cut < f_max, f_cut, f_max)
+    delta_f = Float64(step(f))
+    cutoff = floor(f_max_eff / delta_f) * delta_f
 
-    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    M = m1 + m2
-    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
-
-    i_start = trunc(Int, f_start / deltaF)
-    i_stop = trunc(Int, f_max_prime / deltaF)
-    h = zeros(Complex{T}, nout)
-    for i in i_start:(min(i_stop, nout) - 1)
-        Mf = model.M_sec * (i * deltaF)
-        pm = useful_powers(Mf)
-        amp = _phenomd_amplitude(model.amp, Mf, pm)
-        phi = _phenomd_phase(model, Mf, pm)
-        phi -= model.t0 * (Mf - model.MfRef) + model.phi_precalc
-        a = amp0 * amp
-        h[i + 1] = complex(a * cos(phi), -(a * sin(phi)))
-    end
-    return h
-end
-
-"""
-    phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
-
-The same strain as [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
-[`taylorf2_slice`](@ref). The loop skips bins at and beyond
-`floor(min(fCut, f_max) / deltaF)`, preserving LAL's exclusive upper edge.
-"""
-function phenomd_fd_slice(
-        ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
-    ) where {T}
-    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
-    m1 = p.mass_1
-    m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = g.reference_frequency
-    fRef = fRef_in == 0.0 ? f_start : fRef_in
-    M = m1 + m2
-    fCut = F_CUT / (M * MTSUN_SI)
-    f_max_eff = ifelse(fCut < f_max, fCut, f_max)
-
-    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
-
-    h = zeros(Complex{T}, nout)
-    stop = floor(f_max_eff / deltaF)
+    f_ref = phenom_reference_frequency(g, f_start)
+    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, f_ref, p.phase)
+    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
     for i in lo:hi
-        if i < stop
-            Mf = model.M_sec * (i * deltaF)
-            pm = useful_powers(Mf)
-            amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
-            phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
-            h[i + 1] = complex(amp * cos(phi), -(amp * sin(phi)))
-        end
+        amplitude[i], phase[i] = phenomd_amplitude_phase(f[i], model, amp0, cutoff)
     end
-    return h
+    return (; amplitude, phase)
 end
 
-# Inputs `phenomd_fd` does not check; run by `validate_parameters`.
-function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
-    m1 = p.mass_1
-    m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = g.reference_frequency
-    fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
-    deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
-    (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
+# Scalar evaluation at a positive frequency in Hz. Coefficients and the LAL-rounded upper
+# cutoff are prepared once per waveform; the caller handles the lower bounds.
+function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
+    frequency < cutoff || return (zero(amp0), zero(amp0))
+    Mf = model.M_sec * frequency
+    pm = useful_powers(Mf)
+    amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
+    phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.mf_ref) + model.phi_precalc)
+    return canonical_amplitude_phase(amp, -phi)
+end
+
+# Inputs `amplitude_phase_fd` does not check; run by `validate_parameters`.
+function check_waveform_inputs(g::IMRPhenomD, delta_f, params::NamedTuple, f_start, f_max)
+    m1 = params.mass_1
+    m2 = params.mass_2
+    f_ref_in = g.reference_frequency
+    f_ref_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
+    delta_f > 0 || throw(ArgumentError("frequency step must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
-    distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
-    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
-        throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
+    check_phenom_parameters(params)
 
-    fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
-    fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))
-    f_max_prime = f_max > fCut ? fCut : f_max
+    f_cut = F_CUT / ((m1 + m2) * MTSUN_SI)
+    f_cut > f_start || throw(ArgumentError("f_cut = $f_cut Hz is not above f_min = $f_start Hz"))
+    f_max_prime = f_max > f_cut ? f_cut : f_max
     f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
 
-    a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)
-    eta = a * b / ((a + b) * (a + b))
-    eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-    final_spin_0815(nudged_eta(a, b), a, b, chi1, chi2) > 1.0 &&
+    m1 >= m2 || throw(ArgumentError("IMRPhenomD requires mass_1 ≥ mass_2"))
+    eta = m1 * m2 / ((m1 + m2) * (m1 + m2))
+    0 <= eta <= 0.25 + 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
+    final_spin_0815(nudged_eta(m1, m2), m1, m2, params.chi_1, params.chi_2) > 1.0 &&
         throw(ArgumentError("final spin > 1.0 is not supported"))
     return nothing
 end

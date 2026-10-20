@@ -1,5 +1,6 @@
 using Aqua
 using JET
+import AbstractGWWaveforms
 
 @testset "Aqua" begin
     Aqua.test_all(GWWaveforms)
@@ -19,7 +20,8 @@ if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
             a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),
         )
         for generator in (TaylorF2(), IMRPhenomD(), IMRPhenomXAS())
-            JET.@test_opt target_modules = (GWWaveforms,) hphc_fd(f, params, generator)
+            JET.@test_opt target_modules = (GWWaveforms, AbstractGWWaveforms) hphc_fd(f, params, generator)
+            JET.@test_opt target_modules = (GWWaveforms,) amplitude_phase_fd(f, params, generator)
         end
     end
 end

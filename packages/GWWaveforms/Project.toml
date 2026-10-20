@@ -15,7 +15,7 @@ GWParameterConversion = {path = "../GWParameterConversion"}
 LALWaveforms = {path = "../LALWaveforms"}
 
 [compat]
-AbstractGWWaveforms = "0.2"
+AbstractGWWaveforms = "0.3"
 Aqua = "0.8"
 DifferentiationInterface = "0.7"
 FiniteDifferences = "0.12"

@@ -100,3 +100,23 @@ if you use them.
 ## License
 
 MIT; see [LICENSE](LICENSE).
+
+
+### Shared waveform interface
+
+`PrecessingGenerator <: AbstractGWWaveforms.HigherModesWaveformGenerator` implements
+`waveform_modes_td(generator, params; dt=nothing, times=nothing)`, returning seconds, an
+ordered tuple of signed `(l,m)` labels, and a `(sample, mode)` complex matrix in physical
+strain. Columns run from `l=2` through `ell_max`, with `m=-l:l`. These are the inertial
+modes in the LAL source frame at the reference epoch; `init_orbphase` and `init_quat`
+retain their existing frame interpretation. Modes exclude both `inclination` and `phi_ref`.
+The observer convention is `(theta, phi) = (inclination, π/2 - phi_ref)`.
+
+`hphc_td` uses shared harmonic assembly and retains its keywords and `(t, hplus, hcross)`
+result. `inertial_modes`, `mode_sum(modes, ell_max, inclination, phi_ref)`, and `sylm_m2`
+remain available. The generator reports precessing spin support and differentiable evaluation;
+its frequency accessors return `f_ref`, `f_low`, and `nothing` for the upper bound.
+It does not provide FD modes or arbitrary mode-array selection.
+
+Run `julia --project=packages/GWSurrogates benchmarks/GWSurrogates/assembly.jl` to measure
+harmonic assembly separately from generation and compare the previous Wigner-D sum.

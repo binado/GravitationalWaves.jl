@@ -1,6 +1,6 @@
 name = "AbstractGWWaveforms"
 uuid = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [compat]

@@ -329,7 +329,7 @@ function dynamics(
 
     i0 = 0
     if t_ref === nothing
-        y[1] = y0
+        y[1] = normalize_state(y0, normA, normB)
     else
         i0 = 0
         best = abs(s.tds[1] - t_ref)

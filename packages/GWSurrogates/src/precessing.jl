@@ -93,7 +93,7 @@ reference orbital frequency `f_ref` (in cycles/M, the orbital frequency `ω = π
 where `ω = π f_low` when `f_low > 0`.
 
 The output grid is the sparse model grid by default, a uniform grid of step `dt` starting at the
-start time, or the explicit `times`. Specify at most one of `dt`, `times`; `init_orbphase` and
+start time, or the explicit `times` (which must not start before the `f_low` start time). Specify at most one of `dt`, `times`; `init_orbphase` and
 `init_quat` give the orbital phase and the coprecessing-to-inertial rotation at the reference epoch.
 """
 function inertial_modes(
@@ -187,6 +187,7 @@ function inertial_modes(
     end
     t_out[end] <= t_coorb[end] + 0.01 || throw(ArgumentError("times extend beyond the end of the model"))
     t_out[1] >= t_coorb[1] || throw(ArgumentError("times start before the start of the model"))
+    t_low === nothing || t_out[1] >= t_low || throw(ArgumentError("times start before the f_low start time"))
     return (t = t_out, modes = spline_columns(t_out, t_coorb, h))
 end
 

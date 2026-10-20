@@ -144,10 +144,10 @@ function inertial_modes(
     # coprecessing ones, and rebuild the frame quantities. All columns share the knots, so they go
     # through one call: spins A and B, orbital phase, quaternion.
     resampled = spline_columns(t_coorb, dyn.tds, hcat(d.chiA, d.chiB, d.orbphase, d.quat))
-    chiA_copr = resampled[:, 1:3]
-    chiB_copr = resampled[:, 4:6]
-    orbphase = resampled[:, 7]
-    quat = resampled[:, 8:11]
+    chiA_copr = view(resampled, :, 1:3)
+    chiB_copr = view(resampled, :, 4:6)
+    orbphase = view(resampled, :, 7)
+    quat = view(resampled, :, 8:11)
     n = length(t_coorb)
     for k in 1:n
         a = rescale_to_norm((chiA_copr[k, 1], chiA_copr[k, 2], chiA_copr[k, 3]), chiA_norm)
@@ -157,7 +157,10 @@ function inertial_modes(
     end
     for k in 1:n
         nq = sqrt(quat[k, 1]^2 + quat[k, 2]^2 + quat[k, 3]^2 + quat[k, 4]^2)
-        quat[k, :] ./= nq
+        quat[k, 1] /= nq
+        quat[k, 2] /= nq
+        quat[k, 3] /= nq
+        quat[k, 4] /= nq
     end
 
     # Spins in the coorbital frame: rotate about z by the orbital phase.

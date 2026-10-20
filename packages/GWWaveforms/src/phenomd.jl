@@ -515,13 +515,13 @@ end
 """
     phenomd_model(m1, m2, chi1, chi2, f_ref, phi0) -> PhenomDModel
 
-Set up IMRPhenomD for component masses `m1`, `m2` (solar masses, any order) with aligned
+Set up IMRPhenomD for component masses `m1 ≥ m2` (solar masses) with aligned
 spins `chi1`, `chi2`, fixing the orbital phase `phi0` at the reference frequency `f_ref`
-(Hz). Mirrors `IMRPhenomDGenerateFD`, including the swap to `m1 ≥ m2`. The inputs are trusted and
+(Hz). The inputs are trusted and
 [`check_waveform_inputs`](@ref) checks eta and the final spin before numerical evaluation.
 """
 function phenomd_model(m1_in, m2_in, chi1_in, chi2_in, fRef, phi0)
-    m1, m2, chi1, chi2 = order_by_mass(m1_in, m2_in, chi1_in, chi2_in)
+    m1, m2, chi1, chi2 = m1_in, m2_in, chi1_in, chi2_in
     M = m1 + m2
     eta = nudged_eta(m1, m2)
     M_sec = M * MTSUN_SI
@@ -683,10 +683,10 @@ function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     f_max_prime = f_max > fCut ? fCut : f_max
     f_max_prime > f_start || throw(ArgumentError("f_max <= f_min"))
 
-    a, b, chi1, chi2 = order_by_mass(m1, m2, p.chi_1, p.chi_2)
-    eta = a * b / ((a + b) * (a + b))
-    eta - 0.25 <= 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-    final_spin_0815(nudged_eta(a, b), a, b, chi1, chi2) > 1.0 &&
+    m1 >= m2 || throw(ArgumentError("IMRPhenomD requires mass_1 ≥ mass_2"))
+    eta = m1 * m2 / ((m1 + m2) * (m1 + m2))
+    0 <= eta <= 0.25 + 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
+    final_spin_0815(nudged_eta(m1, m2), m1, m2, p.chi_1, p.chi_2) > 1.0 &&
         throw(ArgumentError("final spin > 1.0 is not supported"))
     return nothing
 end

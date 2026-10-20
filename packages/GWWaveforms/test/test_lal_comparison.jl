@@ -47,7 +47,6 @@ const CASES = [
     ("XAS antialigned", "IMRPhenomXAS", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
     ("XAS high spin", "IMRPhenomXAS", merge(BBH, (; a_1 = 0.99, a_2 = 0.99)), (;), 1.0e-10),
     ("XAS high ratio", "IMRPhenomXAS", merge(BBH, (; mass_1 = 100.0, mass_2 = 1.0, a_1 = 0.2)), (;), 1.0e-10),
-    ("XAS swapped labels", "IMRPhenomXAS", merge(BBH, (; mass_1 = 12.0, mass_2 = 31.0, a_1 = 0.8, a_2 = 0.2)), (;), 1.0e-10),
     ("XAS light", "IMRPhenomXAS", merge(BNS, (; mass_1 = 5.0, mass_2 = 3.0)), (;), 1.0e-10),
     ("XAS heavy cutoff", "IMRPhenomXAS", merge(BBH, (; mass_1 = 180.0, mass_2 = 120.0)), (;), 1.0e-10),
     ("XAS reference zero", "IMRPhenomXAS", merge(BBH, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),

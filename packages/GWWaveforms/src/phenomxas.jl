@@ -198,7 +198,7 @@ function phenomxas_amplitude(a, f)
 end
 
 function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
-    m1, m2, chi1, chi2 = order_by_mass(m1in, m2in, chi1in, chi2in)
+    m1, m2, chi1, chi2 = m1in, m2in, chi1in, chi2in
     r = xas_remnant(m1, m2, chi1, chi2)
     amplitude = xas_amplitude_coefficients(r, chi1, chi2)
     phase_coefficients = xas_phase_coefficients(r, chi1, chi2)
@@ -247,10 +247,10 @@ end
 function check_waveform_inputs(g::IMRPhenomXAS, deltaF, p, f_start, f_max)
     (deltaF > 0 && f_start > 0 && f_max > f_start && g.reference_frequency >= 0) || throw(ArgumentError("invalid frequency bounds for IMRPhenomXAS"))
     check_phenom_parameters(p)
-    a, b, c, d = order_by_mass(p.mass_1, p.mass_2, p.chi_1, p.chi_2)
-    a / b <= 1000 || throw(ArgumentError("IMRPhenomXAS requires mass ratio <= 1000"))
-    r = xas_remnant(a, b, c, d)
+    p.mass_1 >= p.mass_2 || throw(ArgumentError("IMRPhenomXAS requires mass_1 ≥ mass_2"))
+    p.mass_1 / p.mass_2 <= 1000 || throw(ArgumentError("IMRPhenomXAS requires mass ratio <= 1000"))
+    r = xas_remnant(p.mass_1, p.mass_2, p.chi_1, p.chi_2)
     (abs(r.a) < 1 && 0 < r.Erad < 1 && r.fMECO <= r.fISCO) || throw(ArgumentError("invalid remnant or MECO/ISCO frequencies"))
-    0.3 / ((a + b) * MTSUN_SI) > f_start || throw(ArgumentError("XAS cutoff must exceed the starting frequency"))
+    0.3 / ((p.mass_1 + p.mass_2) * MTSUN_SI) > f_start || throw(ArgumentError("XAS cutoff must exceed the starting frequency"))
     return nothing
 end

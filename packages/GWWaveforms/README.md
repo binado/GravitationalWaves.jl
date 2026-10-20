@@ -104,7 +104,7 @@ relative to the largest sample is about 1e-14 to 4e-13 for IMRPhenomD and 1e-13 
 IMRPhenomXAS fit tables and arithmetic were transcribed from
 [Ripple revision 58c5302](https://github.com/tedwards2412/ripple/tree/58c53024718697e0430b666ef5dd40ff3c2e029d/src/ripplegw/waveforms),
 with full complex polarizations and exact support compared against LALSimulation 7.26.
-The comparison covers equal and unequal masses, swapped component labels, high spins,
+The comparison covers equal and unequal masses, ordered component labels, high spins,
 high mass ratio, moving cutoffs and alternative frequency settings. LAL is the value oracle.
 Across these cases, the largest complex-polarization error relative to the largest sample
 is below `8e-12` (below `2e-13` for the tested ordinary stellar-mass binaries).

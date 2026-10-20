@@ -21,10 +21,9 @@ import ForwardDiff as FD
 
     @testset "IMRPhenomD" begin
         m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
-        swapped = G.phenomd_model(29.0, 36.0, 0.3, 0.5, 50.0, 1.3)
         for Mf in (0.005, 0.02, 0.05, 0.1)
-            @test G.phenomd_amplitude(m, Mf) == G.phenomd_amplitude(swapped, Mf)
-            @test G.phenomd_phase(m, Mf) == G.phenomd_phase(swapped, Mf)
+            @test isfinite(G.phenomd_amplitude(m, Mf))
+            @test isfinite(G.phenomd_phase(m, Mf))
         end
 
         # The amplitude is continuous at the region boundaries, the phase and its derivative too.
@@ -43,9 +42,7 @@ import ForwardDiff as FD
         @test peak > G.amp_mrd_ansatz(0.99 * m.amp.fmaxCalc, m.amp)
         @test peak > G.amp_mrd_ansatz(1.01 * m.amp.fmaxCalc, m.amp)
 
-        # Swapping the components is a branch-free `ifelse`, and eta is snapped only by rounding.
-        @test G.order_by_mass(1.0, 2.0, 0.1, 0.2) == (2.0, 1.0, 0.2, 0.1)
-        @test G.order_by_mass(2.0, 1.0, 0.1, 0.2) == (2.0, 1.0, 0.1, 0.2)
+        # Eta is snapped only by rounding.
         @test G.nudged_eta(1.0, 1.0) == 0.25
         @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
         @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
@@ -161,14 +158,15 @@ end
     @test all(iszero, GWWaveforms.taylorf2_amplitude_phase_slice(Float64, length(f), GWWaveforms.waveform_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()).amplitude)
 end
 
-@testset "IMRPhenomD is symmetric under swapping the components" begin
+@testset "IMRPhenomD requires mass_1 ≥ mass_2" begin
     f = range(0, 512; step = 0.25)
     g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
     base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
     a = hphc_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0, a_1 = 0.5, a_2 = 0.3)), g)
-    b = hphc_fd(f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g)
-    @test a.plus == b.plus
-    @test a.cross == b.cross
+    @test isfinite(sum(abs2, a.plus))
+    @test_throws ArgumentError validate_parameters(
+        f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g,
+    )
 end
 
 @testset "IMRPhenomD direct frequencies against the loop" begin

@@ -1,9 +1,3 @@
-# Order the components so that `m1 ≥ m2`, carrying the spins along.
-function order_by_mass(m1, m2, chi1, chi2)
-    keep = m1 >= m2
-    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
-end
-
 # LAL uses the starting frequency when no reference frequency is specified.
 phenom_reference_frequency(g, f_start) = g.reference_frequency == 0.0 ? f_start : g.reference_frequency
 

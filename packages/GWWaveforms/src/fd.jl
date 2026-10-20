@@ -34,9 +34,9 @@ end
 
 # All parameters converted to one floating-point type, so the kernels are type stable and dual
 # numbers in any parameter propagate through all of them.
-function promote_parameters(p::NamedTuple)
-    T = float(promote_type(map(typeof, values(p))...))
-    return T, map(T, p)
+function promote_parameters(params::NamedTuple)
+    T = float(promote_type(map(typeof, values(params))...))
+    return T, map(T, params)
 end
 
 # Convert a signed prefactor to the public nonnegative-amplitude, exp(+im * phase)
@@ -59,21 +59,21 @@ TaylorF2 retains its zero-start grid convention.
 The real element type is the floating-point type promoted from the parameters, including duals.
 """
 function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
-    T, p = promote_parameters(aligned_parameters(params))
+    T, params = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
         f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-    return amplitude_phase_fd(g, T, f, p, f_start, f_min, f_max)
+    return amplitude_phase_fd(g, T, f, params, f_start, f_min, f_max)
 end
 
-function amplitude_phase_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
+function amplitude_phase_fd(g::TaylorF2, T, f, params::NamedTuple, f_start, f_min, f_max)
     lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    return taylorf2_amplitude_phase_slice(T, length(f), lo, hi, Float64(step(f)), p, g)
+    return taylorf2_amplitude_phase_slice(T, length(f), lo, hi, Float64(step(f)), params, g)
 end
 
-function amplitude_phase_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
+function amplitude_phase_fd(g::IMRPhenomD, T, f, params::NamedTuple, f_start, f_min, f_max)
     lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
-    return phenomd_amplitude_phase_slice(T, f, lo, hi, p, g, f_start, f_max)
+    return phenomd_amplitude_phase_slice(T, f, lo, hi, params, g, f_start, f_max)
 end
 
 # One-based indices into the requested grid; no relationship between index and frequency

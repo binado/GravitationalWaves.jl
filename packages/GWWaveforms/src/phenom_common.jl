@@ -9,10 +9,10 @@ function phenom_amplitude_scale(m1, m2, luminosity_distance)
 end
 
 # Host-only physical checks; remnant and frequency restrictions belong to each model.
-function check_phenom_parameters(p)
-    (p.mass_1 > 0 && p.mass_2 > 0) || throw(ArgumentError("masses must be positive"))
-    p.luminosity_distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
-    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
+function check_phenom_parameters(params::NamedTuple)
+    (params.mass_1 > 0 && params.mass_2 > 0) || throw(ArgumentError("masses must be positive"))
+    params.luminosity_distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
+    (abs(params.chi_1) <= 1 && abs(params.chi_2) <= 1) ||
         throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
     return nothing
 end

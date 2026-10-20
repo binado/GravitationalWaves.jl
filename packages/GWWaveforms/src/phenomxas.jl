@@ -42,42 +42,42 @@ function xas_amp_cv(i, r, S)
         xas_amp_unequal_spin_cv(ntuple(j -> c[j + 36], Val(6)), r.eta, S, r.chia, r.delta)
 end
 
-function xas_inspiral_phase(p, f)
-    pn, logs, sigma = p.pn, p.logs, p.sigma
+function xas_inspiral_phase(coefficients::NamedTuple, f)
+    pn, logs, sigma = coefficients.pn, coefficients.logs, coefficients.sigma
     phi = sum(ntuple(i -> pn[i] * f^((i - 1) / 3), Val(9)))
     phi += logs[1] * f^(5 / 3) * log(f) + logs[2] * f^2 * log(f) + logs[3] * f^(8 / 3) * log(f)
     phi += sum(ntuple(i -> sigma[i] * f^((i + 7) / 3), Val(4)))
     return -(3 * Float64(π)^(-5 / 3) / 128) * phi * f^(-5 / 3)
 end
 
-function xas_dinspiral_phase(p, f)
-    pn, logs, sigma = p.pn, p.logs, p.sigma
+function xas_dinspiral_phase(coefficients::NamedTuple, f)
+    pn, logs, sigma = coefficients.pn, coefficients.logs, coefficients.sigma
     value = sum(ntuple(i -> pn[i] * ((i - 6) / 3) * f^((i - 9) / 3), Val(9)))
     value += logs[1] / f + logs[2] * f^(-2 / 3) * (1 + log(f) / 3) + logs[3] * (1 + log(f))
     value += sum(ntuple(i -> sigma[i] * ((i + 2) / 3) * f^((i - 1) / 3), Val(4)))
     return -(3 * Float64(π)^(-5 / 3) / 128) * value
 end
 
-function xas_rd_phase(p, f)
-    c = p.c
+function xas_rd_phase(coefficients::NamedTuple, f)
+    c = coefficients.c
     return c[1] * f + 1.5c[2] * f^(2 / 3) - c[3] / f - c[4] / (3f^3) +
-        p.c_l / p.fdamp * atan((f - p.f_rd) / p.fdamp)
+        coefficients.c_l / coefficients.fdamp * atan((f - coefficients.f_rd) / coefficients.fdamp)
 end
 
-function xas_drd_phase(p, f)
-    c = p.c
-    return c[1] + c[2] * f^(-1 / 3) + c[3] / f^2 + c[4] / f^4 + p.c_l / (p.fdamp^2 + (f - p.f_rd)^2)
+function xas_drd_phase(coefficients::NamedTuple, f)
+    c = coefficients.c
+    return c[1] + c[2] * f^(-1 / 3) + c[3] / f^2 + c[4] / f^4 + coefficients.c_l / (coefficients.fdamp^2 + (f - coefficients.f_rd)^2)
 end
 
-function xas_int_phase(p, f)
-    b = p.b
+function xas_int_phase(coefficients::NamedTuple, f)
+    b = coefficients.b
     return b[1] * f + b[2] * log(f) - b[3] / f - b[4] / (2f^2) - b[5] / (3f^3) +
-        2p.c_l / p.fdamp * atan((f - p.f_rd) / (2p.fdamp))
+        2coefficients.c_l / coefficients.fdamp * atan((f - coefficients.f_rd) / (2coefficients.fdamp))
 end
 
-function xas_dint_phase(p, f)
-    b = p.b
-    return b[1] + b[2] / f + b[3] / f^2 + b[4] / f^3 + b[5] / f^4 + 4p.c_l / (4p.fdamp^2 + (f - p.f_rd)^2)
+function xas_dint_phase(coefficients::NamedTuple, f)
+    b = coefficients.b
+    return b[1] + b[2] / f + b[3] / f^2 + b[4] / f^3 + b[5] / f^4 + 4coefficients.c_l / (4coefficients.fdamp^2 + (f - coefficients.f_rd)^2)
 end
 
 function xas_phase_coefficients(r, chi1, chi2)
@@ -120,40 +120,40 @@ function xas_phase_coefficients(r, chi1, chi2)
     return (; ins, int, rd, f1, f2, alpha0, alpha1, beta0, beta1, eta = r.eta)
 end
 
-function phenomxas_phase(p, f)
-    value = if f < p.f1
-        xas_inspiral_phase(p.ins, f)
-    elseif f > p.f2
-        xas_rd_phase(p.rd, f) + p.beta0 + p.beta1 * f
+function phenomxas_phase(coefficients::NamedTuple, f)
+    value = if f < coefficients.f1
+        xas_inspiral_phase(coefficients.ins, f)
+    elseif f > coefficients.f2
+        xas_rd_phase(coefficients.rd, f) + coefficients.beta0 + coefficients.beta1 * f
     else
-        xas_int_phase(p.int, f) + p.alpha0 + p.alpha1 * f
+        xas_int_phase(coefficients.int, f) + coefficients.alpha0 + coefficients.alpha1 * f
     end
-    return value / p.eta
+    return value / coefficients.eta
 end
 
-function xas_dphase(p, f)
-    value = if f < p.f1
-        xas_dinspiral_phase(p.ins, f)
-    elseif f > p.f2
-        xas_drd_phase(p.rd, f) + p.beta1
+function xas_dphase(coefficients::NamedTuple, f)
+    value = if f < coefficients.f1
+        xas_dinspiral_phase(coefficients.ins, f)
+    elseif f > coefficients.f2
+        xas_drd_phase(coefficients.rd, f) + coefficients.beta1
     else
-        xas_dint_phase(p.int, f) + p.alpha1
+        xas_dint_phase(coefficients.int, f) + coefficients.alpha1
     end
-    return value / p.eta
+    return value / coefficients.eta
 end
 
-function xas_inspiral_amp(p, f)
-    return sum(ntuple(i -> p.pn[i] * f^((i - 1) / 3), Val(7))) +
-        sum(ntuple(i -> p.rho[i] * f^((i + 6) / 3), Val(3)))
+function xas_inspiral_amp(coefficients::NamedTuple, f)
+    return sum(ntuple(i -> coefficients.pn[i] * f^((i - 1) / 3), Val(7))) +
+        sum(ntuple(i -> coefficients.rho[i] * f^((i + 6) / 3), Val(3)))
 end
 
-function xas_dinspiral_amp(p, f)
-    return sum(ntuple(i -> p.pn[i + 1] * (i / 3) * f^((i - 3) / 3), Val(6))) +
-        sum(ntuple(i -> p.rho[i] * ((i + 6) / 3) * f^((i + 3) / 3), Val(3)))
+function xas_dinspiral_amp(coefficients::NamedTuple, f)
+    return sum(ntuple(i -> coefficients.pn[i + 1] * (i / 3) * f^((i - 3) / 3), Val(6))) +
+        sum(ntuple(i -> coefficients.rho[i] * ((i + 6) / 3) * f^((i + 3) / 3), Val(3)))
 end
 
-xas_rd_amp(p, f) = exp(-(f - p.f_rd) * p.gamma_r) * p.gamma_d13 / ((f - p.f_rd)^2 + p.gamma_d2)
-xas_drd_amp(p, f) = xas_rd_amp(p, f) * (-p.gamma_r - 2(f - p.f_rd) / ((f - p.f_rd)^2 + p.gamma_d2))
+xas_rd_amp(coefficients::NamedTuple, f) = exp(-(f - coefficients.f_rd) * coefficients.gamma_r) * coefficients.gamma_d13 / ((f - coefficients.f_rd)^2 + coefficients.gamma_d2)
+xas_drd_amp(coefficients::NamedTuple, f) = xas_rd_amp(coefficients, f) * (-coefficients.gamma_r - 2(f - coefficients.f_rd) / ((f - coefficients.f_rd)^2 + coefficients.gamma_d2))
 
 function xas_amplitude_coefficients(r, chi1, chi2)
     f1 = r.f_meco + 0.25 * (r.f_isco - r.f_meco)
@@ -211,12 +211,12 @@ function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
     return (; r, amplitude, phase = phase_coefficients, M_sec, linb, phiref)
 end
 
-function amplitude_phase_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) where {T}
+function amplitude_phase_fd(g::IMRPhenomXAS, ::Type{T}, f, params::NamedTuple, f_start, f_min, f_max) where {T}
     lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
     lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
     fref = phenom_reference_frequency(g, f_start)
-    m = phenomxas_model(p.mass_1, p.mass_2, p.chi_1, p.chi_2, fref, p.phase)
-    amp0 = phenom_amplitude_scale(p.mass_1, p.mass_2, p.luminosity_distance)
+    m = phenomxas_model(params.mass_1, params.mass_2, params.chi_1, params.chi_2, fref, params.phase)
+    amp0 = phenom_amplitude_scale(params.mass_1, params.mass_2, params.luminosity_distance)
     norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
     cutoff = 0.3 / m.M_sec
     return broadcast_amplitude_phase(phenomxas_signed_amplitude, phenomxas_canonical_phase, T, f, lo, hi, m, norm, cutoff)
@@ -244,13 +244,13 @@ function phenomxas_amplitude_phase(frequency, model, norm, cutoff)
     return canonical_amplitude_phase(amp, phi)
 end
 
-function check_waveform_inputs(g::IMRPhenomXAS, delta_f, p, f_start, f_max)
+function check_waveform_inputs(g::IMRPhenomXAS, delta_f, params::NamedTuple, f_start, f_max)
     (delta_f > 0 && f_start > 0 && f_max > f_start && g.reference_frequency >= 0) || throw(ArgumentError("invalid frequency bounds for IMRPhenomXAS"))
-    check_phenom_parameters(p)
-    p.mass_1 >= p.mass_2 || throw(ArgumentError("IMRPhenomXAS requires mass_1 ≥ mass_2"))
-    p.mass_1 / p.mass_2 <= 1000 || throw(ArgumentError("IMRPhenomXAS requires mass ratio <= 1000"))
-    r = xas_remnant(p.mass_1, p.mass_2, p.chi_1, p.chi_2)
+    check_phenom_parameters(params)
+    params.mass_1 >= params.mass_2 || throw(ArgumentError("IMRPhenomXAS requires mass_1 ≥ mass_2"))
+    params.mass_1 / params.mass_2 <= 1000 || throw(ArgumentError("IMRPhenomXAS requires mass ratio <= 1000"))
+    r = xas_remnant(params.mass_1, params.mass_2, params.chi_1, params.chi_2)
     (abs(r.a) < 1 && 0 < r.Erad < 1 && r.f_meco <= r.f_isco) || throw(ArgumentError("invalid remnant or MECO/ISCO frequencies"))
-    0.3 / ((p.mass_1 + p.mass_2) * MTSUN_SI) > f_start || throw(ArgumentError("XAS cutoff must exceed the starting frequency"))
+    0.3 / ((params.mass_1 + params.mass_2) * MTSUN_SI) > f_start || throw(ArgumentError("XAS cutoff must exceed the starting frequency"))
     return nothing
 end

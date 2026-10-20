@@ -71,10 +71,10 @@ function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::A
             throw(ArgumentError("frequency grid must be finite, nonnegative and increasing"))
     end
     check_parameters(params)
-    p = aligned_parameters(params)
+    aligned_params = aligned_parameters(params)
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
         f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-    check_waveform_inputs(g, step(f), p, f_start, f_max)
+    check_waveform_inputs(g, step(f), aligned_params, f_start, f_max)
     return nothing
 end

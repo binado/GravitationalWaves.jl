@@ -338,28 +338,28 @@ end
 
 # --- phase ------------------------------------------------------------------------------
 
-function phi_mrd_ansatz_int(f, p)
+function phi_mrd_ansatz_int(f, coefficients::NamedTuple)
     sqrootf = sqrt(f)
     fpow1_5 = f * sqrootf
     fpow0_75 = sqrt(fpow1_5)
-    return -(p.alpha2 / f) + (4.0 / 3.0) * (p.alpha3 * fpow0_75) + p.alpha1 * f +
-        p.alpha4 * atan((f - p.alpha5 * p.f_rd) / p.f_dm)
+    return -(coefficients.alpha2 / f) + (4.0 / 3.0) * (coefficients.alpha3 * fpow0_75) + coefficients.alpha1 * f +
+        coefficients.alpha4 * atan((f - coefficients.alpha5 * coefficients.f_rd) / coefficients.f_dm)
 end
 
-function dphi_mrd(f, p)
+function dphi_mrd(f, coefficients::NamedTuple)
     return (
-        p.alpha1 + p.alpha2 / pow_2_of(f) + p.alpha3 / f^0.25 +
-            p.alpha4 / (p.f_dm * (1 + pow_2_of(f - p.alpha5 * p.f_rd) / (pow_2_of(p.f_dm))))
-    ) * p.eta_inv
+        coefficients.alpha1 + coefficients.alpha2 / pow_2_of(f) + coefficients.alpha3 / f^0.25 +
+            coefficients.alpha4 / (coefficients.f_dm * (1 + pow_2_of(f - coefficients.alpha5 * coefficients.f_rd) / (pow_2_of(coefficients.f_dm))))
+    ) * coefficients.eta_inv
 end
 
-phi_int_ansatz(Mf, p) = p.beta1 * Mf - p.beta3 / (3.0 * pow_3_of(Mf)) + p.beta2 * log(Mf)
-dphi_int_ansatz(Mf, p) = (p.beta1 + p.beta3 / pow_4_of(Mf) + p.beta2 / Mf) * p.eta_inv
-dphi_int_temp(ff, p, c2_int) = c2_int + (p.beta1 + p.beta3 / pow_4_of(ff) + p.beta2 / ff) * p.eta_inv
+phi_int_ansatz(Mf, coefficients::NamedTuple) = coefficients.beta1 * Mf - coefficients.beta3 / (3.0 * pow_3_of(Mf)) + coefficients.beta2 * log(Mf)
+dphi_int_ansatz(Mf, coefficients::NamedTuple) = (coefficients.beta1 + coefficients.beta3 / pow_4_of(Mf) + coefficients.beta2 / Mf) * coefficients.eta_inv
+dphi_int_temp(ff, coefficients::NamedTuple, c2_int) = c2_int + (coefficients.beta1 + coefficients.beta3 / pow_4_of(ff) + coefficients.beta2 / ff) * coefficients.eta_inv
 
 # Prefactors of the inspiral phase that do not depend on frequency (`init_phi_ins_prefactors`).
 # `pn.v[k + 1]` is LAL's `pn->v[k]`.
-function phi_ins_prefactors(p, pn::TaylorF2Phasing)
+function phi_ins_prefactors(coefficients::NamedTuple, pn::TaylorF2Phasing)
     return (;
         initial_phasing = pn.v[6] - PI_4,
         two_thirds = pn.v[8] * PI_POWERS.two_thirds,
@@ -371,14 +371,14 @@ function phi_ins_prefactors(p, pn::TaylorF2Phasing)
         minus_one = pn.v[3] * PI_POWERS.inv,
         minus_four_thirds = pn.v[2] / PI_POWERS.four_thirds,
         minus_five_thirds = pn.v[1] * PI_POWERS.m_five_thirds,
-        one = p.sigma1,
-        four_thirds = p.sigma2 * 0.75,
-        five_thirds = p.sigma3 * 0.6,
-        two = p.sigma4 * 0.5,
+        one = coefficients.sigma1,
+        four_thirds = coefficients.sigma2 * 0.75,
+        five_thirds = coefficients.sigma3 * 0.6,
+        two = coefficients.sigma4 * 0.5,
     )
 end
 
-function phi_ins_ansatz_int(Mf, pm, pre, p)
+function phi_ins_ansatz_int(Mf, pm, pre, coefficients::NamedTuple)
     v = pm.third * PI_POWERS.third
     logv = log(v)
     phasing = pre.initial_phasing
@@ -395,11 +395,11 @@ function phi_ins_ansatz_int(Mf, pm, pre, p)
     phasing += (
         pre.one * Mf + pre.four_thirds * pm.four_thirds + pre.five_thirds * pm.five_thirds +
             pre.two * pm.two
-    ) * p.eta_inv
+    ) * coefficients.eta_inv
     return phasing
 end
 
-function dphi_ins_ansatz_int(Mf, p, pn::TaylorF2Phasing)
+function dphi_ins_ansatz_int(Mf, coefficients::NamedTuple, pn::TaylorF2Phasing)
     Pi = Float64(π)
     v = cbrt(Pi * Mf)
     logv = log(v)
@@ -422,9 +422,9 @@ function dphi_ins_ansatz_int(Mf, p, pn::TaylorF2Phasing)
     Dphasing /= v8 * 3.0
     Dphasing *= Pi
     Dphasing += (
-        p.sigma1 + p.sigma2 * v * PI_POWERS.m_third + p.sigma3 * v2 * PI_POWERS.m_two_thirds +
-            (p.sigma4 * PI_POWERS.inv) * v3
-    ) * p.eta_inv
+        coefficients.sigma1 + coefficients.sigma2 * v * PI_POWERS.m_third + coefficients.sigma3 * v2 * PI_POWERS.m_two_thirds +
+            (coefficients.sigma4 * PI_POWERS.inv) * v3
+    ) * coefficients.eta_inv
     return Dphasing
 end
 
@@ -447,33 +447,33 @@ end
 
 # Join the inspiral, intermediate and merger-ringdown phases with continuous value and
 # first derivative (`ComputeIMRPhenDPhaseConnectionCoefficients`).
-function phase_connection(p, pn, pre)
-    eta_inv = p.eta_inv
-    f_mrd_join = 0.5 * p.f_rd
+function phase_connection(coefficients::NamedTuple, pn, pre)
+    eta_inv = coefficients.eta_inv
+    f_mrd_join = 0.5 * coefficients.f_rd
 
-    d_phi_ins = dphi_ins_ansatz_int(PHI_FJOIN_INS, p, pn)
-    d_phi_int = dphi_int_ansatz(PHI_FJOIN_INS, p)
+    d_phi_ins = dphi_ins_ansatz_int(PHI_FJOIN_INS, coefficients, pn)
+    d_phi_int = dphi_int_ansatz(PHI_FJOIN_INS, coefficients)
     c2_int = d_phi_ins - d_phi_int
     pm = useful_powers(PHI_FJOIN_INS)
-    c1_int = phi_ins_ansatz_int(PHI_FJOIN_INS, pm, pre, p) -
-        eta_inv * phi_int_ansatz(PHI_FJOIN_INS, p) - c2_int * PHI_FJOIN_INS
+    c1_int = phi_ins_ansatz_int(PHI_FJOIN_INS, pm, pre, coefficients) -
+        eta_inv * phi_int_ansatz(PHI_FJOIN_INS, coefficients) - c2_int * PHI_FJOIN_INS
 
-    phi_int_temp_val = eta_inv * phi_int_ansatz(f_mrd_join, p) + c1_int + c2_int * f_mrd_join
-    d_phi_int_temp_val = dphi_int_temp(f_mrd_join, p, c2_int)
-    d_phi_mrd_val = dphi_mrd(f_mrd_join, p)
+    phi_int_temp_val = eta_inv * phi_int_ansatz(f_mrd_join, coefficients) + c1_int + c2_int * f_mrd_join
+    d_phi_int_temp_val = dphi_int_temp(f_mrd_join, coefficients, c2_int)
+    d_phi_mrd_val = dphi_mrd(f_mrd_join, coefficients)
     c2_mrd = d_phi_int_temp_val - d_phi_mrd_val
-    c1_mrd = phi_int_temp_val - eta_inv * phi_mrd_ansatz_int(f_mrd_join, p) - c2_mrd * f_mrd_join
+    c1_mrd = phi_int_temp_val - eta_inv * phi_mrd_ansatz_int(f_mrd_join, coefficients) - c2_mrd * f_mrd_join
     return (; c1_int, c2_int, c1_mrd, c2_mrd, f_mrd_join)
 end
 
 function _phenomd_phase(m, Mf, pm)
-    p = m.phi
+    coefficients = m.phi
     if Mf < PHI_FJOIN_INS
-        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, p)
+        return phi_ins_ansatz_int(Mf, pm, m.phi_pre, coefficients)
     elseif Mf >= m.conn.f_mrd_join
-        return p.eta_inv * phi_mrd_ansatz_int(Mf, p) + m.conn.c1_mrd + m.conn.c2_mrd * Mf
+        return coefficients.eta_inv * phi_mrd_ansatz_int(Mf, coefficients) + m.conn.c1_mrd + m.conn.c2_mrd * Mf
     else
-        return p.eta_inv * phi_int_ansatz(Mf, p) + m.conn.c1_int + m.conn.c2_int * Mf
+        return coefficients.eta_inv * phi_int_ansatz(Mf, coefficients) + m.conn.c1_int + m.conn.c2_int * Mf
     end
 end
 
@@ -670,15 +670,15 @@ function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
 end
 
 # Inputs `phenomd_fd` does not check; run by `validate_parameters`.
-function check_waveform_inputs(g::IMRPhenomD, delta_f, p, f_start, f_max)
-    m1 = p.mass_1
-    m2 = p.mass_2
+function check_waveform_inputs(g::IMRPhenomD, delta_f, params::NamedTuple, f_start, f_max)
+    m1 = params.mass_1
+    m2 = params.mass_2
     f_ref_in = g.reference_frequency
     f_ref_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
     delta_f > 0 || throw(ArgumentError("frequency step must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
-    check_phenom_parameters(p)
+    check_phenom_parameters(params)
 
     f_cut = F_CUT / ((m1 + m2) * MTSUN_SI)
     f_cut > f_start || throw(ArgumentError("f_cut = $f_cut Hz is not above f_min = $f_start Hz"))
@@ -688,7 +688,7 @@ function check_waveform_inputs(g::IMRPhenomD, delta_f, p, f_start, f_max)
     m1 >= m2 || throw(ArgumentError("IMRPhenomD requires mass_1 ≥ mass_2"))
     eta = m1 * m2 / ((m1 + m2) * (m1 + m2))
     0 <= eta <= 0.25 + 5.0e-7 || throw(ArgumentError("unphysical eta; must be between 0 and 0.25"))
-    final_spin_0815(nudged_eta(m1, m2), m1, m2, p.chi_1, p.chi_2) > 1.0 &&
+    final_spin_0815(nudged_eta(m1, m2), m1, m2, params.chi_1, params.chi_2) > 1.0 &&
         throw(ArgumentError("final spin > 1.0 is not supported"))
     return nothing
 end

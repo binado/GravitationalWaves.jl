@@ -61,7 +61,7 @@ quasi-circular and aligned-spin, and LAL rejects such input too.
 
 Call it on the host with the parameters of one draw, before differentiating or sampling `hphc_fd`.
 """
-function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
+function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::Union{TaylorF2, IMRPhenomD, IMRPhenomXAS})
     if g isa TaylorF2
         check_frequency_grid(f)
     else
@@ -73,8 +73,7 @@ function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::A
     check_parameters(params)
     aligned_params = aligned_parameters(params)
     f_min, f_max = frequency_bounds(g, f)
-    f_start = g.pn_amplitude_order != 0 ?
-        f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
+    f_start = start_frequency(g, f_min)
     check_waveform_inputs(g, step(f), aligned_params, f_start, f_max)
     return nothing
 end

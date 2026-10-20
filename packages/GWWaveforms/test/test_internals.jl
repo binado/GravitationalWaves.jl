@@ -47,8 +47,8 @@ import ForwardDiff as FD
         @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
         @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
         # `fmax_calc` takes the second branch for gamma2 > 1 without evaluating a NaN square root.
-        @test G.f_max_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
-        @test G.f_max_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
+        @test G.fmax_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
+        @test G.fmax_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
 
         # Equal masses sit at the upper limit of eta.
         @test isfinite(G.phenomd_amplitude(G.phenomd_model(30.0, 30.0, 0.0, 0.0, 50.0, 0.0), 0.01))
@@ -130,32 +130,25 @@ import ForwardDiff as FD
     end
 end
 
-@testset "TaylorF2 static slice against the loop" begin
+@testset "TaylorF2 amplitude_phase is zero outside the band" begin
     f = range(0, 256; step = 0.25)
     params = (
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
         a_1 = 0.3, a_2 = 0.2, tilt_1 = 0.0, tilt_2 = Float64(π),
     )
-    p = GWWaveforms.aligned_parameters(params)
-    df = Float64(step(f))
     for g in (
             TaylorF2(; minimum_frequency = 25.0),
             TaylorF2(; minimum_frequency = 25.0, maximum_frequency = 180.0, pn_amplitude_order = 3),
             TaylorF2(; minimum_frequency = 20.0, pn_phase_order = 4, pn_spin_order = 3, reference_frequency = 0),
         )
         f_min, f_max = GWWaveforms.frequency_bounds(g, f)
-        f_start = g.pn_amplitude_order != 0 ?
-            GWWaveforms.f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-        lo, hi = GWWaveforms.waveform_slice(f, f_start, f_min, f_max)
-        expected = GWWaveforms.taylorf2_fd(Float64, length(f), df, p, g, f_start, f_max)
-        expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
-        ap = GWWaveforms.taylorf2_amplitude_phase_slice(Float64, length(f), lo, hi, df, p, g)
-        got = ap.amplitude .* cis.(ap.phase)
-        @test got ≈ expected rtol = 1.0e-12
-        @test all(iszero, got[1:lo]) && all(iszero, got[(hi + 2):end])
+        ap = amplitude_phase(f, params, g)
+        inband = [f_min <= fi <= f_max for fi in f]
+        @test all(iszero, ap.amplitude[.!inband]) && all(iszero, ap.phase[.!inband])
+        @test all(>(0), ap.amplitude[inband])
     end
     # Nothing in band.
-    @test all(iszero, GWWaveforms.taylorf2_amplitude_phase_slice(Float64, length(f), GWWaveforms.waveform_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()).amplitude)
+    @test all(iszero, amplitude_phase(f, params, TaylorF2(; minimum_frequency = 300.0, maximum_frequency = 400.0)).amplitude)
 end
 
 @testset "IMRPhenomD requires mass_1 ≥ mass_2" begin
@@ -169,7 +162,7 @@ end
     )
 end
 
-@testset "IMRPhenomD direct frequencies against the loop" begin
+@testset "IMRPhenomD amplitude_phase band and cutoff" begin
     f = range(0, 256; step = 0.25)
     base = (
         luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -179,27 +172,27 @@ end
     fcut(m1, m2) = GWWaveforms.F_CUT / ((m1 + m2) * GWWaveforms.MTSUN_SI)
     # The last pair puts f_cut inside the grid; the second-last makes it an exact grid point.
     for (m1, m2) in ((36.0, 29.0), (29.0, 36.0), (90.0, 85.0), (130.0, 100.0))
-        M = m1 + m2
-        # f_max such that f_max / df is an integer, below and above f_cut.
         for g in (
                 IMRPhenomD(; minimum_frequency = 25.0),
                 IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = 180.0),
                 IMRPhenomD(; minimum_frequency = 20.1, maximum_frequency = 200.3, reference_frequency = 0),
                 IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = fcut(m1, m2)),
             )
-            p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
             f_min, f_max = GWWaveforms.frequency_bounds(g, f)
             fcut(m1, m2) > f_min || continue
-            lo, hi = GWWaveforms.phenom_frequency_slice(f, f_min, f_min, f_max)
-            expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
-            expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
-            ap = GWWaveforms.phenomd_amplitude_phase_slice(Float64, f, lo, hi, p, g, f_min, f_max)
-            got = ap.amplitude .* cis.(ap.phase)
-            @test maximum(abs, got .- expected) <= 1.0e-12 * maximum(abs, expected)
-            @test iszero.(got) == iszero.(expected)
+            ap = amplitude_phase(f, merge(base, (; mass_1 = m1, mass_2 = m2)), g)
+            # LAL excludes the rounded-down upper edge.
+            upper = floor(min(fcut(m1, m2), f_max) / df) * df
+            for (i, fi) in enumerate(f)
+                if f_min <= fi < upper
+                    @test ap.amplitude[i] > 0
+                else
+                    @test iszero(ap.amplitude[i]) && iszero(ap.phase[i])
+                end
+            end
         end
     end
     # Nothing in band.
-    p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
-    @test all(iszero, GWWaveforms.phenomd_amplitude_phase_slice(Float64, f, GWWaveforms.phenom_frequency_slice(f, 300.0, 300.0, 400.0)..., p, IMRPhenomD(), 300.0, 400.0).amplitude)
+    g = IMRPhenomD(; minimum_frequency = 300.0, maximum_frequency = 400.0)
+    @test all(iszero, amplitude_phase(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0)), g).amplitude)
 end

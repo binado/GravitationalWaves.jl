@@ -1,9 +1,0 @@
-model,bins,implementation,backend,median_us,bytes,allocations,relative_gradient_error
-IMRPhenomD,4017,anonymous_broadcast,ForwardDiff,646.729,2621824,18,0.000e+00
-IMRPhenomD,4017,anonymous_broadcast,Mooncake,2332.729,671152,328,6.294e-15
-IMRPhenomD,4017,ref_broadcast,ForwardDiff,998.291,2621824,18,0.000e+00
-IMRPhenomD,4017,ref_broadcast,Mooncake,2616.604,664544,231,6.294e-15
-IMRPhenomXAS,4017,anonymous_broadcast,ForwardDiff,859.563,4934048,9906,0.000e+00
-IMRPhenomXAS,4017,anonymous_broadcast,Mooncake,2281.688,669408,229,5.993e-15
-IMRPhenomXAS,4017,ref_broadcast,ForwardDiff,1326.417,4929312,9900,0.000e+00
-IMRPhenomXAS,4017,ref_broadcast,Mooncake,2504.562,662672,130,5.993e-15

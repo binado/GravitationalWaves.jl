@@ -579,87 +579,37 @@ phenomd_phase(model::PhenomDModel, Mf) = _phenomd_phase(model, Mf, useful_powers
 
 # --- driver -----------------------------------------------------------------------------
 
-"""
-    phenomd_fd(T, nout, delta_f, params, g, f_start, f_max)
+# IMRPhenomD (`XLALSimIMRPhenomDGenerateFD`) on the supplied frequencies: nonnegative amplitude
+# and unwrapped phase, zero outside `[f_start, f_max]` and above `min(f_max, 0.2 / M)`. The upper
+# edge is rounded down to a multiple of `step(f)` and excluded, as in LAL. The inclination factors
+# are applied by `hphc_fd`. Inputs are trusted; run `validate_parameters` on the host first.
+function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomD)
+    T, p = promote_parameters(aligned_parameters(params))
+    f_min, f_max = frequency_bounds(g, f)
+    f_start = start_frequency(g, f_min)
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
+    lo > hi && return (; amplitude, phase)
 
-Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i delta_f`,
-`i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
-`min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
-end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
-
-`params` is the aligned parameter `NamedTuple`; `g` is the [`IMRPhenomD`](@ref) configuration.
-The inputs are trusted (see [`validate_parameters`](@ref)).
-This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_amplitude_phase_slice`](@ref) to apply the public frequency bounds.
-"""
-function phenomd_fd(::Type{T}, nout::Integer, delta_f, params::NamedTuple, g::IMRPhenomD, f_start, f_max) where {T}
-    m1 = params.mass_1
-    m2 = params.mass_2
-    f_ref = phenom_reference_frequency(g, f_start)
+    m1 = p.mass_1
+    m2 = p.mass_2
     f_cut = F_CUT / ((m1 + m2) * MTSUN_SI)
-    f_max_prime = f_max == 0 ? f_cut : f_max
-    f_max_prime = f_max_prime > f_cut ? f_cut : f_max_prime
-
-    model = phenomd_model(m1, m2, params.chi_1, params.chi_2, f_ref, params.phase)
-    amp0 = phenom_amplitude_scale(m1, m2, params.luminosity_distance)
-
-    i_start = trunc(Int, f_start / delta_f)
-    i_stop = trunc(Int, f_max_prime / delta_f)
-    h = zeros(Complex{T}, nout)
-    for i in i_start:(min(i_stop, nout) - 1)
-        Mf = model.M_sec * (i * delta_f)
-        pm = useful_powers(Mf)
-        amp = _phenomd_amplitude(model.amp, Mf, pm)
-        phi = _phenomd_phase(model, Mf, pm)
-        phi -= model.t0 * (Mf - model.mf_ref) + model.phi_precalc
-        a = amp0 * amp
-        h[i + 1] = complex(a * cos(phi), -(a * sin(phi)))
-    end
-    return h
-end
-
-"""
-    phenomd_amplitude_phase_slice(T, f, lo, hi, params, g, f_start, f_max)
-
-Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to the one-based indices `lo:hi` from
-[`phenom_frequency_slice`](@ref). Frequencies are read directly from `f`. The upper edge
-is rounded down to a multiple of `step(f)` and excluded, preserving LAL's cutoff convention.
-"""
-function phenomd_amplitude_phase_slice(
-        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, params::NamedTuple, g::IMRPhenomD, f_start, f_max
-    ) where {T}
-    lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
-    m1 = params.mass_1
-    m2 = params.mass_2
-    f_ref = phenom_reference_frequency(g, f_start)
-    M = m1 + m2
-    f_cut = F_CUT / (M * MTSUN_SI)
     f_max_eff = ifelse(f_cut < f_max, f_cut, f_max)
-
-    model = phenomd_model(m1, m2, params.chi_1, params.chi_2, f_ref, params.phase)
-    amp0 = phenom_amplitude_scale(m1, m2, params.luminosity_distance)
-
     delta_f = Float64(step(f))
-    stop = floor(f_max_eff / delta_f) * delta_f
-    return broadcast_amplitude_phase(phenomd_signed_amplitude, phenomd_canonical_phase, T, f, lo, hi, model, amp0, stop)
+    cutoff = floor(f_max_eff / delta_f) * delta_f
+
+    f_ref = phenom_reference_frequency(g, f_start)
+    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, f_ref, p.phase)
+    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
+    for i in lo:hi
+        amplitude[i], phase[i] = phenomd_amplitude_phase(f[i], model, amp0, cutoff)
+    end
+    return (; amplitude, phase)
 end
 
-# Separate scalar outputs allow broadcasting directly into the public arrays. The phase
-# receives the signed amplitude so canonicalization does not evaluate the amplitude again.
-function phenomd_signed_amplitude(frequency, model, amp0, cutoff)
-    frequency < cutoff || return zero(amp0)
-    Mf = model.M_sec * frequency
-    return amp0 * _phenomd_amplitude(model.amp, Mf, useful_powers(Mf))
-end
-
-function phenomd_canonical_phase(frequency, model, amplitude)
-    iszero(amplitude) && return zero(amplitude)
-    Mf = model.M_sec * frequency
-    phi = _phenomd_phase(model, Mf, useful_powers(Mf)) - (model.t0 * (Mf - model.mf_ref) + model.phi_precalc)
-    return last(canonical_amplitude_phase(amplitude, -phi))
-end
-
-# Scalar evaluation at positive frequencies in Hz. Coefficients and the LAL-rounded upper
-# cutoff are prepared once per waveform; the array assembler handles the lower bounds.
+# Scalar evaluation at a positive frequency in Hz. Coefficients and the LAL-rounded upper
+# cutoff are prepared once per waveform; the caller handles the lower bounds.
 function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
     frequency < cutoff || return (zero(amp0), zero(amp0))
     Mf = model.M_sec * frequency
@@ -669,7 +619,7 @@ function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
     return canonical_amplitude_phase(amp, -phi)
 end
 
-# Inputs `phenomd_fd` does not check; run by `validate_parameters`.
+# Inputs `amplitude_phase` does not check; run by `validate_parameters`.
 function check_waveform_inputs(g::IMRPhenomD, delta_f, params::NamedTuple, f_start, f_max)
     m1 = params.mass_1
     m2 = params.mass_2

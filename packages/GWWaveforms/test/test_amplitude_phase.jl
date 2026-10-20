@@ -53,7 +53,7 @@ end
         indices = [searchsortedfirst(fine, fi) for fi in offset]
         @test actual.amplitude ≈ expected.amplitude[indices] rtol = 1.0e-12
         @test actual.phase ≈ expected.phase[indices] rtol = 1.0e-12
-        for bad in (range(-1, 512; step = 0.25), 100:-1:20, range(20; step = 1, length = 1))
+        for bad in (range(-1, 512; step = 0.25), 100.0:-1.0:20.0, range(20.0; step = 1.0, length = 1))
             @test_throws ArgumentError validate_parameters(bad, params, g)
         end
     end

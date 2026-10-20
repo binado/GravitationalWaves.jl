@@ -110,7 +110,7 @@ function xas_phase_coefficients(r, chi1, chi2)
         vi[2] + v[4], vi[4] + vi[2] + v[4], rdvalues[1],
     )
     icp = ntuple(i -> f1 + XAS_G5[i] * (f2 - f1), Val(5))
-    irhs = ntuple(i -> intvalues[i] - 4cL / (4r.fdamp^2 + (icp[i] - r.f_rd)^2), Val(5))
+    irhs = ntuple(i -> intvalues[i] - 4c_l / (4r.fdamp^2 + (icp[i] - r.f_rd)^2), Val(5))
     bc = xas_solve(ntuple(i -> ntuple(j -> (r.f_rd / icp[i])^(j - 1), Val(5)), Val(5)), irhs)
     int = (; b = ntuple(i -> bc[i] * r.f_rd^(i - 1), Val(5)), c_l, f_rd = r.f_rd, fdamp = r.fdamp)
     alpha1 = xas_dinspiral_phase(ins, f1) - xas_dint_phase(int, f1)
@@ -211,31 +211,31 @@ function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
     return (; r, amplitude, phase = phase_coefficients, M_sec, linb, phiref)
 end
 
-function amplitude_phase_fd(g::IMRPhenomXAS, ::Type{T}, f, params::NamedTuple, f_start, f_min, f_max) where {T}
+# IMRPhenomXAS on the supplied frequencies: nonnegative amplitude and unwrapped phase, zero
+# outside `[f_start, f_max]` and above the inclusive cutoff `0.3 / M_sec`. The inclination
+# factors are applied by `hphc_fd`. Inputs are trusted; run `validate_parameters` on the host first.
+function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::IMRPhenomXAS)
+    T, p = promote_parameters(aligned_parameters(params))
+    f_min, f_max = frequency_bounds(g, f)
+    f_start = start_frequency(g, f_min)
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
     lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
-    lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
-    fref = phenom_reference_frequency(g, f_start)
-    m = phenomxas_model(params.mass_1, params.mass_2, params.chi_1, params.chi_2, fref, params.phase)
-    amp0 = phenom_amplitude_scale(params.mass_1, params.mass_2, params.luminosity_distance)
-    norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
-    cutoff = 0.3 / m.M_sec
-    return broadcast_amplitude_phase(phenomxas_signed_amplitude, phenomxas_canonical_phase, T, f, lo, hi, m, norm, cutoff)
+    lo > hi && return (; amplitude, phase)
+
+    f_ref = phenom_reference_frequency(g, f_start)
+    model = phenomxas_model(p.mass_1, p.mass_2, p.chi_1, p.chi_2, f_ref, p.phase)
+    amp0 = phenom_amplitude_scale(p.mass_1, p.mass_2, p.luminosity_distance)
+    norm = amp0 * sqrt(2model.r.eta / 3) * Float64(π)^(-1 / 6)
+    cutoff = 0.3 / model.M_sec
+    for i in lo:hi
+        amplitude[i], phase[i] = phenomxas_amplitude_phase(f[i], model, norm, cutoff)
+    end
+    return (; amplitude, phase)
 end
 
-function phenomxas_signed_amplitude(frequency, model, norm, cutoff)
-    frequency <= cutoff || return zero(norm)
-    return norm * phenomxas_amplitude(model.amplitude, model.M_sec * frequency)
-end
-
-function phenomxas_canonical_phase(frequency, model, amplitude)
-    iszero(amplitude) && return zero(amplitude)
-    Mf = model.M_sec * frequency
-    phi = phenomxas_phase(model.phase, Mf) + model.linb * Mf + model.phiref
-    return last(canonical_amplitude_phase(amplitude, phi))
-end
-
-# Scalar evaluation at positive frequencies in Hz, using coefficients prepared once per
-# waveform. The array assembler handles the configured lower bounds.
+# Scalar evaluation at a positive frequency in Hz, using coefficients prepared once per
+# waveform; the caller handles the lower bounds.
 function phenomxas_amplitude_phase(frequency, model, norm, cutoff)
     frequency <= cutoff || return (zero(norm), zero(norm))
     Mf = model.M_sec * frequency

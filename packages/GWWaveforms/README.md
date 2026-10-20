@@ -38,9 +38,10 @@ Both vectors are zero at DC and outside waveform support, with phase set to zero
 amplitude vanishes. TaylorF2's signed LAL amplitude is absorbed into the phase by a π shift.
 Changing the inclination does not change amplitude or phase.
 
-The Phenom models prepare their coefficients once and evaluate scalar frequency kernels.
-Production broadcasts fill separate amplitude and phase vectors directly, then return them
-in a named tuple. Comparisons with loops and tuple broadcasting, including timings and allocations, live in [the waveform benchmarks](../../benchmarks/GWWaveforms/README.md).
+Each model implements `amplitude_phase` directly. The Phenom models prepare their coefficients
+once, then a plain loop evaluates one scalar kernel per frequency and fills the amplitude and
+phase vectors, which are returned in a named tuple. The method trusts its inputs; run
+`validate_parameters` on the host first.
 
 The element type of the output follows the parameters, so dual numbers pass through:
 

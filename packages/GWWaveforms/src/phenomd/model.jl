@@ -6,6 +6,9 @@
 # snake_case style to keep the port easy to compare line by line.
 # Frequencies written `Mf` are geometric, `M f`.
 
+include("qnm.jl")
+include("fits.jl")
+
 # Transition frequencies and cutoff, from LALSimIMRPhenomD.h.
 const F_CUT = 0.2
 const AMP_FJOIN_INS = 0.014
@@ -143,9 +146,6 @@ function spline_eval(s::NaturalCubicSpline, x)
     delx = x - s.xlo[i]
     return s.ylo[i] + delx * (s.b[i] + delx * (s.c[i] + delx * s.d[i]))
 end
-
-include("qnm.jl")
-include("fits.jl")
 
 const FRING_SPLINE = NaturalCubicSpline(QNM_A, QNM_FRING)
 const FDAMP_SPLINE = NaturalCubicSpline(QNM_A, QNM_FDAMP)

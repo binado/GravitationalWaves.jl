@@ -3,7 +3,7 @@
 # Table V of Khan et al., arXiv:1508.07253. The arithmetic is kept literally, with the same
 # operation order, so the results agree with LAL to rounding.
 #
-# `eta` is the symmetric mass ratio and `xi = chiPN - 1` the reduced spin variable.
+# `eta` is the symmetric mass ratio and `xi = chi_pn - 1` the reduced spin variable.
 
 pow_2_of(x) = x * x
 pow_3_of(x) = x * x * x
@@ -76,7 +76,7 @@ function gamma3_fun(eta, eta2, xi)
     )
 end
 
-function alpha1Fit(eta, eta2, xi)
+function alpha1_fit(eta, eta2, xi)
     return (
         43.31514709695348 + 638.6332679188081 * eta
             + (
@@ -87,7 +87,7 @@ function alpha1Fit(eta, eta2, xi)
     )
 end
 
-function alpha2Fit(eta, eta2, xi)
+function alpha2_fit(eta, eta2, xi)
     return (
         -0.07020209449091723 - 0.16269798450687084 * eta
             + (
@@ -98,7 +98,7 @@ function alpha2Fit(eta, eta2, xi)
     )
 end
 
-function alpha3Fit(eta, eta2, xi)
+function alpha3_fit(eta, eta2, xi)
     return (
         9.5988072383479 - 397.05438595557433 * eta
             + (
@@ -109,7 +109,7 @@ function alpha3Fit(eta, eta2, xi)
     )
 end
 
-function alpha4Fit(eta, eta2, xi)
+function alpha4_fit(eta, eta2, xi)
     return (
         -0.02989487384493607 + 1.4022106448583738 * eta
             + (
@@ -120,7 +120,7 @@ function alpha4Fit(eta, eta2, xi)
     )
 end
 
-function alpha5Fit(eta, eta2, xi)
+function alpha5_fit(eta, eta2, xi)
     return (
         0.9974408278363099 - 0.007884449714907203 * eta
             + (
@@ -131,7 +131,7 @@ function alpha5Fit(eta, eta2, xi)
     )
 end
 
-function beta1Fit(eta, eta2, xi)
+function beta1_fit(eta, eta2, xi)
     return (
         97.89747327985583 - 42.659730877489224 * eta
             + (
@@ -142,7 +142,7 @@ function beta1Fit(eta, eta2, xi)
     )
 end
 
-function beta2Fit(eta, eta2, xi)
+function beta2_fit(eta, eta2, xi)
     return (
         -3.282701958759534 - 9.051384468245866 * eta
             + (
@@ -153,7 +153,7 @@ function beta2Fit(eta, eta2, xi)
     )
 end
 
-function beta3Fit(eta, eta2, xi)
+function beta3_fit(eta, eta2, xi)
     return (
         -0.000025156429818799565 + 0.000019750256942201327 * eta
             + (
@@ -164,7 +164,7 @@ function beta3Fit(eta, eta2, xi)
     )
 end
 
-function sigma1Fit(eta, eta2, xi)
+function sigma1_fit(eta, eta2, xi)
     return (
         2096.551999295543 + 1463.7493168261553 * eta
             + (
@@ -175,7 +175,7 @@ function sigma1Fit(eta, eta2, xi)
     )
 end
 
-function sigma2Fit(eta, eta2, xi)
+function sigma2_fit(eta, eta2, xi)
     return (
         -10114.056472621156 - 44631.01109458185 * eta
             + (
@@ -186,7 +186,7 @@ function sigma2Fit(eta, eta2, xi)
     )
 end
 
-function sigma3Fit(eta, eta2, xi)
+function sigma3_fit(eta, eta2, xi)
     return (
         22933.658273436497 + 230960.00814979506 * eta
             + (
@@ -197,7 +197,7 @@ function sigma3Fit(eta, eta2, xi)
     )
 end
 
-function sigma4Fit(eta, eta2, xi)
+function sigma4_fit(eta, eta2, xi)
     return (
         -14621.71522218357 - 377812.8579387104 * eta
             + (
@@ -297,14 +297,14 @@ end
 
 # --- inspiral amplitude: the re-expanded PN terms and their derivative -----------------------
 
-function amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, SetaPlus1)
+function amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, seta_plus_1)
     Pi = Float64(π)
     Pi2 = PI_POWERS.two
     two_thirds = ((-969 + 1804 * eta) * PI_POWERS.two_thirds) / 672.0
-    one = ((chi1 * (81 * SetaPlus1 - 44 * eta) + chi2 * (81 - 81 * Seta - 44 * eta)) * Pi) / 48.0
+    one = ((chi1 * (81 * seta_plus_1 - 44 * eta) + chi2 * (81 - 81 * Seta - 44 * eta)) * Pi) / 48.0
     four_thirds = (
         (
-            -27312085.0 - 10287648 * chi22 - 10287648 * chi12 * SetaPlus1 + 10287648 * chi22 * Seta
+            -27312085.0 - 10287648 * chi22 - 10287648 * chi12 * seta_plus_1 + 10287648 * chi22 * Seta
                 + 24 * (-1975055 + 857304 * chi12 - 994896 * chi1 * chi2 + 857304 * chi22) * eta
                 + 35371056 * eta2
         )
@@ -313,7 +313,7 @@ function amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, Set
     five_thirds = (
         PI_POWERS.five_thirds * (
             chi2 * (-285197 * (-1 + Seta) + 4 * (-91902 + 1579 * Seta) * eta - 35632 * eta2)
-                + chi1 * (285197 * SetaPlus1 - 4 * (91902 + 1579 * Seta) * eta - 35632 * eta2)
+                + chi1 * (285197 * seta_plus_1 - 4 * (91902 + 1579 * Seta) * eta - 35632 * eta2)
                 + 42840 * (-1.0 + 4 * eta) * Pi
         )
     ) / 32256.0
@@ -322,7 +322,7 @@ function amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, Set
             -336 * (-3248849057.0 + 2943675504 * chi12 - 3339284256 * chi1 * chi2 + 2943675504 * chi22) * eta2
                 - 324322727232 * eta3
                 - 7 * (
-                -177520268561 + 107414046432 * chi22 + 107414046432 * chi12 * SetaPlus1
+                -177520268561 + 107414046432 * chi22 + 107414046432 * chi12 * seta_plus_1
                     - 107414046432 * chi22 * Seta + 11087290368 * (chi1 + chi2 + chi1 * Seta - chi2 * Seta) * Pi
             )
                 + 12 * eta * (
@@ -335,15 +335,15 @@ function amp_ins_prefactors(eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, Set
     return (; two_thirds, one, four_thirds, five_thirds, two)
 end
 
-function damp_ins_ansatz(Mf, pm, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, SetaPlus1, rho1, rho2, rho3)
+function damp_ins_ansatz(Mf, pm, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta, seta_plus_1, rho1, rho2, rho3)
     Pi = Float64(π)
     Pi2 = PI_POWERS.two
     return (
         ((-969 + 1804 * eta) * PI_POWERS.two_thirds) / (1008.0 * pm.third)
-            + ((chi1 * (81 * SetaPlus1 - 44 * eta) + chi2 * (81 - 81 * Seta - 44 * eta)) * Pi) / 48.0
+            + ((chi1 * (81 * seta_plus_1 - 44 * eta) + chi2 * (81 - 81 * Seta - 44 * eta)) * Pi) / 48.0
             + (
             (
-                -27312085 - 10287648 * chi22 - 10287648 * chi12 * SetaPlus1
+                -27312085 - 10287648 * chi22 - 10287648 * chi12 * seta_plus_1
                     + 10287648 * chi22 * Seta + 24 * (-1975055 + 857304 * chi12 - 994896 * chi1 * chi2 + 857304 * chi22) * eta
                     + 35371056 * eta2
             ) * pm.third * PI_POWERS.four_thirds
@@ -354,7 +354,7 @@ function damp_ins_ansatz(Mf, pm, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta
                     -285197 * (-1 + Seta)
                         + 4 * (-91902 + 1579 * Seta) * eta - 35632 * eta2
                 ) + chi1 * (
-                    285197 * SetaPlus1
+                    285197 * seta_plus_1
                         - 4 * (91902 + 1579 * Seta) * eta - 35632 * eta2
                 ) + 42840 * (-1 + 4 * eta) * Pi
             )
@@ -363,7 +363,7 @@ function damp_ins_ansatz(Mf, pm, eta, chi1, chi2, chi12, chi22, eta2, eta3, Seta
             Mf * Pi2 * (
                 -336 * (-3248849057.0 + 2943675504 * chi12 - 3339284256 * chi1 * chi2 + 2943675504 * chi22) * eta2 - 324322727232 * eta3
                     - 7 * (
-                    -177520268561 + 107414046432 * chi22 + 107414046432 * chi12 * SetaPlus1 - 107414046432 * chi22 * Seta
+                    -177520268561 + 107414046432 * chi22 + 107414046432 * chi12 * seta_plus_1 - 107414046432 * chi22 * Seta
                         + 11087290368 * (chi1 + chi2 + chi1 * Seta - chi2 * Seta) * Pi
                 )
                     + 12 * eta * (

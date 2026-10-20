@@ -10,9 +10,9 @@ the waveform is evaluated: `i ≥ ceil(f_start / Δf)`,
 generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
 """
 function waveform_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
-    deltaF = Float64(step(f))
-    n = floor(Int, f_max / deltaF + 1)
-    i_start = ceil(Int, f_start / deltaF)
+    delta_f = Float64(step(f))
+    n = floor(Int, f_max / delta_f + 1)
+    i_start = ceil(Int, f_start / delta_f)
     # Compare actual grid values to preserve exact frequency-bound semantics.
     first_in = 1
     while first_in <= length(f) && f[first_in] < f_min
@@ -28,8 +28,8 @@ end
 # `XLALSimInspiralfLow2fStart`: the amplitude corrections of
 # TaylorF2 start earlier than the requested frequency.
 function f_low_to_f_start(f_low, amplitude_order::Integer)
-    ampOrder = amplitude_order == -1 ? 6 : amplitude_order # MAX_NONPRECESSING_AMP_PN_ORDER
-    return f_low * 2.0 / (ampOrder + 2)
+    amp_order = amplitude_order == -1 ? 6 : amplitude_order # MAX_NONPRECESSING_AMP_PN_ORDER
+    return f_low * 2.0 / (amp_order + 2)
 end
 
 # All parameters converted to one floating-point type, so the kernels are type stable and dual

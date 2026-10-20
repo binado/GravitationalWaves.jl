@@ -28,27 +28,27 @@ import ForwardDiff as FD
 
         # The amplitude is continuous at the region boundaries, the phase and its derivative too.
         ε = 1.0e-9
-        for Mf in (G.AMP_FJOIN_INS, m.amp.fmaxCalc)
+        for Mf in (G.AMP_FJOIN_INS, m.amp.f_max_calc)
             @test G.phenomd_amplitude(m, Mf - ε) ≈ G.phenomd_amplitude(m, Mf + ε) rtol = 1.0e-6
         end
-        for Mf in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+        for Mf in (G.PHI_FJOIN_INS, m.conn.f_mrd_join)
             @test G.phenomd_phase(m, Mf - ε) ≈ G.phenomd_phase(m, Mf + ε) rtol = 1.0e-6
             d_left = (G.phenomd_phase(m, Mf - ε) - G.phenomd_phase(m, Mf - 2ε)) / ε
             d_right = (G.phenomd_phase(m, Mf + 2ε) - G.phenomd_phase(m, Mf + ε)) / ε
             @test d_left ≈ d_right rtol = 1.0e-3
         end
-        # The Lorentzian-like merger-ringdown ansatz peaks at fmaxCalc.
-        peak = G.amp_mrd_ansatz(m.amp.fmaxCalc, m.amp)
-        @test peak > G.amp_mrd_ansatz(0.99 * m.amp.fmaxCalc, m.amp)
-        @test peak > G.amp_mrd_ansatz(1.01 * m.amp.fmaxCalc, m.amp)
+        # The Lorentzian-like merger-ringdown ansatz peaks at fmax_calc.
+        peak = G.amp_mrd_ansatz(m.amp.f_max_calc, m.amp)
+        @test peak > G.amp_mrd_ansatz(0.99 * m.amp.f_max_calc, m.amp)
+        @test peak > G.amp_mrd_ansatz(1.01 * m.amp.f_max_calc, m.amp)
 
         # Eta is snapped only by rounding.
         @test G.nudged_eta(1.0, 1.0) == 0.25
         @test G.nudged_eta(3.0, 1.0) == 3.0 / 16.0
         @test G.nudged_eta(1.0, 1.0 + 1.0e-16) == 0.25
         # `fmax_calc` takes the second branch for gamma2 > 1 without evaluating a NaN square root.
-        @test G.fmax_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
-        @test G.fmax_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
+        @test G.f_max_calc(0.07, 0.01, 1.5, 1.0) == abs(0.07 + (-0.01 * 1.0) / 1.5)
+        @test G.f_max_calc(0.07, 0.01, 0.5, 1.0) == abs(0.07 + (0.01 * (-1 + sqrt(1 - 0.25)) * 1.0) / 0.5)
 
         # Equal masses sit at the upper limit of eta.
         @test isfinite(G.phenomd_amplitude(G.phenomd_model(30.0, 30.0, 0.0, 0.0, 50.0, 0.0), 0.01))
@@ -66,8 +66,8 @@ import ForwardDiff as FD
                 Mf -> G.amp_int_ansatz(Mf, m.amp),
                 Mf -> G.amp_mrd_ansatz(Mf, m.amp),
                 Mf -> G.phi_ins_ansatz_int(Mf, G.useful_powers(Mf), m.phi_pre, m.phi),
-                Mf -> m.phi.etaInv * G.phi_int_ansatz(Mf, m.phi) + m.conn.C1Int + m.conn.C2Int * Mf,
-                Mf -> m.phi.etaInv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.C1MRD + m.conn.C2MRD * Mf,
+                Mf -> m.phi.eta_inv * G.phi_int_ansatz(Mf, m.phi) + m.conn.c1_int + m.conn.c2_int * Mf,
+                Mf -> m.phi.eta_inv * G.phi_mrd_ansatz_int(Mf, m.phi) + m.conn.c1_mrd + m.conn.c2_mrd * Mf,
             )
             for piece in pieces, Mf in exp10.(range(-4, log10(10.0); length = 60))
                 @test isfinite(piece(Mf))
@@ -79,11 +79,11 @@ import ForwardDiff as FD
     @testset "gradients across the region boundaries" begin
         m = G.phenomd_model(36.0, 29.0, 0.5, 0.3, 50.0, 1.3)
         ε = 1.0e-7
-        for edge in (G.AMP_FJOIN_INS, m.amp.fmaxCalc), Mf in (edge - ε, edge, edge + ε)
+        for edge in (G.AMP_FJOIN_INS, m.amp.f_max_calc), Mf in (edge - ε, edge, edge + ε)
             @test isfinite(FD.derivative(x -> G.phenomd_amplitude(m, x), Mf))
         end
         # The phase is C¹ across both joins.
-        for edge in (G.PHI_FJOIN_INS, m.conn.fMRDJoin)
+        for edge in (G.PHI_FJOIN_INS, m.conn.f_mrd_join)
             left = FD.derivative(x -> G.phenomd_phase(m, x), edge - ε)
             right = FD.derivative(x -> G.phenomd_phase(m, x), edge + ε)
             @test isfinite(left) && isfinite(right)
@@ -177,10 +177,10 @@ end
     )
     df = Float64(step(f))
     fcut(m1, m2) = GWWaveforms.F_CUT / ((m1 + m2) * GWWaveforms.MTSUN_SI)
-    # The last pair puts fCut inside the grid; the second-last makes it an exact grid point.
+    # The last pair puts f_cut inside the grid; the second-last makes it an exact grid point.
     for (m1, m2) in ((36.0, 29.0), (29.0, 36.0), (90.0, 85.0), (130.0, 100.0))
         M = m1 + m2
-        # f_max such that f_max / df is an integer, below and above fCut.
+        # f_max such that f_max / df is an integer, below and above f_cut.
         for g in (
                 IMRPhenomD(; minimum_frequency = 25.0),
                 IMRPhenomD(; minimum_frequency = 25.0, maximum_frequency = 180.0),

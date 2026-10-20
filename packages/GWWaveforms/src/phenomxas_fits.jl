@@ -32,7 +32,7 @@ const XAS_PHASE_FITS = (
     (0.0, 7.05731400277692, 22.455288821807095, 119.43820622871043, 0.0, 0.0, 0.26026709603623255, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -7.9407123129681425, 9.486783128047414, 0.0, 0.0, 0.0, 134.88158268621922, -56.05992404859163, 0.0, 0.0, 0.0, -316.26970506215554, 90.31815139272628, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, -0.7162058321905909, 0.0, 0.0, 0.0, 0.0, 43.82713604567481, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
 )
 
-function xas_nospin_CV(NoSpin_coeffs, eta)
+function xas_nospin_cv(no_spin_coeffs, eta)
     eta2 = (eta * eta)
     eta3 = (eta2 * eta)
     eta4 = (eta3 * eta)
@@ -40,16 +40,16 @@ function xas_nospin_CV(NoSpin_coeffs, eta)
     return (
         (
             (
-                (((NoSpin_coeffs[(0 + 1)] + (NoSpin_coeffs[(1 + 1)] * eta)) + (NoSpin_coeffs[(2 + 1)] * eta2)) + (NoSpin_coeffs[(3 + 1)] * eta3)) +
-                    (NoSpin_coeffs[(4 + 1)] * eta4)
+                (((no_spin_coeffs[(0 + 1)] + (no_spin_coeffs[(1 + 1)] * eta)) + (no_spin_coeffs[(2 + 1)] * eta2)) + (no_spin_coeffs[(3 + 1)] * eta3)) +
+                    (no_spin_coeffs[(4 + 1)] * eta4)
             ) +
-                (NoSpin_coeffs[(5 + 1)] * eta5)
+                (no_spin_coeffs[(5 + 1)] * eta5)
         ) /
-            (((NoSpin_coeffs[(6 + 1)] + (NoSpin_coeffs[(7 + 1)] * eta)) + (NoSpin_coeffs[(8 + 1)] * eta2)) + (NoSpin_coeffs[(9 + 1)] * eta3))
+            (((no_spin_coeffs[(6 + 1)] + (no_spin_coeffs[(7 + 1)] * eta)) + (no_spin_coeffs[(8 + 1)] * eta2)) + (no_spin_coeffs[(9 + 1)] * eta3))
     )
 end
 
-function xas_Eqspin_CV(EqSpin_coeffs, eta, S)
+function xas_eqspin_cv(eq_spin_coeffs, eta, S)
     eta2 = (eta * eta)
     eta3 = (eta2 * eta)
     eta4 = (eta3 * eta)
@@ -63,47 +63,47 @@ function xas_Eqspin_CV(EqSpin_coeffs, eta, S)
                 (
                     (
                         (
-                            (((EqSpin_coeffs[(0 + 1)] + (EqSpin_coeffs[(1 + 1)] * S)) + (EqSpin_coeffs[(2 + 1)] * S2)) + (EqSpin_coeffs[(3 + 1)] * S3)) +
-                                (EqSpin_coeffs[(4 + 1)] * S4)
+                            (((eq_spin_coeffs[(0 + 1)] + (eq_spin_coeffs[(1 + 1)] * S)) + (eq_spin_coeffs[(2 + 1)] * S2)) + (eq_spin_coeffs[(3 + 1)] * S3)) +
+                                (eq_spin_coeffs[(4 + 1)] * S4)
                         ) +
                             (
                             eta *
                                 (
-                                (((EqSpin_coeffs[(5 + 1)] + (EqSpin_coeffs[(6 + 1)] * S)) + (EqSpin_coeffs[(7 + 1)] * S2)) + (EqSpin_coeffs[(8 + 1)] * S3)) +
-                                    (EqSpin_coeffs[(9 + 1)] * S4)
+                                (((eq_spin_coeffs[(5 + 1)] + (eq_spin_coeffs[(6 + 1)] * S)) + (eq_spin_coeffs[(7 + 1)] * S2)) + (eq_spin_coeffs[(8 + 1)] * S3)) +
+                                    (eq_spin_coeffs[(9 + 1)] * S4)
                             )
                         )
                     ) +
                         (
                         eta2 *
                             (
-                            (((EqSpin_coeffs[(10 + 1)] + (EqSpin_coeffs[(11 + 1)] * S)) + (EqSpin_coeffs[(12 + 1)] * S2)) + (EqSpin_coeffs[(13 + 1)] * S3)) +
-                                (EqSpin_coeffs[(14 + 1)] * S4)
+                            (((eq_spin_coeffs[(10 + 1)] + (eq_spin_coeffs[(11 + 1)] * S)) + (eq_spin_coeffs[(12 + 1)] * S2)) + (eq_spin_coeffs[(13 + 1)] * S3)) +
+                                (eq_spin_coeffs[(14 + 1)] * S4)
                         )
                     )
                 ) +
                     (
                     eta3 *
                         (
-                        (((EqSpin_coeffs[(15 + 1)] + (EqSpin_coeffs[(16 + 1)] * S)) + (EqSpin_coeffs[(17 + 1)] * S2)) + (EqSpin_coeffs[(18 + 1)] * S3)) +
-                            (EqSpin_coeffs[(19 + 1)] * S4)
+                        (((eq_spin_coeffs[(15 + 1)] + (eq_spin_coeffs[(16 + 1)] * S)) + (eq_spin_coeffs[(17 + 1)] * S2)) + (eq_spin_coeffs[(18 + 1)] * S3)) +
+                            (eq_spin_coeffs[(19 + 1)] * S4)
                     )
                 )
             ) +
                 (
                 eta4 *
                     (
-                    (((EqSpin_coeffs[(20 + 1)] + (EqSpin_coeffs[(21 + 1)] * S)) + (EqSpin_coeffs[(22 + 1)] * S2)) + (EqSpin_coeffs[(23 + 1)] * S3)) +
-                        (EqSpin_coeffs[(24 + 1)] * S4)
+                    (((eq_spin_coeffs[(20 + 1)] + (eq_spin_coeffs[(21 + 1)] * S)) + (eq_spin_coeffs[(22 + 1)] * S2)) + (eq_spin_coeffs[(23 + 1)] * S3)) +
+                        (eq_spin_coeffs[(24 + 1)] * S4)
                 )
             )
         )
     )
-    denominator = (((EqSpin_coeffs[(25 + 1)] + (EqSpin_coeffs[(26 + 1)] * S)) + (EqSpin_coeffs[(27 + 1)] * S2)) + (EqSpin_coeffs[(28 + 1)] * S3))
+    denominator = (((eq_spin_coeffs[(25 + 1)] + (eq_spin_coeffs[(26 + 1)] * S)) + (eq_spin_coeffs[(27 + 1)] * S2)) + (eq_spin_coeffs[(28 + 1)] * S3))
     return (numerator / denominator)
 end
 
-function xas_Uneqspin_CV(EqSpin_coeffs, eta, S, chia, delta)
+function xas_unequal_spin_cv(eq_spin_coeffs, eta, S, chia, delta)
     chia2 = (chia * chia)
     eta2 = (eta * eta)
     eta3 = (eta2 * eta)
@@ -117,57 +117,57 @@ function xas_Uneqspin_CV(EqSpin_coeffs, eta, S, chia, delta)
                     (
                         (
                             (
-                                (((EqSpin_coeffs[(0 + 1)] + (EqSpin_coeffs[(1 + 1)] * eta)) + (EqSpin_coeffs[(2 + 1)] * eta2)) + (EqSpin_coeffs[(3 + 1)] * eta3)) +
-                                    (EqSpin_coeffs[(4 + 1)] * eta4)
+                                (((eq_spin_coeffs[(0 + 1)] + (eq_spin_coeffs[(1 + 1)] * eta)) + (eq_spin_coeffs[(2 + 1)] * eta2)) + (eq_spin_coeffs[(3 + 1)] * eta3)) +
+                                    (eq_spin_coeffs[(4 + 1)] * eta4)
                             ) +
-                                (EqSpin_coeffs[(5 + 1)] * eta5)
+                                (eq_spin_coeffs[(5 + 1)] * eta5)
                         ) +
-                            (EqSpin_coeffs[(6 + 1)] * S)
+                            (eq_spin_coeffs[(6 + 1)] * S)
                     ) +
-                        ((EqSpin_coeffs[(7 + 1)] * S) * eta2)
+                        ((eq_spin_coeffs[(7 + 1)] * S) * eta2)
                 ) +
-                    ((EqSpin_coeffs[(8 + 1)] * S) * eta3)
+                    ((eq_spin_coeffs[(8 + 1)] * S) * eta3)
             )
         ) +
-            ((EqSpin_coeffs[(9 + 1)] * chia2) * eta)
+            ((eq_spin_coeffs[(9 + 1)] * chia2) * eta)
     )
 end
 
-function xas_Amp_Nospin_CV(NoSpin_coeffs, eta)
+function xas_amp_nospin_cv(no_spin_coeffs, eta)
     numerator = (
-        (((NoSpin_coeffs[(0 + 1)] + (NoSpin_coeffs[(1 + 1)] * eta)) + (NoSpin_coeffs[(2 + 1)] * (eta^2))) + (NoSpin_coeffs[(3 + 1)] * (eta^3))) +
-            (NoSpin_coeffs[(4 + 1)] * (eta^4))
+        (((no_spin_coeffs[(0 + 1)] + (no_spin_coeffs[(1 + 1)] * eta)) + (no_spin_coeffs[(2 + 1)] * (eta^2))) + (no_spin_coeffs[(3 + 1)] * (eta^3))) +
+            (no_spin_coeffs[(4 + 1)] * (eta^4))
     )
-    denominator = ((NoSpin_coeffs[(5 + 1)] + (NoSpin_coeffs[(6 + 1)] * eta)) + (NoSpin_coeffs[(7 + 1)] * (eta^2)))
+    denominator = ((no_spin_coeffs[(5 + 1)] + (no_spin_coeffs[(6 + 1)] * eta)) + (no_spin_coeffs[(7 + 1)] * (eta^2)))
     return (numerator / denominator)
 end
 
-function xas_Amp_Eqspin_CV(EqSpin_coeffs, eta, S)
-    numeratorS0 = (((EqSpin_coeffs[(0 + 1)] + (EqSpin_coeffs[(1 + 1)] * eta)) + (EqSpin_coeffs[(2 + 1)] * (eta^2))) + (EqSpin_coeffs[(3 + 1)] * (eta^3)))
-    numeratorS1 = (((EqSpin_coeffs[(4 + 1)] + (EqSpin_coeffs[(5 + 1)] * eta)) + (EqSpin_coeffs[(6 + 1)] * (eta^2))) + (EqSpin_coeffs[(7 + 1)] * (eta^3)))
-    numeratorS2 = (((EqSpin_coeffs[(8 + 1)] + (EqSpin_coeffs[(9 + 1)] * eta)) + (EqSpin_coeffs[(10 + 1)] * (eta^2))) + (EqSpin_coeffs[(11 + 1)] * (eta^3)))
-    numeratorS3 = (((EqSpin_coeffs[(12 + 1)] + (EqSpin_coeffs[(13 + 1)] * eta)) + (EqSpin_coeffs[(14 + 1)] * (eta^2))) + (EqSpin_coeffs[(15 + 1)] * (eta^3)))
-    numeratorS4 = (((EqSpin_coeffs[(16 + 1)] + (EqSpin_coeffs[(17 + 1)] * eta)) + (EqSpin_coeffs[(18 + 1)] * (eta^2))) + (EqSpin_coeffs[(19 + 1)] * (eta^3)))
-    numeratorS5 = (((EqSpin_coeffs[(20 + 1)] + (EqSpin_coeffs[(21 + 1)] * eta)) + (EqSpin_coeffs[(22 + 1)] * (eta^2))) + (EqSpin_coeffs[(23 + 1)] * (eta^3)))
-    denominator = (((EqSpin_coeffs[(24 + 1)] + (EqSpin_coeffs[(25 + 1)] * S)) + (EqSpin_coeffs[(26 + 1)] * eta)) + (EqSpin_coeffs[(27 + 1)] * (S^2)))
+function xas_amp_eqspin_cv(eq_spin_coeffs, eta, S)
+    numerator_s0 = (((eq_spin_coeffs[(0 + 1)] + (eq_spin_coeffs[(1 + 1)] * eta)) + (eq_spin_coeffs[(2 + 1)] * (eta^2))) + (eq_spin_coeffs[(3 + 1)] * (eta^3)))
+    numerator_s1 = (((eq_spin_coeffs[(4 + 1)] + (eq_spin_coeffs[(5 + 1)] * eta)) + (eq_spin_coeffs[(6 + 1)] * (eta^2))) + (eq_spin_coeffs[(7 + 1)] * (eta^3)))
+    numerator_s2 = (((eq_spin_coeffs[(8 + 1)] + (eq_spin_coeffs[(9 + 1)] * eta)) + (eq_spin_coeffs[(10 + 1)] * (eta^2))) + (eq_spin_coeffs[(11 + 1)] * (eta^3)))
+    numerator_s3 = (((eq_spin_coeffs[(12 + 1)] + (eq_spin_coeffs[(13 + 1)] * eta)) + (eq_spin_coeffs[(14 + 1)] * (eta^2))) + (eq_spin_coeffs[(15 + 1)] * (eta^3)))
+    numerator_s4 = (((eq_spin_coeffs[(16 + 1)] + (eq_spin_coeffs[(17 + 1)] * eta)) + (eq_spin_coeffs[(18 + 1)] * (eta^2))) + (eq_spin_coeffs[(19 + 1)] * (eta^3)))
+    numerator_s5 = (((eq_spin_coeffs[(20 + 1)] + (eq_spin_coeffs[(21 + 1)] * eta)) + (eq_spin_coeffs[(22 + 1)] * (eta^2))) + (eq_spin_coeffs[(23 + 1)] * (eta^3)))
+    denominator = (((eq_spin_coeffs[(24 + 1)] + (eq_spin_coeffs[(25 + 1)] * S)) + (eq_spin_coeffs[(26 + 1)] * eta)) + (eq_spin_coeffs[(27 + 1)] * (S^2)))
     return (
-        (((((numeratorS0 + (numeratorS1 * S)) + (numeratorS2 * (S^2))) + (numeratorS3 * (S^3))) + (numeratorS4 * (S^4))) + (numeratorS5 * (S^5))) /
+        (((((numerator_s0 + (numerator_s1 * S)) + (numerator_s2 * (S^2))) + (numerator_s3 * (S^3))) + (numerator_s4 * (S^4))) + (numerator_s5 * (S^5))) /
             denominator
     )
 end
 
-function xas_Amp_Uneqspin_CV(UneqSpin_coeffs, eta, S, chia, delta)
+function xas_amp_unequal_spin_cv(unequal_spin_coeffs, eta, S, chia, delta)
     return (
         (chia * delta) *
             (
             (
                 (
-                    ((UneqSpin_coeffs[(0 + 1)] + (UneqSpin_coeffs[(1 + 1)] * eta)) + (UneqSpin_coeffs[(2 + 1)] * (eta^2))) +
-                        (UneqSpin_coeffs[(3 + 1)] * (eta^3))
+                    ((unequal_spin_coeffs[(0 + 1)] + (unequal_spin_coeffs[(1 + 1)] * eta)) + (unequal_spin_coeffs[(2 + 1)] * (eta^2))) +
+                        (unequal_spin_coeffs[(3 + 1)] * (eta^3))
                 ) +
-                    (UneqSpin_coeffs[(4 + 1)] * (eta^4))
+                    (unequal_spin_coeffs[(4 + 1)] * (eta^4))
             ) +
-                (UneqSpin_coeffs[(5 + 1)] * (eta^5))
+                (unequal_spin_coeffs[(5 + 1)] * (eta^5))
         )
     )
 end

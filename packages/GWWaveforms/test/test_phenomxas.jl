@@ -30,7 +30,7 @@ using LinearAlgebra
             for (fun, dfun, coeff, f) in (
                     (GWWaveforms.xas_inspiral_phase, GWWaveforms.xas_dinspiral_phase, p.ins, p.f1),
                     (GWWaveforms.xas_int_phase, GWWaveforms.xas_dint_phase, p.int, p.f2),
-                    (GWWaveforms.xas_rd_phase, GWWaveforms.xas_drd_phase, p.rd, m.r.fRD),
+                    (GWWaveforms.xas_rd_phase, GWWaveforms.xas_drd_phase, p.rd, m.r.f_rd),
                     (GWWaveforms.xas_inspiral_amp, GWWaveforms.xas_dinspiral_amp, m.amplitude.ins, m.amplitude.f1),
                     (GWWaveforms.xas_rd_amp, GWWaveforms.xas_drd_amp, m.amplitude.rd, m.amplitude.f4),
                 )

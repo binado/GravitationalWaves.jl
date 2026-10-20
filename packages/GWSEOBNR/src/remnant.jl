@@ -66,7 +66,7 @@ function _bbh_HBR2016_ell(m1, m2, chi1z, chi2z, version)
                 k34 = 1166.89
                 xi = 0.474046
             else
-                throw(DomainError(r, "Hamiltonian domain"))
+                throw(DomainError(version, "unknown remnant fit version"))
             end
         end
     end
@@ -180,7 +180,7 @@ function bbh_final_mass_non_precessing_UIB2016(m1, m2, chi1, chi2, version = "v2
             f31 = -(243.6299258830685)
             f51 = -(0.5808669012986468)
         else
-            throw(DomainError(r, "Hamiltonian domain"))
+            throw(DomainError(version, "unknown remnant fit version"))
         end
     end
     Erad = ((((((((((1.0 + ((-(2.0) / 3.0) * sqrt2)) * eta) + (a2 * eta2)) + (a3 * eta3)) + (a4 * eta4)) * (((1.0 + (((b10 * b1) * Shat) * ((f10 + (f11 * eta)) + (((16.0 - (16.0 * f10)) - (4.0 * f11)) * eta2)))) + (((b20 * b2) * Shat2) * ((f20 + (f21 * eta)) + (((16.0 - (16.0 * f20)) - (4.0 * f21)) * eta2)))) + (((b30 * b3) * Shat3) * ((f30 + (f31 * eta)) + (((16.0 - (16.0 * f30)) - (4.0 * f31)) * eta2))))) / (1.0 + (((b50 * b5) * Shat) * ((f50 + (f51 * eta)) + (((16.0 - (16.0 * f50)) - (4.0 * f51)) * eta2))))) + ((((d10 * sqrt1m4eta) * eta2) * (1.0 + (d11 * eta))) * chidiff)) + (((((d30 * Shat) * sqrt1m4eta) * eta) * (1.0 + (d31 * eta))) * chidiff)) + ((d20 * eta3) * chidiff2))

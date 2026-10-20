@@ -1,24 +1,33 @@
 # ForwardDiff optimization plan
 
-Status: **planned, not started.** Nothing here has been measured beyond the single
-data point below, and no change listed here is made. ForwardDiff is the supported
+Status: **baseline measured; no optimization applied yet.** ForwardDiff is the supported
 backend, and the Mooncake extension reuses it: its `spectrum_vector` rule runs one
 ForwardDiff Jacobian pass (`GWSEOBNRMooncakeExt`). A faster Dual path therefore speeds
 up both.
 
 ## Baseline
 
-The only measurement so far is one directional derivative at M=40, q=1: about 0.36 s
-for the primal and 0.55 s for the derivative. It does not cover the full 7-parameter
-gradient, other chunk sizes, or allocations. The first task is a benchmark that does.
+`just benchmark-seobnr` (`benchmarks/GWSEOBNR/gradient.jl`) measures the primal and the
+7-parameter ForwardDiff gradient of `evaluated_spectrum` on the `0:0.125:1024` grid
+(8193 bins) at chunk sizes 1, 2, 4 and 7. Julia 1.12.7, Apple M4, one thread, minimum of
+5 runs after a warm-up call:
+
+| point | primal | chunk 1 | chunk 2 | chunk 4 | chunk 7 |
+| --- | --- | --- | --- | --- | --- |
+| M=40, q=1 | 0.33 s / 356 MiB | 3.18 s / 3907 MiB | 2.10 s / 2725 MiB | 1.04 s / 2020 MiB | 0.80 s / 1585 MiB |
+| M=60, q=2, spinning | 0.12 s / 151 MiB | 1.09 s / 1686 MiB | 0.75 s / 1176 MiB | 0.50 s / 875 MiB | 0.40 s / 688 MiB |
+
+Allocations repeat exactly between runs. Wall time does not: the M=40 primal ranged from
+0.24 s to 0.33 s over two runs on the same machine, so compare changes by allocations
+first and re-run before trusting a timing difference under about 20%.
+
+Chunk 7 is the fastest and is also ForwardDiff's default for 7 inputs, so candidate 5
+below needs no change.
 
 ## Rules
 
-- Add a `benchmarks/GWSEOBNR` environment with a `just` recipe, modelled on the
-  `benchmark-inference` recipe. That recipe points at `benchmarks/GWMatchedFiltering`,
-  which is not in the repository, so there is no existing benchmark environment to copy.
-  Report wall time, allocations, and the Julia version and CPU.
-  Measure primal, the 7-parameter gradient, and chunk sizes 1, 2, 4 and 7.
+- Run `just benchmark-seobnr` (with `JULIA="julia +1.12"` to pin the version) before and
+  after each change and compare against the table above.
 - Keep a change only if it measurably wins and leaves the acceptance gates unchanged
   (130 passing and 13 failing on Julia 1.12.7, the same gates failing; see
   `ACCEPTANCE.md`). Run `just test-integration-seobnr` and
@@ -47,9 +56,8 @@ gradient, other chunk sizes, or allocations. The first task is a benchmark that 
    sequence. A norm on primal values only would match the `Float64` step sequence, but
    it must not loosen derivative accuracy; the derivative convergence gate
    (`derivative_convergence`) decides this.
-5. **Chunk size.** The 7 intrinsic and extrinsic parameters fit in one chunk. Set an
-   explicit `ForwardDiff.Chunk` rather than the default. The Mooncake rule already has
-   7 inputs; check the same choice there.
+5. **Chunk size.** Resolved by the baseline: the default is already 7, which is the
+   fastest. The Mooncake rule has the same 7 inputs; confirm it uses that default.
 6. **Type stability.** Run `@code_warntype` and JET on the Dual path, in particular
    closures that capture `sol` and the `Float64(primal(...))` casts in `src/roots.jl`.
 

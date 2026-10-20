@@ -1,0 +1,11 @@
+[deps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GWSEOBNR = "4f0e8f35-72a1-49ea-92e6-98a6e729c138"
+
+[sources]
+GWSEOBNR = {path = "../../packages/GWSEOBNR"}
+
+[compat]
+ForwardDiff = "1"
+GWSEOBNR = "0.1"
+julia = "1.12"

@@ -60,6 +60,11 @@ benchmark-inference:
     {{ julia }} --startup-file=no --project=benchmarks/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate()'
     {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/layouts.jl
 
+# SEOBNRv5HM primal and ForwardDiff gradient cost across chunk sizes; output includes timings, allocations, CPU, and Julia version.
+benchmark-seobnr:
+    {{ julia }} --startup-file=no --project=benchmarks/GWSEOBNR -e 'using Pkg; Pkg.instantiate()'
+    {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWSEOBNR benchmarks/GWSEOBNR/gradient.jl
+
 # Independent pinned pySEOBNR oracle (requires GSL, SWIG, and a C compiler).
 fixtures-seobnr:
     uv sync --project python/seobnr --locked

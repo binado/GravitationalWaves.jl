@@ -1,8 +1,7 @@
 # Gradient comparison
 
 The separate-broadcast measurements below used anonymous functions. The later
-[`Ref` comparison](ref_arguments.md) measures the current production implementation
-against that version.
+[`Ref` comparison](ref_arguments.md) measures the Ref-argument conversion against that version.
 
 
 ```sh

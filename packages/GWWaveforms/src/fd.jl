@@ -90,7 +90,7 @@ function broadcast_amplitude_phase(amp_kernel::A, phase_kernel::P, ::Type{T}, f,
     frequencies = f[lo:hi]
     signed_amplitudes = view(amplitude, lo:hi)
     model_ref = Ref(model)
-    signed_amplitudes .= amp_kernel.(Float64.(frequencies), model_ref, Ref(scale), Ref(cutoff))
+    signed_amplitudes .= amp_kernel.(Float64.(frequencies), model_ref, scale, cutoff)
     phase[lo:hi] .= phase_kernel.(Float64.(frequencies), model_ref, signed_amplitudes)
     amplitude .= abs.(amplitude)
     return (; amplitude, phase)

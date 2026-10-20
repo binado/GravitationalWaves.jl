@@ -6,8 +6,9 @@ julia --threads=1 --project=integration/GWWaveforms benchmarks/GWWaveforms/ref_a
 
 Instantiate both the integration and benchmark environments first, as described in
 [the gradient benchmark](gradients.md). The script retains the previous anonymous-function
-assembler and compares it directly with the public production API, which now broadcasts the
-scalar kernels with a shared `Ref(model)`, `Ref(scale)` and `Ref(cutoff)`.
+assembler and compares it with the public production API. The recorded results below used
+a shared `Ref(model)`, `Ref(scale)` and `Ref(cutoff)`. Production now leaves the numeric
+`scale` and `cutoff` unwrapped; these results precede that simplification.
 
 All implementations prepare the model once and return separate amplitude/phase vectors.
 Outputs are checked for exact equality before timing. Measurements use Julia 1.12.7, Apple M4,

@@ -27,4 +27,4 @@ Every generator provides `approximant`, `reference_frequency`, `minimum_frequenc
 `test/contract.jl` defines `test_generator_contract(g; params, f)`, which backends `include` from
 their tests to check a generator against the contract.
 
-Licensed under GPL-2.0-or-later.
+MIT; see [LICENSE](LICENSE).

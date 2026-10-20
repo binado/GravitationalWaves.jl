@@ -44,6 +44,8 @@ end
 
 # Rotate the coorbital-frame modes `h` (n_times × n_modes) into the inertial frame:
 # h_inertial[ell, m′] = Σ_m D^ell_{m′ m}(R) h[ell, m] with the rotor R of each time.
+# Only the elements with m′ >= 0 are evaluated: D^ell_{-m′,-m} = (-1)^(m′-m) conj(D^ell_{m′ m}), so
+# each of them also gives the row -m′, from h[ell, -m].
 function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
     T = promote_type(eltype(h), eltype(quat))
     out = zeros(T, size(h))
@@ -52,12 +54,23 @@ function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
         ra = complex(quat[k, 1], quat[k, 4])
         rb = complex(quat[k, 3], quat[k, 2])
         fill_powers!(powers, ra, rb)
-        for l in 2:ell_max, mp in (-l):l
+        for l in 2:ell_max
             acc = zero(T)
             for m in (-l):l
-                acc += wigner_D_element(l, mp, m, powers) * h[k, mode_column(l, m)]
+                acc += wigner_D_element(l, 0, m, powers) * h[k, mode_column(l, m)]
             end
-            out[k, mode_column(l, mp)] = acc
+            out[k, mode_column(l, 0)] = acc
+            for mp in 1:l
+                acc = zero(T)
+                acc_neg = zero(T)
+                for m in (-l):l
+                    d = wigner_D_element(l, mp, m, powers)
+                    acc += d * h[k, mode_column(l, m)]
+                    acc_neg += ifelse(iseven(mp - m), 1, -1) * conj(d) * h[k, mode_column(l, -m)]
+                end
+                out[k, mode_column(l, mp)] = acc
+                out[k, mode_column(l, -mp)] = acc_neg
+            end
         end
     end
     return out

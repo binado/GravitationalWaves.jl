@@ -144,8 +144,8 @@ function spline_eval(s::NaturalCubicSpline, x)
     return s.ylo[i] + delx * (s.b[i] + delx * (s.c[i] + delx * s.d[i]))
 end
 
-include("phenomd_qnm.jl")
-include("phenomd_fits.jl")
+include("qnm.jl")
+include("fits.jl")
 
 const FRING_SPLINE = NaturalCubicSpline(QNM_A, QNM_FRING)
 const FDAMP_SPLINE = NaturalCubicSpline(QNM_A, QNM_FDAMP)

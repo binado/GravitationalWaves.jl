@@ -38,6 +38,10 @@ Both vectors are zero at DC and outside waveform support, with phase set to zero
 amplitude vanishes. TaylorF2's signed LAL amplitude is absorbed into the phase by a π shift.
 Changing the inclination does not change amplitude or phase.
 
+The Phenom models prepare their coefficients once and evaluate scalar frequency kernels.
+Production broadcasts fill separate amplitude and phase vectors directly, then return them
+in a named tuple. Comparisons with loops and tuple broadcasting, including timings and allocations, live in [the waveform benchmarks](../../benchmarks/GWWaveforms/README.md).
+
 The element type of the output follows the parameters, so dual numbers pass through:
 
 ```julia
@@ -64,7 +68,10 @@ the configured frequency interval.
 
 ## Scope
 
-- Frequency domain, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tidal parameters.
+- Frequency domain, uniform `AbstractRange` grids, detector-frame masses, no tidal parameters.
+  IMRPhenomD and IMRPhenomXAS evaluate the supplied frequencies directly and accept grids
+  starting above zero, without a DC bin. TaylorF2 retains its zero-start grid convention.
+  Grid validation runs in `validate_parameters`, outside waveform evaluation.
 - All models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
   `eccentricity` zero, otherwise `validate_parameters` throws `ArgumentError` (LAL rejects such input too). None has higher
   modes, so there is no `mode_array` option.

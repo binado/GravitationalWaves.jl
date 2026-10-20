@@ -21,8 +21,40 @@
             @test distant.phase == a.phase
             empty = amplitude_phase(f, params, G(; minimum_frequency = 600.0, maximum_frequency = 700.0))
             @test all(iszero, empty.amplitude) && all(iszero, empty.phase)
-            @test_throws ArgumentError amplitude_phase(1:1:100, params, g)
-            @test_throws ArgumentError amplitude_phase(f, params, G(; maximum_frequency = 0.0))
+            @test_throws ArgumentError validate_parameters(f, params, G(; maximum_frequency = 0.0))
+        end
+    end
+end
+
+@testset "Phenom frequency ranges starting above zero" begin
+    params = (;
+        mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
+        theta_jn = 0.4, phase = 0.2, a_1 = 0.5, a_2 = 0.3,
+    )
+    for G in (IMRPhenomD, IMRPhenomXAS)
+        g = G(; minimum_frequency = 20.1, maximum_frequency = 400.3)
+        full = 0.0:0.125:512.0
+        cropped = full[164:end]
+        @test validate_parameters(cropped, params, g) === nothing
+        a = amplitude_phase(full, params, g)
+        b = @inferred amplitude_phase(cropped, params, g)
+        @test b.amplitude == a.amplitude[164:end]
+        @test b.phase == a.phase[164:end]
+        h = hphc_fd(full, params, g)
+        cropped_h = hphc_fd(cropped, params, g)
+        @test cropped_h.plus == h.plus[164:end]
+        @test cropped_h.cross == h.cross[164:end]
+
+        # Offset by a fraction of the spacing: these frequencies are not integer bins of Δf.
+        offset = 20.0625:0.125:399.9375
+        fine = 0.0:0.0625:512.0
+        expected = amplitude_phase(fine, params, g)
+        actual = amplitude_phase(offset, params, g)
+        indices = [searchsortedfirst(fine, fi) for fi in offset]
+        @test actual.amplitude ≈ expected.amplitude[indices] rtol = 1.0e-12
+        @test actual.phase ≈ expected.phase[indices] rtol = 1.0e-12
+        for bad in (range(-1, 512; step = 0.25), 100:-1:20, range(20; step = 1, length = 1))
+            @test_throws ArgumentError validate_parameters(bad, params, g)
         end
     end
 end

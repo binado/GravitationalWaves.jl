@@ -54,7 +54,11 @@
             @test validate_parameters(f, base, g) === nothing
             @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_2 = -1.0)), g)
             @test_throws ArgumentError validate_parameters(f, merge(base, (; luminosity_distance = 0.0)), g)
-            @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
+            if g isa TaylorF2
+                @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
+            else
+                @test validate_parameters(range(1, 512; step = 0.25), base, g) === nothing
+            end
             # Parameter checks are explicit through `validate_parameters`.
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 0.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 450.0, maximum_frequency = 400.0))
@@ -68,15 +72,14 @@
         # The default cutoff depends on the masses, which the static path does not support.
         for z in (TaylorF2(; maximum_frequency = 0), IMRPhenomD(; maximum_frequency = 0))
             @test_throws ArgumentError validate_parameters(f, base, z)
-            @test_throws ArgumentError hphc_fd(f, base, z)
         end
     end
 
     @testset "grid" begin
         s = IMRPhenomD()
-        @test_throws ArgumentError hphc_fd(range(1, 512; step = 0.25), base, s)
-        @test_throws ArgumentError hphc_fd(range(0, 512; step = -0.25), base, s)
-        @test_throws ArgumentError hphc_fd(range(0, 0; length = 1), base, s)
+        @test validate_parameters(range(1, 512; step = 0.25), base, s) === nothing
+        @test_throws ArgumentError validate_parameters(range(0, 512; step = -0.25), base, s)
+        @test_throws ArgumentError validate_parameters(range(0, 0; length = 1), base, s)
     end
 
     @testset "masking and f_max" begin

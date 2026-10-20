@@ -19,12 +19,6 @@ function test_generator_contract(g; params, f)
             @test occursin(approximant(g), sprint(show, g))
         end
 
-        @testset "grid validation" begin
-            @test_throws ArgumentError hphc_fd(range(1, 512; step = 0.25), params, g)
-            @test_throws ArgumentError hphc_fd(range(0, 512; step = -0.25), params, g)
-            @test_throws ArgumentError hphc_fd(range(0, 0; length = 1), params, g)
-        end
-
         @testset "parameter validation" begin
             @test validate_parameters(f, params, g) === nothing
             @test_throws ArgumentError validate_parameters(f, merge(params, (; not_a_parameter = 1.0)), g)

@@ -25,7 +25,9 @@ Julia packages live in `packages/`:
 
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
-Waveform scope remains FD only, uniform `AbstractRange` grids starting at 0, detector-frame masses, no tides.
+Waveform scope remains FD only, uniform `AbstractRange` grids, detector-frame masses, no tides.
+Native Phenom models evaluate supplied frequencies directly and allow nonzero grid starts;
+TaylorF2 and LALWaveforms retain zero-start grids. Grid validation runs on the host.
 The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms`, `GWDistributions` and `GWSurrogates` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
@@ -72,7 +74,7 @@ Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
 `packages/GWWaveforms/src/` is generic over `Real`, with AD support restricted to ForwardDiff and Mooncake. Default tests check ForwardDiff against finite differences; `integration/GWWaveforms` checks both backends. Keep kernels type stable and free of `try`/`catch`. Validation runs separately through `validate_parameters` on the host. Grids and generators are fixed configuration; parameter-dependent branches and ordinary indexing are allowed. `maximum_frequency` must be positive. Preserve exact frequency bounds and LAL operation order.
 
-`taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`. `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with calibrated fits in `phenomd_fits.jl` and QNM tables in `phenomd_qnm.jl`. Its spline uses ordinary segment indexing and its piecewise amplitude/phase use lazy branches. Frequency evaluation uses loops over configured slices, with PhenomD's exclusive upper edge `i < floor(min(0.2 / M, f_max) / Δf)`. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux. LAL wins over Ripple or papers wherever they differ.
+`taylorf2.jl` ports `XLALSimInspiralPNPhasing_F2` and `XLALSimInspiralTaylorF2`. `phenomd.jl` ports `LALSimIMRPhenomD*.c`, with calibrated fits in `phenomd_fits.jl` and QNM tables in `phenomd_qnm.jl`. Its spline uses ordinary segment indexing and its piecewise amplitude/phase use lazy branches. Frequency evaluation broadcasts scalar amplitude and phase kernels separately over configured slices of the supplied frequencies, with PhenomD's exclusive upper edge `f < Δf * floor(min(0.2 / M, f_max) / Δf)`. Both models reproduce `LALWaveforms` to about 1e-12 relative (largest sample), bar libm differences on Linux. LAL wins over Ripple or papers wherever they differ.
 
 `phenomxas.jl` implements the default IMRPhenomXAS calibration, using the pinned Ripple fits in `phenomxas_fits.jl` and remnant/PN expressions in `phenomxas_utils.jl`, checked against LAL 7.26. Tiny collocation systems use StaticArrays and pivoted solves; differentiate both matrix and RHS. Its cutoff is inclusive at `0.3 / M_sec`; lazy branches evaluate only the active amplitude and phase regions. Direct component-mass differences and a regular near-zero-spin ISCO evaluation avoid endpoint derivative singularities. Preserve these numerical regularizations. `integration/PhenomXASSolve` preserves the earlier solve investigation and is not a runtime dependency.
 

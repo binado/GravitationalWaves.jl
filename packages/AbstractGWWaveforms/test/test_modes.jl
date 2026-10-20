@@ -109,10 +109,4 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
             end
         end
     end
-
-    @testset "invalid frequency grids" begin
-        for badgrid in (1:3, 0:-1:-3, range(0, 0; length = 1))
-            @test_throws ArgumentError hphc_fd(badgrid, p, SyntheticModes(td, fd))
-        end
-    end
 end

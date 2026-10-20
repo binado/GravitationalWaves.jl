@@ -10,7 +10,6 @@ the waveform is evaluated: `i ≥ ceil(f_start / Δf)`,
 generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
 """
 function waveform_slice(f::AbstractRange, f_start, f_min, f_max)
-    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
     deltaF = Float64(step(f))
     n = floor(Int, f_max / deltaF + 1)
     i_start = ceil(Int, f_start / deltaF)
@@ -53,12 +52,13 @@ end
 Nonnegative amplitude and analytic unwrapped phase of the inclination-independent strain,
 following the [`AbstractGWWaveforms.amplitude_phase`](@ref) convention `h = A * exp(im * Φ)`.
 All three native models share the default quadrupole polarization assembly in `hphc_fd`.
-Parameter values are trusted; run [`validate_parameters`](@ref) on the host first.
+Grid and parameter values are trusted; run [`validate_parameters`](@ref) on the host first.
 The grid and generator are fixed configuration, and `maximum_frequency` must be positive.
+Phenom models evaluate the supplied frequencies directly; the uniform range may start above zero.
+TaylorF2 retains its zero-start grid convention.
 The real element type is the floating-point type promoted from the parameters, including duals.
 """
 function amplitude_phase(f::AbstractRange, params::NamedTuple, g::Approximant)
-    check_frequency_grid(f)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
@@ -72,6 +72,25 @@ function amplitude_phase_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
 end
 
 function amplitude_phase_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
-    lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    return phenomd_amplitude_phase_slice(T, length(f), lo, hi, Float64(step(f)), p, g, f_start, f_max)
+    lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
+    return phenomd_amplitude_phase_slice(T, f, lo, hi, p, g, f_start, f_max)
+end
+
+# One-based indices into the requested grid; no relationship between index and frequency
+# is assumed. Grid and generator validation runs separately on the host.
+function phenom_frequency_slice(f::AbstractRange, f_start, f_min, f_max)
+    return (searchsortedfirst(f, max(f_start, f_min)), searchsortedlast(f, f_max))
+end
+
+# Fill each output array with a scalar broadcast. Keep signed amplitudes until phase
+# canonicalization has consumed their signs, then take absolute values in place.
+function broadcast_amplitude_phase(amp_kernel::A, phase_kernel::P, ::Type{T}, f, lo, hi, model, scale, cutoff) where {A, P, T}
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    frequencies = f[lo:hi]
+    signed_amplitudes = view(amplitude, lo:hi)
+    signed_amplitudes .= (frequency -> amp_kernel(Float64(frequency), model, scale, cutoff)).(frequencies)
+    phase[lo:hi] .= ((frequency, amp) -> phase_kernel(Float64(frequency), model, amp)).(frequencies, signed_amplitudes)
+    amplitude .= abs.(amplitude)
+    return (; amplitude, phase)
 end

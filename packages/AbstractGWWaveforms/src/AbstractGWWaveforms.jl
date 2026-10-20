@@ -78,9 +78,11 @@ Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz).
 
 Whether `hphc_fd` checks the parameter values is up to the backend. Backends that can be traced
 by compilers (Reactant) trust them and leave the checks to [`validate_parameters`](@ref), which
-callers run once on the host. Properties of the grid and the generator stay checked.
+callers run once on the host. The shared polarization assemblers assume valid inputs and
+backend outputs without performing runtime validation.
 
-`f` must start at 0, have a positive step and at least two points ([`check_frequency_grid`](@ref)).
+Grid requirements depend on the backend. The zero-start uniform-grid convention is checked
+by [`check_frequency_grid`](@ref); backends may also support ranges starting above zero.
 The returned arrays have `length(f)` entries and are zero outside
 `minimum_frequency(generator) ≤ f ≤ maximum_frequency(generator)`, where a `nothing` maximum
 means the last grid point ([`frequency_bounds`](@ref)).
@@ -92,7 +94,6 @@ once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
 function hphc_fd end
 
 function hphc_fd(f::AbstractRange, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
-    check_frequency_grid(f)
     a = amplitude_phase(f, params, g)
     cfac = cos(params.theta_jn)
     pfac = 0.5 * (1.0 + cfac * cfac)

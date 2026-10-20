@@ -616,18 +616,16 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
 end
 
 """
-    phenomd_amplitude_phase_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
+    phenomd_amplitude_phase_slice(T, f, lo, hi, p, g, f_start, f_max)
 
-Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
-[`waveform_slice`](@ref). The loop skips bins at and beyond
-`floor(min(fCut, f_max) / deltaF)`, preserving LAL's exclusive upper edge.
+Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to the one-based indices `lo:hi` from
+[`phenom_frequency_slice`](@ref). Frequencies are read directly from `f`. The upper edge
+is rounded down to a multiple of `step(f)` and excluded, preserving LAL's cutoff convention.
 """
 function phenomd_amplitude_phase_slice(
-        ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
+        ::Type{T}, f::AbstractRange, lo::Integer, hi::Integer, p, g, f_start, f_max
     ) where {T}
-    amplitude = zeros(T, nout)
-    phase = zeros(T, nout)
-    lo > hi && return (; amplitude, phase)
+    lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
     m1 = p.mass_1
     m2 = p.mass_2
     fRef = phenom_reference_frequency(g, f_start)
@@ -638,17 +636,35 @@ function phenomd_amplitude_phase_slice(
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
     amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
 
-    stop = floor(f_max_eff / deltaF)
-    for i in lo:hi
-        if i < stop
-            Mf = model.M_sec * (i * deltaF)
-            pm = useful_powers(Mf)
-            amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
-            phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
-            amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, -phi)
-        end
-    end
-    return (; amplitude, phase)
+    deltaF = Float64(step(f))
+    stop = floor(f_max_eff / deltaF) * deltaF
+    return broadcast_amplitude_phase(phenomd_signed_amplitude, phenomd_canonical_phase, T, f, lo, hi, model, amp0, stop)
+end
+
+# Separate scalar outputs allow broadcasting directly into the public arrays. The phase
+# receives the signed amplitude so canonicalization does not evaluate the amplitude again.
+function phenomd_signed_amplitude(frequency, model, amp0, cutoff)
+    frequency < cutoff || return zero(amp0)
+    Mf = model.M_sec * frequency
+    return amp0 * _phenomd_amplitude(model.amp, Mf, useful_powers(Mf))
+end
+
+function phenomd_canonical_phase(frequency, model, amplitude)
+    iszero(amplitude) && return zero(amplitude)
+    Mf = model.M_sec * frequency
+    phi = _phenomd_phase(model, Mf, useful_powers(Mf)) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
+    return last(canonical_amplitude_phase(amplitude, -phi))
+end
+
+# Scalar evaluation at positive frequencies in Hz. Coefficients and the LAL-rounded upper
+# cutoff are prepared once per waveform; the array assembler handles the lower bounds.
+function phenomd_amplitude_phase(frequency, model, amp0, cutoff)
+    frequency < cutoff || return (zero(amp0), zero(amp0))
+    Mf = model.M_sec * frequency
+    pm = useful_powers(Mf)
+    amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
+    phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
+    return canonical_amplitude_phase(amp, -phi)
 end
 
 # Inputs `phenomd_fd` does not check; run by `validate_parameters`.

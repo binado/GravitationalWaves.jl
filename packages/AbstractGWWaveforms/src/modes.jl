@@ -36,7 +36,7 @@ function waveform_modes_td end
 Time-domain polarizations in seconds and physical strain. Higher-mode generators evaluate
 [`waveform_modes_td`](@ref) once and assemble H = Σ ₋₂Yₗₘ hₗₘ, hplus = real(H),
 hcross = -imag(H), with angles from [`mode_angles`](@ref).
-Mode labels and matrix dimensions are assumed to satisfy the [`waveform_modes_td`](@ref)
+Times, mode labels and matrix dimensions are assumed to satisfy the [`waveform_modes_td`](@ref)
 contract and are not revalidated during assembly.
 """
 function hphc_td end
@@ -77,14 +77,12 @@ end
 
 function hphc_td(g::HigherModesWaveformGenerator, params::NamedTuple; kwargs...)
     r = waveform_modes_td(g, params; kwargs...)
-    r.t isa AbstractVector{<:Real} || throw(ArgumentError("t must be a real vector of seconds"))
     theta, phi = mode_angles(params, g)
     h = sum_modes(r.modes, mode_coefficients(r.mode_indices, theta, phi))
     return (; t = r.t, hplus = real.(h), hcross = -imag.(h))
 end
 
 function hphc_fd(f::AbstractRange, params::NamedTuple, g::HigherModesWaveformGenerator)
-    check_frequency_grid(f)
     r = waveform_modes_fd(f, params, g)
     theta, phi = mode_angles(params, g)
     coefficients = mode_coefficients(r.mode_indices, theta, phi)

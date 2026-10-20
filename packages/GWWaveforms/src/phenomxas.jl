@@ -212,25 +212,36 @@ function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
 end
 
 function amplitude_phase_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) where {T}
-    lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    amplitude = zeros(T, length(f))
-    phase = zeros(T, length(f))
-    lo > hi && return (; amplitude, phase)
+    lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
+    lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
     fref = phenom_reference_frequency(g, f_start)
     m = phenomxas_model(p.mass_1, p.mass_2, p.chi_1, p.chi_2, fref, p.phase)
     amp0 = phenom_amplitude_scale(p.mass_1, p.mass_2, p.luminosity_distance)
     norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
     cutoff = 0.3 / m.M_sec
-    for i in lo:hi
-        frequency = i * Float64(step(f))
-        if frequency <= cutoff
-            Mf = m.M_sec * frequency
-            amp = norm * phenomxas_amplitude(m.amplitude, Mf)
-            phi = phenomxas_phase(m.phase, Mf) + m.linb * Mf + m.phiref
-            amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, phi)
-        end
-    end
-    return (; amplitude, phase)
+    return broadcast_amplitude_phase(phenomxas_signed_amplitude, phenomxas_canonical_phase, T, f, lo, hi, m, norm, cutoff)
+end
+
+function phenomxas_signed_amplitude(frequency, model, norm, cutoff)
+    frequency <= cutoff || return zero(norm)
+    return norm * phenomxas_amplitude(model.amplitude, model.M_sec * frequency)
+end
+
+function phenomxas_canonical_phase(frequency, model, amplitude)
+    iszero(amplitude) && return zero(amplitude)
+    Mf = model.M_sec * frequency
+    phi = phenomxas_phase(model.phase, Mf) + model.linb * Mf + model.phiref
+    return last(canonical_amplitude_phase(amplitude, phi))
+end
+
+# Scalar evaluation at positive frequencies in Hz, using coefficients prepared once per
+# waveform. The array assembler handles the configured lower bounds.
+function phenomxas_amplitude_phase(frequency, model, norm, cutoff)
+    frequency <= cutoff || return (zero(norm), zero(norm))
+    Mf = model.M_sec * frequency
+    amp = norm * phenomxas_amplitude(model.amplitude, Mf)
+    phi = phenomxas_phase(model.phase, Mf) + model.linb * Mf + model.phiref
+    return canonical_amplitude_phase(amp, phi)
 end
 
 function check_waveform_inputs(g::IMRPhenomXAS, deltaF, p, f_start, f_max)

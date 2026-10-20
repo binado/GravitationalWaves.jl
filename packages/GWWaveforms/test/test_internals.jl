@@ -171,7 +171,7 @@ end
     @test a.cross == b.cross
 end
 
-@testset "IMRPhenomD static slice against the loop" begin
+@testset "IMRPhenomD direct frequencies against the loop" begin
     f = range(0, 256; step = 0.25)
     base = (
         luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -192,10 +192,10 @@ end
             p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
             f_min, f_max = GWWaveforms.frequency_bounds(g, f)
             fcut(m1, m2) > f_min || continue
-            lo, hi = GWWaveforms.waveform_slice(f, f_min, f_min, f_max)
+            lo, hi = GWWaveforms.phenom_frequency_slice(f, f_min, f_min, f_max)
             expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
             expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
-            ap = GWWaveforms.phenomd_amplitude_phase_slice(Float64, length(f), lo, hi, df, p, g, f_min, f_max)
+            ap = GWWaveforms.phenomd_amplitude_phase_slice(Float64, f, lo, hi, p, g, f_min, f_max)
             got = ap.amplitude .* cis.(ap.phase)
             @test maximum(abs, got .- expected) <= 1.0e-12 * maximum(abs, expected)
             @test iszero.(got) == iszero.(expected)
@@ -203,5 +203,5 @@ end
     end
     # Nothing in band.
     p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
-    @test all(iszero, GWWaveforms.phenomd_amplitude_phase_slice(Float64, length(f), GWWaveforms.waveform_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0).amplitude)
+    @test all(iszero, GWWaveforms.phenomd_amplitude_phase_slice(Float64, f, GWWaveforms.phenom_frequency_slice(f, 300.0, 300.0, 400.0)..., p, IMRPhenomD(), 300.0, 400.0).amplitude)
 end

@@ -586,10 +586,11 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 `min(f_max, 0.2 / M)` (and `f_max == 0` means up to `0.2 / M`), and the sample at the upper
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 
+`params` is the aligned parameter `NamedTuple`; `g` is the [`IMRPhenomD`](@ref) configuration.
 The inputs are trusted (see [`validate_parameters`](@ref)).
 This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_amplitude_phase_slice`](@ref) to apply the public frequency bounds.
 """
-function phenomd_fd(::Type{T}, nout::Integer, deltaF, params::NamedTuple, g, f_start, f_max) where {T}
+function phenomd_fd(::Type{T}, nout::Integer, deltaF, params::NamedTuple, g::IMRPhenomD, f_start, f_max) where {T}
     m1 = params.mass_1
     m2 = params.mass_2
     fRef = phenom_reference_frequency(g, f_start)
@@ -623,7 +624,7 @@ Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to
 is rounded down to a multiple of `step(f)` and excluded, preserving LAL's cutoff convention.
 """
 function phenomd_amplitude_phase_slice(
-        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, params::NamedTuple, g, f_start, f_max
+        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, params::NamedTuple, g::IMRPhenomD, f_start, f_max
     ) where {T}
     lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
     m1 = params.mass_1

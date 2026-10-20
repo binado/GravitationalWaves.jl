@@ -7,6 +7,8 @@ using ForwardDiff: ForwardDiff
 using GWSurrogates
 using Mooncake: Mooncake
 
+include("test_pycall.jl")
+
 const G = GWSurrogates
 
 const BACKENDS = Pair{String, Any}[

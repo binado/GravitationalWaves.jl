@@ -1,0 +1,12 @@
+[project]
+name = "gravitationalwaves-reference"
+version = "0.0.0"
+description = "Optional Python reference dependencies for GravitationalWaves.jl"
+requires-python = ">=3.10,<3.14"
+dependencies = []
+
+[project.optional-dependencies]
+gwsurrogate = ["gwsurrogate==1.2.0", "gwtools", "numpy"]
+
+[tool.uv]
+package = false

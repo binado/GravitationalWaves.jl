@@ -16,7 +16,7 @@ using GWParameterConversion: MTSUN_SI, PC_SI, MASS_KEYS, convert_parameters,
     is_aligned, aligned_spins_to_lal_frame
 
 using AbstractGWWaveforms: AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator,
-    check_frequency_grid, frequency_bounds
+    frequency_bounds
 import AbstractGWWaveforms: hphc_fd, amplitude_phase_fd, validate_parameters, approximant, reference_frequency, minimum_frequency,
     maximum_frequency, spin_support, supports_mode_array, is_differentiable
 

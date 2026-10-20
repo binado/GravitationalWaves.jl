@@ -62,14 +62,10 @@ quasi-circular and aligned-spin, and LAL rejects such input too.
 Call it on the host with the parameters of one draw, before differentiating or sampling `hphc_fd`.
 """
 function validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, g::Union{TaylorF2, IMRPhenomD, IMRPhenomXAS})
-    if g isa TaylorF2
-        check_frequency_grid(f)
-    else
-        Base.require_one_based_indexing(f)
-        length(f) >= 2 || throw(ArgumentError("frequency grid needs at least two points"))
-        isfinite(first(f)) && isfinite(last(f)) && first(f) >= 0 && step(f) > 0 ||
-            throw(ArgumentError("frequency grid must be finite, nonnegative and increasing"))
-    end
+    Base.require_one_based_indexing(f)
+    length(f) >= 2 || throw(ArgumentError("frequency grid needs at least two points"))
+    isfinite(first(f)) && isfinite(last(f)) && first(f) >= 0 && step(f) > 0 ||
+        throw(ArgumentError("frequency grid must be finite, nonnegative and increasing"))
     check_parameters(params)
     aligned_params = aligned_parameters(params)
     f_min, f_max = frequency_bounds(g, f)

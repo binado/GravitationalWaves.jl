@@ -70,8 +70,8 @@ the configured frequency interval.
 ## Scope
 
 - Frequency domain, uniform `AbstractRange` grids, detector-frame masses, no tidal parameters.
-  IMRPhenomD and IMRPhenomXAS evaluate the supplied frequencies directly and accept grids
-  starting above zero, without a DC bin. TaylorF2 retains its zero-start grid convention.
+  All models evaluate the supplied frequencies directly and accept grids starting above zero,
+  without a DC bin.
   Grid validation runs in `validate_parameters`, outside waveform evaluation.
 - All models are aligned-spin and quasi-circular: spins must be (anti-)aligned (`tilt` 0 or π, or zero spin) and
   `eccentricity` zero, otherwise `validate_parameters` throws `ArgumentError` (LAL rejects such input too). None has higher

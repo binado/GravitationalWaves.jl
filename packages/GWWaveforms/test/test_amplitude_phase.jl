@@ -31,7 +31,7 @@ end
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
         theta_jn = 0.4, phase = 0.2, a_1 = 0.5, a_2 = 0.3,
     )
-    for G in (IMRPhenomD, IMRPhenomXAS)
+    for G in (TaylorF2, IMRPhenomD, IMRPhenomXAS)
         g = G(; minimum_frequency = 20.1, maximum_frequency = 400.3)
         full = 0.0:0.125:512.0
         cropped = full[164:end]
@@ -46,7 +46,8 @@ end
         @test cropped_h.cross == h.cross[164:end]
 
         # Offset by a fraction of the spacing: these frequencies are not integer bins of Δf.
-        offset = 20.0625:0.125:399.9375
+        # TaylorF2's phase carries LAL's `-1/Δf` time shift, so it needs the same step as `fine`.
+        offset = G === TaylorF2 ? (20.0625:0.0625:399.9375) : (20.0625:0.125:399.9375)
         fine = 0.0:0.0625:512.0
         expected = amplitude_phase_fd(fine, params, g)
         actual = amplitude_phase_fd(offset, params, g)

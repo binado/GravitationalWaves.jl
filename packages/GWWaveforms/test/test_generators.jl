@@ -54,11 +54,7 @@
             @test validate_parameters(f, base, g) === nothing
             @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_2 = -1.0)), g)
             @test_throws ArgumentError validate_parameters(f, merge(base, (; luminosity_distance = 0.0)), g)
-            if g isa TaylorF2
-                @test_throws ArgumentError validate_parameters(range(1, 512; step = 0.25), base, g)
-            else
-                @test validate_parameters(range(1, 512; step = 0.25), base, g) === nothing
-            end
+            @test validate_parameters(range(1, 512; step = 0.25), base, g) === nothing
             # Parameter checks are explicit through `validate_parameters`.
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 0.0))
             @test_throws ArgumentError validate_parameters(f, base, G(; minimum_frequency = 450.0, maximum_frequency = 400.0))

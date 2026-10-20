@@ -295,39 +295,15 @@ function check_waveform_inputs(g::TaylorF2, delta_f, params::NamedTuple, f_start
     return nothing
 end
 
-"""
-    waveform_slice(f, f_start, f_min, f_max) -> (lo, hi)
-
-Indices `lo:hi` (zero based, inclusive; `lo > hi` if empty) of the grid points where
-the waveform is evaluated: `i ≥ ceil(f_start / Δf)`,
-`i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
-generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
-"""
-function waveform_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
-    delta_f = Float64(step(f))
-    n = floor(Int, f_max / delta_f + 1)
-    i_start = ceil(Int, f_start / delta_f)
-    # Compare actual grid values to preserve exact frequency-bound semantics.
-    first_in = 1
-    while first_in <= length(f) && f[first_in] < f_min
-        first_in += 1
-    end
-    last_in = length(f)
-    while last_in >= 1 && f[last_in] > f_max
-        last_in -= 1
-    end
-    return (max(i_start, first_in - 1), min(n, length(f), last_in) - 1)
-end
-
-# TaylorF2 (`XLALSimInspiralTaylorF2`) on the grid `f_i = i delta_f`, `i = 0 … length(f) - 1`:
-# nonnegative amplitude and unwrapped phase, zero outside `[f_start, f_max]`. The loop never
+# TaylorF2 (`XLALSimInspiralTaylorF2`) on the supplied frequencies: nonnegative amplitude and
+# unwrapped phase, zero outside `[f_start, f_max]`. Grids may start above zero; the loop never
 # evaluates the model at `f = 0`. The inclination factors are applied by `hphc_fd`. Inputs are
 # trusted; run `validate_parameters` on the host first.
 function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::TaylorF2)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = start_frequency(g, f_min)
-    lo, hi = waveform_slice(f, f_start, f_min, f_max)
+    lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
     delta_f = Float64(step(f))
     amplitude = zeros(T, length(f))
     phase = zeros(T, length(f))
@@ -352,12 +328,12 @@ function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::Ta
     ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(pi_m * f_ref)) : zero(amp0)
 
     for i in lo:hi
-        frequency = i * delta_f
+        frequency = f[i]
         v = cbrt(pi_m * frequency)
         phasing = taylorf2_phasing(pn, v)
         amp = amp0 * taylorf2_amplitude_factor(correction, v) * v
         x = (phasing + ((shft * frequency - 2.0 * p.phase) - ref_phasing)) - PI_4
-        amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, -x)
+        amplitude[i], phase[i] = canonical_amplitude_phase(amp, -x)
     end
     return (; amplitude, phase)
 end

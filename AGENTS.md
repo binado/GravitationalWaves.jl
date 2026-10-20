@@ -97,7 +97,7 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
-changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages. Python tooling changes test all three conversion/waveform
+changes also test `GWWaveforms`, and `AbstractGWWaveforms` changes test both waveform packages and `GWSurrogates`. Python tooling changes test all three conversion/waveform
 packages, `GWDetectors`, and `GWMatchedFiltering`. Detector changes select `GWDetectors`. Inference changes select `GWMatchedFiltering`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.

@@ -81,3 +81,43 @@ function test_amplitude_phase_contract(g; params, f)
         @test h.cross ≈ (-im * c) .* strain
     end
 end
+
+# Domain-specific contracts: modes in both domains have explicit, ordered signed labels.
+# Backends choose alternate viewing parameters through `viewing_params` when necessary.
+function test_modes_td_contract(g; params, viewing_params = merge(params, (; theta_jn = 0.2)), kwargs...)
+    return @testset "TD mode contract" begin
+        r = AbstractGWWaveforms.waveform_modes_td(g, params; kwargs...)
+        @test AbstractGWWaveforms.check_mode_indices(r.mode_indices) === nothing
+        @test r.t isa AbstractVector{<:Real}
+        @test r.modes isa AbstractMatrix{<:Complex}
+        @test size(r.modes) == (length(r.t), length(r.mode_indices))
+        @test all(isfinite, r.t) && all(isfinite, r.modes)
+        other = AbstractGWWaveforms.waveform_modes_td(g, viewing_params; kwargs...)
+        @test r == other
+        theta, phi = AbstractGWWaveforms.mode_angles(params, g)
+        h = AbstractGWWaveforms.mode_sum(r.modes, r.mode_indices, theta, phi)
+        out = AbstractGWWaveforms.hphc_td(g, params; kwargs...)
+        @test out.t == r.t
+        @test out.hplus ≈ real.(h)
+        @test out.hcross ≈ -imag.(h)
+    end
+end
+
+function test_modes_fd_contract(g; params, f, viewing_params = merge(params, (; theta_jn = 0.2)))
+    return @testset "FD mode contract" begin
+        check_frequency_grid(f)
+        r = AbstractGWWaveforms.waveform_modes_fd(f, params, g)
+        @test AbstractGWWaveforms.check_mode_indices(r.mode_indices) === nothing
+        @test r.positive isa AbstractMatrix{<:Complex}
+        @test r.negative isa AbstractMatrix{<:Complex}
+        @test size(r.positive) == size(r.negative) == (length(f), length(r.mode_indices))
+        @test r.positive[1, :] == r.negative[1, :]
+        lo, hi = AbstractGWWaveforms.frequency_bounds(g, f)
+        outside = [!(lo <= fi <= hi) for fi in f]
+        for branch in (r.positive, r.negative)
+            @test all(isfinite, branch)
+            @test all(iszero, branch[outside, :])
+        end
+        @test r == AbstractGWWaveforms.waveform_modes_fd(f, viewing_params, g)
+    end
+end

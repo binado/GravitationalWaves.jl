@@ -37,7 +37,7 @@ function AbstractGWWaveforms.amplitude_phase(f::AbstractRange, params::NamedTupl
     check_frequency_grid(f)
     lo, hi = frequency_bounds(g, f)
     amplitude = [lo <= fi <= hi ? 2.0 : 0.0 for fi in f]
-    phase = [lo <= fi <= hi ? 0.1 * fi : 0.0 for fi in f]
+    phase = [lo <= fi <= hi ? 0.1 * fi - 2get(params, :phase, 0.0) : 0.0 for fi in f]
     return (; amplitude, phase)
 end
 
@@ -46,6 +46,8 @@ function AbstractGWWaveforms.validate_parameters(f::AbstractRange, params::Named
     foreach(k -> k == :theta_jn || throw(ArgumentError("unknown parameter $k")), keys(params))
     return nothing
 end
+
+include("test_modes.jl")
 
 @testset "AbstractGWWaveforms" begin
     @testset "Aqua" begin

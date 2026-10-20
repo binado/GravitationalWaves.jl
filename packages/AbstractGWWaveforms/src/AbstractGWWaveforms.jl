@@ -10,18 +10,19 @@ on it alone.
 module AbstractGWWaveforms
 
 export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
+export HigherModesWaveformGenerator, waveform_modes_fd, waveform_modes_td, hphc_td
 export hphc_fd, amplitude_phase, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 
 # Helpers for backend implementers. The shared contract tests live in `test/contract.jl`, which
 # backends `include` from their own tests.
-public check_frequency_grid, frequency_bounds
+public check_frequency_grid, frequency_bounds, mode_angles, mode_sum, sylm_m2, check_mode_indices
 
 """
     AbstractWaveformGenerator
 
-Supertype of frequency-domain waveform generators. A generator holds everything about a
+Supertype of waveform generators in either domain. A generator holds everything about a
 waveform call that does not vary between parameter draws (approximant, frequency bounds,
 post-Newtonian orders, ...); build it once and reuse it with [`hphc_fd`](@ref).
 
@@ -30,7 +31,8 @@ A concrete subtype implements [`hphc_fd`](@ref), optionally [`validate_parameter
 may override the capability queries [`spin_support`](@ref), [`supports_mode_array`](@ref) and
 [`is_differentiable`](@ref). Aligned-spin quadrupole backends can instead subtype
 [`AlignedSpinQuadrupolarWaveformGenerator`](@ref) and implement [`amplitude_phase`](@ref)
-to inherit polarization assembly.
+to inherit polarization assembly. Higher-mode backends can subtype
+[`HigherModesWaveformGenerator`](@ref) and implement modes in either domain.
 """
 abstract type AbstractWaveformGenerator end
 
@@ -160,7 +162,8 @@ supports_mode_array(::AbstractWaveformGenerator) = false
 """
     is_differentiable(generator) -> Bool
 
-Whether `hphc_fd` can be differentiated with respect to its parameters by automatic
+Whether waveform evaluation in the supported domain can be differentiated with respect to
+its parameters by automatic
 differentiation. Falls back to `false`.
 """
 is_differentiable(::AbstractWaveformGenerator) = false
@@ -196,5 +199,7 @@ function Base.show(io::IO, g::AbstractWaveformGenerator)
         ", maximum_frequency=", maximum_frequency(g), ")"
     )
 end
+
+include("modes.jl")
 
 end

@@ -218,10 +218,7 @@ function inertial_modes(
 end
 
 # ₋₂Y_ℓm(θ, φ) = sqrt((2ℓ+1)/4π) d^ℓ_{m,2}(θ) e^{imφ}, matching `gwtools.harmonics.sYlm`.
-@inline function sylm_m2(l::Integer, m::Integer, theta, phi)
-    d = real(wigner_D_element(l, m, 2, complex(cos(theta / 2)), complex(sin(theta / 2))))
-    return sqrt((2l + 1) / (4 * oftype(float(theta), π))) * d * cis(m * phi)
-end
+sylm_m2(l::Integer, m::Integer, theta, phi) = AbstractGWWaveforms.sylm_m2(l, m, theta, phi)
 
 """
     mode_sum(modes, ell_max, inclination, phi_ref) -> Vector
@@ -231,18 +228,9 @@ sky of the reference frame at polar angle `inclination` and azimuth `π/2 - phi_
 convention).
 """
 function mode_sum(modes::AbstractMatrix, ell_max::Integer, inclination, phi_ref)
-    theta = inclination
+    labels = Tuple((l, m) for l in 2:ell_max for m in (-l):l)
     phi = oftype(float(phi_ref), π) / 2 - phi_ref
-    T = promote_type(real(eltype(modes)), typeof(float(theta)), typeof(float(phi)))
-    h = zeros(Complex{T}, size(modes, 1))
-    for l in 2:ell_max, m in (-l):l
-        y = sylm_m2(l, m, theta, phi)
-        c = mode_column(l, m)
-        for k in eachindex(h)
-            h[k] += y * modes[k, c]
-        end
-    end
-    return h
+    return AbstractGWWaveforms.mode_sum(modes, labels, inclination, phi)
 end
 
 # Physical constants of gwtools (SI): solar mass in seconds, speed of light and the parsec.
@@ -258,7 +246,7 @@ fixed across draws. `f_ref` and `f_low` are the reference and starting frequenci
 (2, 2) mode in Hz (`f_low = 0` returns the whole surrogate); the reference epoch is where the
 coprecessing-frame orbital frequency equals `f_ref / 2`.
 """
-struct PrecessingGenerator{S <: PrecessingSurrogate}
+struct PrecessingGenerator{S <: PrecessingSurrogate} <: HigherModesWaveformGenerator
     surrogate::S
     ell_max::Int
     f_ref::Float64
@@ -274,16 +262,19 @@ function PrecessingGenerator(
 end
 
 """
-    hphc_td(generator, params; dt = nothing, times = nothing) -> (t, hplus, hcross)
+    waveform_modes_td(generator, params; dt = nothing, times = nothing) -> (; t, mode_indices, modes)
 
-Plus and cross polarizations in SI units (seconds, strain) of the binary `params`, a named tuple
+Inertial-frame modes in SI units (seconds, strain) of the binary `params`, a named tuple
 with `total_mass` (solar masses), `luminosity_distance` (Mpc), `mass_ratio` (`q >= 1`),
 `spin_1`, `spin_2` (3-vectors in the LAL source frame at the reference epoch), `inclination`
 (angle between the orbital angular momentum at the reference epoch and the line of sight) and
 `phi_ref`; optional `init_orbphase` and `init_quat`. Time is zero at the peak of the waveform.
 Specify the grid with the step `dt` (s) or the array `times` (s); the default is the model grid.
+Modes exclude `inclination` and `phi_ref`. The source frame is the LAL source frame at the
+reference epoch, with optional `init_orbphase` and `init_quat` fixing the initial frame.
+`hphc_td` uses shared assembly at `(inclination, π/2 - phi_ref)` and returns `(t, hplus, hcross)`.
 """
-function hphc_td(g::PrecessingGenerator, params::NamedTuple; dt = nothing, times = nothing)
+function waveform_modes_td(g::PrecessingGenerator, params::NamedTuple; dt = nothing, times = nothing)
     M = params.total_mass
     t_scale = MSUN_IN_SECONDS * M
     amp_scale = M * MSUN_IN_SECONDS * SPEED_OF_LIGHT / (1.0e6 * params.luminosity_distance * PARSEC)
@@ -293,6 +284,17 @@ function hphc_td(g::PrecessingGenerator, params::NamedTuple; dt = nothing, times
         dt = dt === nothing ? nothing : dt / t_scale, times = times === nothing ? nothing : times ./ t_scale,
         init_orbphase = get(params, :init_orbphase, 0.0), init_quat = get(params, :init_quat, (1.0, 0.0, 0.0, 0.0)),
     )
-    h = mode_sum(r.modes, g.ell_max, params.inclination, params.phi_ref)
-    return (t = r.t .* t_scale, hplus = real.(h) .* amp_scale, hcross = -imag.(h) .* amp_scale)
+    mode_indices = Tuple((l, m) for l in 2:g.ell_max for m in (-l):l)
+    # inertial_modes returns a fresh owned matrix; scale it without another mode-sized buffer.
+    r.modes .*= amp_scale
+    return (; t = r.t .* t_scale, mode_indices, modes = r.modes)
 end
+
+AbstractGWWaveforms.approximant(::PrecessingGenerator{<:PrecessingSurrogate{NRSur7dq4Params}}) = "NRSur7dq4"
+AbstractGWWaveforms.approximant(::PrecessingGenerator{<:PrecessingSurrogate{NRSur7dq4v2Params}}) = "NRSur7dq4v2"
+AbstractGWWaveforms.reference_frequency(g::PrecessingGenerator) = g.f_ref
+AbstractGWWaveforms.minimum_frequency(g::PrecessingGenerator) = g.f_low
+AbstractGWWaveforms.maximum_frequency(::PrecessingGenerator) = nothing
+AbstractGWWaveforms.spin_support(::PrecessingGenerator) = :precessing
+AbstractGWWaveforms.is_differentiable(::PrecessingGenerator) = true
+AbstractGWWaveforms.mode_angles(params, ::PrecessingGenerator) = (params.inclination, oftype(float(params.phi_ref), π) / 2 - params.phi_ref)

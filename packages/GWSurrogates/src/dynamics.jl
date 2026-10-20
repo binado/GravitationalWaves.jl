@@ -301,9 +301,8 @@ end
 
 Evolve the dynamics surrogate from the initial conditions at the reference time `t_ref`
 (default: the first node). `chiA0`, `chiB0` are the spin 3-vectors in the LAL source frame at
-the reference epoch. Returns a named tuple `(quat, orbphase, chiA, chiB)` sampled at
-[`output_times`](@ref): `quat` is `(n, 4)`, the spins are `(n, 3)` in the coprecessing frame. (The
-times are not returned; they are the constant [`output_times`](@ref).)
+the reference epoch. Returns a named tuple `(t, quat, orbphase, chiA, chiB)` sampled at
+the times `t = `[`output_times`](@ref): `quat` is `(n, 4)`, the spins are `(n, 3)` in the coprecessing frame.
 
 If `t_ref` is not a node, one forward-Euler step to the nearest node is taken first. Magnitudes
 of the spins are preserved by the per-step renormalization.
@@ -386,6 +385,7 @@ function dynamics(
 
     n = length(y)
     return (
+        t = output_times(s),
         quat = T[y[r][c] for r in 1:n, c in 1:4],
         orbphase = T[y[r][5] for r in 1:n],
         chiA = T[y[r][5 + c] for r in 1:n, c in 1:3],

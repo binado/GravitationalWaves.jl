@@ -44,14 +44,12 @@ end
 
 # Natural cubic spline of every column of `Y` (knots `t_in`), evaluated at `t_out`.
 function spline_columns(t_out, t_in, Y::AbstractMatrix)
-    issorted(t_in; lt = <=) || throw(ArgumentError("knots must be strictly increasing"))
     T = promote_type(eltype(Y), typeof(float(first(t_out))))
     out = Matrix{T}(undef, length(t_out), size(Y, 2))
     for j in axes(Y, 2)
-        u = Y[:, j]
-        m = spline_second_derivatives(t_in, u)
+        spline = NaturalCubicSpline(t_in, Y[:, j])
         for (i, x) in enumerate(t_out)
-            out[i, j] = spline_eval(t_in, u, m, x)
+            out[i, j] = spline_eval(spline, x)
         end
     end
     return out

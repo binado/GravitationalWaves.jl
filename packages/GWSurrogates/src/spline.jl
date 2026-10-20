@@ -6,9 +6,6 @@ increasing reals) with values `u` (real or complex). Mirrors `gwsurrogate`'s
 `_spline_interp.cpp`. The second derivatives are solved with the Thomas algorithm in buffers
 whose element type is promoted from the inputs, so the construction differentiates with respect
 to both `t` and `u`.
-
-The functional kernels [`spline_second_derivatives`](@ref) and `spline_eval(t, u, m, x)` are the
-unchecked building blocks of this struct.
 """
 struct NaturalCubicSpline{T <: AbstractVector, U <: AbstractVector, M <: AbstractVector}
     t::T
@@ -21,19 +18,6 @@ function NaturalCubicSpline(t::AbstractVector{<:Real}, u::AbstractVector{<:Numbe
     n == length(u) || throw(DimensionMismatch("t and u must have the same length"))
     n >= 3 || throw(ArgumentError("a natural cubic spline needs at least 3 knots"))
     issorted(t; lt = <=) || throw(ArgumentError("knots must be strictly increasing"))
-    return NaturalCubicSpline(t, u, spline_second_derivatives(t, u))
-end
-
-"""
-    spline_second_derivatives(t, u)
-
-Second derivatives at the knots of the natural cubic spline through `(t, u)` (zero at both ends),
-solved with the Thomas algorithm in buffers whose element type is promoted from the inputs. This
-and the four-argument [`spline_eval`](@ref) are the unchecked functional kernels behind
-[`NaturalCubicSpline`](@ref); they return plain arrays.
-"""
-function spline_second_derivatives(t::AbstractVector, u::AbstractVector)
-    n = length(t)
     TT = float(eltype(t))
     TU = promote_type(eltype(u), TT)
     m = zeros(TU, n)
@@ -54,27 +38,20 @@ function spline_second_derivatives(t::AbstractVector, u::AbstractVector)
     for i in (n - 2):-1:2
         m[i] = dp[i] - cp[i] * m[i + 1]
     end
-    return m
+    return NaturalCubicSpline(t, u, m)
 end
 
 """
-    spline_eval(t, u, m, x)
+    spline_eval(spline, x)
 
-Evaluate the natural cubic spline with knots `t`, values `u` and second derivatives `m` (from
-[`spline_second_derivatives`](@ref)) at `x`. Outside the knot range the cubic of the first or
-last segment is extended.
+Evaluate `spline` at `x`. Outside the knot range the cubic of the first or last segment is
+extended.
 """
-function spline_eval(t::AbstractVector, u::AbstractVector, m::AbstractVector, x)
+function spline_eval(s::NaturalCubicSpline, x)
+    (; t, u, m) = s
     i = clamp(searchsortedlast(t, x), 1, length(t) - 1)
     h = t[i + 1] - t[i]
     a = (t[i + 1] - x) / h
     b = (x - t[i]) / h
     return a * u[i] + b * u[i + 1] + ((a^3 - a) * m[i] + (b^3 - b) * m[i + 1]) * (h^2 / 6)
 end
-
-"""
-    spline_eval(spline, x)
-
-Evaluate `spline` at `x`.
-"""
-spline_eval(s::NaturalCubicSpline, x) = spline_eval(s.t, s.u, s.m, x)

@@ -20,7 +20,7 @@ h = GWSurrogates.coorbital_modes(sur, q, chiA, chiB)   # (n_times, n_modes), (2,
 dyn = GWSurrogates.load_dynamics(:NRSur7dq4)
 # Evolve from the reference time t_ref (default: first node) to the full time grid.
 out = GWSurrogates.dynamics(dyn, q, chiA0, chiB0; t_ref = -100.0)
-out.quat, out.orbphase, out.chiA, out.chiB   # coprecessing frame, sampled at output_times(dyn)
+out.t, out.quat, out.orbphase, out.chiA, out.chiB   # coprecessing frame, sampled at out.t = output_times(dyn)
 ```
 
 Set `GWSURROGATES_DATA_DIR` to a directory holding `NRSur7dq4.h5` / `NRSur7dq4v2.h5` to skip the

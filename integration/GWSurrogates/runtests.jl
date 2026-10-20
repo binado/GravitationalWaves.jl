@@ -29,16 +29,15 @@ end
     @testset "kernels" begin
         t = [0.0, 0.3, 0.9, 1.4, 2.2, 3.0, 3.1, 4.5]
         u0 = @. sin(2t) + 0.1t^2
-        # The functional kernels behind `NaturalCubicSpline`.
         @testset "spline, data" begin
-            check_gradients(u -> G.spline_eval(t, u, G.spline_second_derivatives(t, u), 1.234), u0)
+            check_gradients(u -> G.spline_eval(G.NaturalCubicSpline(t, u), 1.234), u0)
         end
         @testset "spline, evaluation point" begin
-            m0 = G.spline_second_derivatives(t, u0)
-            check_gradients(x -> G.spline_eval(t, u0, m0, x[1]), [1.234])
+            spline = G.NaturalCubicSpline(t, u0)
+            check_gradients(x -> G.spline_eval(spline, x[1]), [1.234])
         end
         @testset "spline, knots" begin
-            check_gradients(tt -> G.spline_eval(tt, u0, G.spline_second_derivatives(tt, u0), 1.234), t)
+            check_gradients(tt -> G.spline_eval(G.NaturalCubicSpline(tt, u0), 1.234), t)
         end
         @testset "Wigner-D" begin
             check_gradients(

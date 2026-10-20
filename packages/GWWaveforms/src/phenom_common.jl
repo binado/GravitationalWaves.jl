@@ -1,0 +1,24 @@
+# Order the components so that `m1 ≥ m2`, carrying the spins along.
+function order_by_mass(m1, m2, chi1, chi2)
+    keep = m1 >= m2
+    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
+end
+
+# LAL uses the starting frequency when no reference frequency is specified.
+phenom_reference_frequency(g, f_start) = g.reference_frequency == 0.0 ? f_start : g.reference_frequency
+
+# Shared strain scale; keep LAL's multiplication order for numerical fidelity.
+function phenom_amplitude_scale(m1, m2, luminosity_distance)
+    M = m1 + m2
+    distance = luminosity_distance * 1.0e6 * PC_SI
+    return 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+end
+
+# Host-only physical checks; remnant and frequency restrictions belong to each model.
+function check_phenom_parameters(p)
+    (p.mass_1 > 0 && p.mass_2 > 0) || throw(ArgumentError("masses must be positive"))
+    p.luminosity_distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
+    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
+        throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
+    return nothing
+end

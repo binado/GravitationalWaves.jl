@@ -61,7 +61,9 @@
             @test_throws ArgumentError validate_parameters(f, base, G(; reference_frequency = -1.0))
         end
         g = IMRPhenomD()
-        @test_throws ArgumentError validate_parameters(f, merge(base, (; a_1 = 1.5)), g)
+        for G in (IMRPhenomD, IMRPhenomXAS)
+            @test_throws ArgumentError validate_parameters(f, merge(base, (; a_1 = 1.5)), G())
+        end
         @test_throws ArgumentError validate_parameters(f, merge(base, (; mass_1 = 5000.0, mass_2 = 5000.0)), g)
         # The default cutoff depends on the masses, which the static path does not support.
         for z in (TaylorF2(; maximum_frequency = 0), IMRPhenomD(; maximum_frequency = 0))

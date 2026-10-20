@@ -212,12 +212,11 @@ function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
 end
 
 function waveform_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) where {T}
-    lo, hi = taylorf2_slice(f, f_start, f_min, f_max)
+    lo, hi = waveform_slice(f, f_start, f_min, f_max)
     lo > hi && return complex.(zeros(T, length(f)), zeros(T, length(f)))
-    fref = g.reference_frequency == 0 ? f_start : g.reference_frequency
+    fref = phenom_reference_frequency(g, f_start)
     m = phenomxas_model(p.mass_1, p.mass_2, p.chi_1, p.chi_2, fref, p.phase)
-    M = p.mass_1 + p.mass_2
-    amp0 = 2sqrt(5 / (64Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / (p.luminosity_distance * 1.0e6 * PC_SI)
+    amp0 = phenom_amplitude_scale(p.mass_1, p.mass_2, p.luminosity_distance)
     norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
     h = zeros(Complex{T}, length(f))
     cutoff = 0.3 / m.M_sec
@@ -235,8 +234,7 @@ end
 
 function check_waveform_inputs(g::IMRPhenomXAS, deltaF, p, f_start, f_max)
     (deltaF > 0 && f_start > 0 && f_max > f_start && g.reference_frequency >= 0) || throw(ArgumentError("invalid frequency bounds for IMRPhenomXAS"))
-    (p.mass_1 > 0 && p.mass_2 > 0 && p.luminosity_distance > 0) || throw(ArgumentError("masses and distance must be positive"))
-    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) || throw(ArgumentError("aligned spins must lie in [-1,1]"))
+    check_phenom_parameters(p)
     a, b, c, d = order_by_mass(p.mass_1, p.mass_2, p.chi_1, p.chi_2)
     a / b <= 1000 || throw(ArgumentError("IMRPhenomXAS requires mass ratio <= 1000"))
     r = xas_remnant(a, b, c, d)

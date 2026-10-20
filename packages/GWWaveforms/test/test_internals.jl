@@ -149,7 +149,7 @@ end
         f_min, f_max = GWWaveforms.frequency_bounds(g, f)
         f_start = g.pn_amplitude_order != 0 ?
             GWWaveforms.f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-        lo, hi = GWWaveforms.taylorf2_slice(f, f_start, f_min, f_max)
+        lo, hi = GWWaveforms.waveform_slice(f, f_start, f_min, f_max)
         expected = GWWaveforms.taylorf2_fd(Float64, length(f), df, p, g, f_start, f_max)
         expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
         got = GWWaveforms.taylorf2_fd_slice(Float64, length(f), lo, hi, df, p, g)
@@ -157,7 +157,7 @@ end
         @test all(iszero, got[1:lo]) && all(iszero, got[(hi + 2):end])
     end
     # Nothing in band.
-    @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
+    @test all(iszero, GWWaveforms.taylorf2_fd_slice(Float64, length(f), GWWaveforms.waveform_slice(f, 300.0, 300.0, 400.0)..., df, p, TaylorF2()))
 end
 
 @testset "IMRPhenomD is symmetric under swapping the components" begin
@@ -191,7 +191,7 @@ end
             p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = m1, mass_2 = m2)))
             f_min, f_max = GWWaveforms.frequency_bounds(g, f)
             fcut(m1, m2) > f_min || continue
-            lo, hi = GWWaveforms.taylorf2_slice(f, f_min, f_min, f_max)
+            lo, hi = GWWaveforms.waveform_slice(f, f_min, f_min, f_max)
             expected = GWWaveforms.phenomd_fd(Float64, length(f), df, p, g, f_min, f_max)
             expected[[!(f_min <= fi <= f_max) for fi in f]] .= 0
             got = GWWaveforms.phenomd_fd_slice(Float64, length(f), lo, hi, df, p, g, f_min, f_max)
@@ -201,5 +201,5 @@ end
     end
     # Nothing in band.
     p = GWWaveforms.aligned_parameters(merge(base, (; mass_1 = 36.0, mass_2 = 29.0)))
-    @test all(iszero, GWWaveforms.phenomd_fd_slice(Float64, length(f), GWWaveforms.taylorf2_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0))
+    @test all(iszero, GWWaveforms.phenomd_fd_slice(Float64, length(f), GWWaveforms.waveform_slice(f, 300.0, 300.0, 400.0)..., df, p, IMRPhenomD(), 300.0, 400.0))
 end

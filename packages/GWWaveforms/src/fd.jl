@@ -1,3 +1,31 @@
+const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the default cutoff " *
+    "is not exposed by hphc_fd; set an explicit upper frequency bound"
+
+"""
+    waveform_slice(f, f_start, f_min, f_max) -> (lo, hi)
+
+Indices `lo:hi` (zero based, inclusive; `lo > hi` if empty) of the grid points where
+the waveform is evaluated: `i ≥ ceil(f_start / Δf)`,
+`i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
+generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
+"""
+function waveform_slice(f::AbstractRange, f_start, f_min, f_max)
+    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
+    deltaF = Float64(step(f))
+    n = floor(Int, f_max / deltaF + 1)
+    i_start = ceil(Int, f_start / deltaF)
+    # Compare actual grid values to preserve exact frequency-bound semantics.
+    first_in = 1
+    while first_in <= length(f) && f[first_in] < f_min
+        first_in += 1
+    end
+    last_in = length(f)
+    while last_in >= 1 && f[last_in] > f_max
+        last_in -= 1
+    end
+    return (max(i_start, first_in - 1), min(n, length(f), last_in) - 1)
+end
+
 # `XLALSimInspiralfLow2fStart`: the amplitude corrections of
 # TaylorF2 start earlier than the requested frequency.
 function f_low_to_f_start(f_low, amplitude_order::Integer)
@@ -58,11 +86,11 @@ end
 # The inclination-independent kernels, selected by the generator type. They return zero outside
 # `[f_min, f_max]`.
 function waveform_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
-    lo, hi = taylorf2_slice(f, f_start, f_min, f_max)
+    lo, hi = waveform_slice(f, f_start, f_min, f_max)
     return taylorf2_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g)
 end
 
 function waveform_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
-    lo, hi = taylorf2_slice(f, f_start, f_min, f_max)
+    lo, hi = waveform_slice(f, f_start, f_min, f_max)
     return phenomd_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g, f_start, f_max)
 end

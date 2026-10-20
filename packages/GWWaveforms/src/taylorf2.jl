@@ -347,39 +347,11 @@ function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
     return nothing
 end
 
-const MAX_FREQUENCY_ISCO_MESSAGE = "maximum_frequency must be positive: the default cutoff " *
-    "is not exposed by hphc_fd; set an explicit upper frequency bound"
-
-"""
-    taylorf2_slice(f, f_start, f_min, f_max) -> (lo, hi)
-
-Indices `lo:hi` (zero based, inclusive; `lo > hi` if empty) of the grid points where
-[`taylorf2_fd`](@ref) is evaluated and `hphc_fd` keeps it: `i ≥ ceil(f_start / Δf)`,
-`i ≤ floor(f_max / Δf)` and `f_min ≤ f_i ≤ f_max`. Everything here comes from the grid and the
-generator, not from the masses. Intrinsic model cutoffs are applied inside this interval.
-"""
-function taylorf2_slice(f::AbstractRange, f_start, f_min, f_max)
-    f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
-    deltaF = Float64(step(f))
-    n = floor(Int, f_max / deltaF + 1)
-    i_start = ceil(Int, f_start / deltaF)
-    # Compare actual grid values to preserve exact frequency-bound semantics.
-    first_in = 1
-    while first_in <= length(f) && f[first_in] < f_min
-        first_in += 1
-    end
-    last_in = length(f)
-    while last_in >= 1 && f[last_in] > f_max
-        last_in -= 1
-    end
-    return (max(i_start, first_in - 1), min(n, length(f), last_in) - 1)
-end
-
 """
     taylorf2_fd_slice(T, nout, lo, hi, deltaF, p, g)
 
 The same waveform as [`taylorf2_fd`](@ref), restricted to the static indices `lo:hi` of
-[`taylorf2_slice`](@ref) and zero elsewhere. The loop never evaluates the model at `f = 0`.
+[`waveform_slice`](@ref) and zero elsewhere. The loop never evaluates the model at `f = 0`.
 """
 function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g) where {T}
     lo > hi && return complex.(zeros(T, nout), zeros(T, nout))

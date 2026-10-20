@@ -504,12 +504,6 @@ struct PhenomDModel{A, P, N, PF, C, T}
     MfRef::T
 end
 
-# Order the components so that `m1 ≥ m2`, carrying the spins along.
-function order_by_mass(m1, m2, chi1, chi2)
-    keep = m1 >= m2
-    return ifelse(keep, m1, m2), ifelse(keep, m2, m1), ifelse(keep, chi1, chi2), ifelse(keep, chi2, chi1)
-end
-
 # Symmetric mass ratio with `PhenomInternal_nudge`: eta is snapped to 1/4 if it exceeds it only
 # through rounding. Larger values are rejected by `check_waveform_inputs`.
 function nudged_eta(m1, m2)
@@ -598,16 +592,13 @@ This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref) to
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
     m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = g.reference_frequency
-    fRef = fRef_in == 0.0 ? f_start : fRef_in
+    fRef = phenom_reference_frequency(g, f_start)
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
     f_max_prime = f_max == 0 ? fCut : f_max
     f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
 
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    M = m1 + m2
-    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
 
     i_start = trunc(Int, f_start / deltaF)
     i_stop = trunc(Int, f_max_prime / deltaF)
@@ -628,7 +619,7 @@ end
     phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
 
 The same strain as [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
-[`taylorf2_slice`](@ref). The loop skips bins at and beyond
+[`waveform_slice`](@ref). The loop skips bins at and beyond
 `floor(min(fCut, f_max) / deltaF)`, preserving LAL's exclusive upper edge.
 """
 function phenomd_fd_slice(
@@ -637,15 +628,13 @@ function phenomd_fd_slice(
     lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
     m1 = p.mass_1
     m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
-    fRef_in = g.reference_frequency
-    fRef = fRef_in == 0.0 ? f_start : fRef_in
+    fRef = phenom_reference_frequency(g, f_start)
     M = m1 + m2
     fCut = F_CUT / (M * MTSUN_SI)
     f_max_eff = ifelse(fCut < f_max, fCut, f_max)
 
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    amp0 = 2.0 * sqrt(5.0 / (64.0 * Float64(π))) * M * MRSUN_SI * M * MTSUN_SI / distance
+    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
 
     h = zeros(Complex{T}, nout)
     stop = floor(f_max_eff / deltaF)
@@ -665,16 +654,12 @@ end
 function check_waveform_inputs(g::IMRPhenomD, deltaF, p, f_start, f_max)
     m1 = p.mass_1
     m2 = p.mass_2
-    distance = p.luminosity_distance * 1.0e6 * PC_SI
     fRef_in = g.reference_frequency
     fRef_in >= 0 || throw(ArgumentError("reference frequency must not be negative"))
     deltaF > 0 || throw(ArgumentError("frequency step must be positive"))
-    (m1 > 0 && m2 > 0) || throw(ArgumentError("masses must be positive"))
     f_start > 0 || throw(ArgumentError("minimum frequency must be positive"))
     f_max > 0 || throw(ArgumentError(MAX_FREQUENCY_ISCO_MESSAGE))
-    distance > 0 || throw(ArgumentError("luminosity distance must be positive"))
-    (abs(p.chi_1) <= 1 && abs(p.chi_2) <= 1) ||
-        throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
+    check_phenom_parameters(p)
 
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
     fCut > f_start || throw(ArgumentError("fCut = $fCut Hz is not above f_min = $f_start Hz"))

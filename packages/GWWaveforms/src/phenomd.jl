@@ -579,7 +579,7 @@ phenomd_phase(model::PhenomDModel, Mf) = _phenomd_phase(model, Mf, useful_powers
 # --- driver -----------------------------------------------------------------------------
 
 """
-    phenomd_fd(T, nout, deltaF, p, g, f_start, f_max)
+    phenomd_fd(T, nout, deltaF, params, g, f_start, f_max)
 
 Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i deltaF`,
 `i = 0 … nout - 1`, as `XLALSimIMRPhenomDGenerateFD`: nonzero from `f_start` up to
@@ -589,16 +589,16 @@ end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 The inputs are trusted (see [`validate_parameters`](@ref)).
 This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_amplitude_phase_slice`](@ref) to apply the public frequency bounds.
 """
-function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
-    m1 = p.mass_1
-    m2 = p.mass_2
+function phenomd_fd(::Type{T}, nout::Integer, deltaF, params::NamedTuple, g, f_start, f_max) where {T}
+    m1 = params.mass_1
+    m2 = params.mass_2
     fRef = phenom_reference_frequency(g, f_start)
     fCut = F_CUT / ((m1 + m2) * MTSUN_SI)
     f_max_prime = f_max == 0 ? fCut : f_max
     f_max_prime = f_max_prime > fCut ? fCut : f_max_prime
 
-    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
+    model = phenomd_model(m1, m2, params.chi_1, params.chi_2, fRef, params.phase)
+    amp0 = phenom_amplitude_scale(m1, m2, params.luminosity_distance)
 
     i_start = trunc(Int, f_start / deltaF)
     i_stop = trunc(Int, f_max_prime / deltaF)
@@ -616,25 +616,25 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
 end
 
 """
-    phenomd_amplitude_phase_slice(T, f, lo, hi, p, g, f_start, f_max)
+    phenomd_amplitude_phase_slice(T, f, lo, hi, params, g, f_start, f_max)
 
 Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to the one-based indices `lo:hi` from
 [`phenom_frequency_slice`](@ref). Frequencies are read directly from `f`. The upper edge
 is rounded down to a multiple of `step(f)` and excluded, preserving LAL's cutoff convention.
 """
 function phenomd_amplitude_phase_slice(
-        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, p, g, f_start, f_max
+        ::Type{T}, f::AbstractRange{Float64}, lo::Integer, hi::Integer, params::NamedTuple, g, f_start, f_max
     ) where {T}
     lo > hi && return (; amplitude = zeros(T, length(f)), phase = zeros(T, length(f)))
-    m1 = p.mass_1
-    m2 = p.mass_2
+    m1 = params.mass_1
+    m2 = params.mass_2
     fRef = phenom_reference_frequency(g, f_start)
     M = m1 + m2
     fCut = F_CUT / (M * MTSUN_SI)
     f_max_eff = ifelse(fCut < f_max, fCut, f_max)
 
-    model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
-    amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
+    model = phenomd_model(m1, m2, params.chi_1, params.chi_2, fRef, params.phase)
+    amp0 = phenom_amplitude_scale(m1, m2, params.luminosity_distance)
 
     deltaF = Float64(step(f))
     stop = floor(f_max_eff / deltaF) * deltaF

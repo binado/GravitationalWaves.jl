@@ -47,19 +47,19 @@ function waveform_modes_td(g::PyCallGenerator, params::NamedTuple; dt = nothing,
     (dt === nothing || times === nothing) || throw(ArgumentError("specify at most one of dt and times"))
     M = params.total_mass
     tscale = MSUN_IN_SECONDS * M
-    ascale = M * tscale * SPEED_OF_LIGHT / (1.0e6 * params.luminosity_distance * PARSEC)
+    ascale = tscale * SPEED_OF_LIGHT / (1.0e6 * params.luminosity_distance * PARSEC)
     opts = PyDict()
     opts["init_orbphase"] = get(params, :init_orbphase, 0.0)
     haskey(params, :init_quat) && (opts["init_quat"] = collect(params.init_quat))
     kw = Dict{Symbol, Any}(
-        :fM_low => g.f_low * tscale, :fM_ref => g.f_ref * tscale,
+        :f_low => g.f_low * tscale, :f_ref => g.f_ref * tscale,
         :ellMax => g.ell_max, :precessing_opts => opts,
     )
-    dt === nothing || (kw[:dtM] = dt / tscale)
-    times === nothing || (kw[:timesM] = collect(times) ./ tscale)
+    dt === nothing || (kw[:dt] = dt / tscale)
+    times === nothing || (kw[:times] = collect(times) ./ tscale)
     q = params.mass_ratio
     spins = [collect(params.spin_1), collect(params.spin_2)]
-    result = pycall(g.model, PyAny, [q, spins[1], spins[2]]; kw...)
+    result = pycall(g.model, PyAny, q, spins[1], spins[2]; kw...)
     t = Vector{Float64}(result[1]) .* tscale
     hdict = result[2]
     labels = Tuple((l, m) for l in 2:g.ell_max for m in -l:l)

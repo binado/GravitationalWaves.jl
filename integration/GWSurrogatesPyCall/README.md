@@ -46,3 +46,7 @@ The resulting generator accepts `total_mass`, `luminosity_distance`, `mass_ratio
 `waveform_modes_td` returns the contract's ordered signed labels and `(sample, mode)` matrix in
 physical strain. `hphc_td` is inherited from `AbstractGWWaveforms` and uses the LAL sky-angle
 convention `(inclination, π/2 - phi_ref)`. Python evaluation is not differentiable.
+
+The native implementation is checked against this adapter in
+`integration/GWSurrogates/test_pycall.jl`; see that integration environment's README
+for the oracle comparison command.

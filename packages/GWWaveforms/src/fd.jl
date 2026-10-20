@@ -47,7 +47,7 @@ function canonical_amplitude_phase(amplitude, phase)
 end
 
 """
-    amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, generator::Approximant)
+    amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, generator::AlignedSpinQuadrupolarWaveformGenerator)
 
 Nonnegative amplitude and analytic unwrapped phase of the inclination-independent strain,
 following the [`AbstractGWWaveforms.amplitude_phase`](@ref) convention `h = A * exp(im * Φ)`.
@@ -58,7 +58,7 @@ Phenom models evaluate the supplied frequencies directly; the uniform range may 
 TaylorF2 retains its zero-start grid convention.
 The real element type is the floating-point type promoted from the parameters, including duals.
 """
-function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::Approximant)
+function amplitude_phase(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
     T, p = promote_parameters(aligned_parameters(params))
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?

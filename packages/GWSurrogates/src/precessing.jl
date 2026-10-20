@@ -47,9 +47,20 @@ end
 # Only the elements with m′ >= 0 are evaluated: D^ell_{-m′,-m} = (-1)^(m′-m) conj(D^ell_{m′ m}), so
 # each of them also gives the row -m′, from h[ell, -m].
 function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
+    out = zeros(promote_type(eltype(h), eltype(quat)), size(h))
+    return rotate_into!(out, h, quat, ell_max)
+end
+
+# Same, but reuses `h` for the result when its element type can hold it (otherwise it allocates), so
+# `h` must not be used afterwards. Use the returned array.
+function rotate_modes!(h::AbstractMatrix, quat, ell_max::Integer)
+    promote_type(eltype(h), eltype(quat)) === eltype(h) || return rotate_modes(h, quat, ell_max)
+    return rotate_into!(h, h, quat, ell_max)
+end
+
+# `out` may be `h` itself: each block of a sample is read before it is written.
+function rotate_into!(out, h, quat, ell_max::Integer)
     2 <= ell_max <= 5 || throw(ArgumentError("ell_max must be in 2:5"))
-    T = promote_type(eltype(h), eltype(quat))
-    out = zeros(T, size(h))
     powers = SpinorPowers(complex(eltype(quat)), 2ell_max)
     for k in axes(h, 1)
         ra = complex(quat[k, 1], quat[k, 4])
@@ -68,6 +79,9 @@ end
 # order. Loops with runtime bounds over (ell, m′, m, s) are about 1.5 times slower.
 @generated function rotate_block!(out, h, k, ::Val{L}, p::SpinorPowers) where {L}
     body = Expr(:block, :(ra = p.ra), :(ra_c = p.ra_c), :(nrb = p.nrb), :(rb_c = p.rb_c), :(T0 = eltype(ra)))
+    for m in (-L):L
+        push!(body.args, :($(Symbol(:h_, m + L)) = h[k, $(mode_column(L, m))]))
+    end
     for mp in 0:L
         rows = Any[]
         rows_neg = Any[]
@@ -80,8 +94,8 @@ end
             pref = sqrt(FACTORIAL[L + mp + 1] * FACTORIAL[L - mp + 1] * FACTORIAL[L + m + 1] * FACTORIAL[L - m + 1])
             d = Symbol(:d_, mp, :_, m + L)
             push!(body.args, :($d = $pref * $acc))
-            push!(rows, :($d * h[k, $(mode_column(L, m))]))
-            push!(rows_neg, :($(iseven(mp - m) ? 1 : -1) * conj($d) * h[k, $(mode_column(L, -m))]))
+            push!(rows, :($d * $(Symbol(:h_, m + L))))
+            push!(rows_neg, :($(iseven(mp - m) ? 1 : -1) * conj($d) * $(Symbol(:h_, -m + L))))
         end
         push!(body.args, :(out[k, $(mode_column(L, mp))] = $(reduce((a, b) -> :($a + $b), rows))))
         mp > 0 && push!(body.args, :(out[k, $(mode_column(L, -mp))] = $(reduce((a, b) -> :($a + $b), rows_neg))))
@@ -184,7 +198,7 @@ function inertial_modes(
     end
 
     h_coorb = coorbital_modes(coorb, q, chiA_coorb, chiB_coorb; ell_max)
-    h = rotate_modes(h_coorb, qfull, ell_max)
+    h = rotate_modes!(h_coorb, qfull, ell_max)
 
     if dt === nothing && times === nothing
         keep = t_low === nothing ? (1:n) : findall(>=(t_low), t_coorb)

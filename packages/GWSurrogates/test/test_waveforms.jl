@@ -69,6 +69,23 @@ using Random
         @test_throws ArgumentError GWSurrogates.rotate_modes(h, quat0, 6)
     end
 
+    @testset "rotate_modes! reuses the buffer" begin
+        rng = MersenneTwister(7)
+        n = 6
+        h = randn(rng, ComplexF64, n, GWSurrogates.n_modes(5))
+        quat = randn(rng, n, 4)
+        quat ./= sqrt.(sum(abs2, quat; dims = 2))
+        expected = GWSurrogates.rotate_modes(h, quat, 5)
+        buffer = copy(h)
+        result = GWSurrogates.rotate_modes!(buffer, quat, 5)
+        @test result === buffer
+        @test result == expected
+        # A rotor of a wider element type cannot be stored in `h`: the result is a new array.
+        wide = GWSurrogates.rotate_modes!(copy(h), ForwardDiff.Dual.(quat, 1.0), 5)
+        @test eltype(wide) <: Complex{<:ForwardDiff.Dual}
+        @test ForwardDiff.value.(real.(wide)) ≈ real.(expected)
+    end
+
     @testset "mode_sum on a single mode" begin
         modes = zeros(ComplexF64, 1, GWSurrogates.n_modes(2))
         modes[1, GWSurrogates.mode_column(2, 2)] = 1.0

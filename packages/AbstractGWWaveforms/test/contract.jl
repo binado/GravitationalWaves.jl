@@ -1,4 +1,5 @@
 using Test
+using AbstractGWWaveforms: AlignedSpinQuadrupolarWaveformGenerator, amplitude_phase
 
 # Shared checks for every `AbstractWaveformGenerator`. Backends `include` this file from their
 # tests, with the interface (`hphc_fd`, the accessors, ...) in scope.
@@ -29,6 +30,10 @@ function test_generator_contract(g; params, f)
             @test_throws ArgumentError validate_parameters(f, merge(params, (; not_a_parameter = 1.0)), g)
         end
 
+        if g isa AlignedSpinQuadrupolarWaveformGenerator
+            test_amplitude_phase_contract(g; params, f)
+        end
+
         @testset "output" begin
             h = hphc_fd(f, params, g)
             @test h.plus isa AbstractVector{<:Complex}
@@ -47,5 +52,32 @@ function test_generator_contract(g; params, f)
                 @test all(isfinite, x)
             end
         end
+    end
+end
+
+# Additional contract for the optional aligned-spin quadrupole interface.
+function test_amplitude_phase_contract(g; params, f)
+    return @testset "amplitude/phase contract" begin
+        a = amplitude_phase(f, params, g)
+        @test keys(a) == (:amplitude, :phase)
+        @test a.amplitude isa AbstractVector{<:Real}
+        @test a.phase isa AbstractVector{<:Real}
+        @test length(a.amplitude) == length(a.phase) == length(f)
+        @test all(isfinite, a.amplitude) && all(isfinite, a.phase)
+        @test all(>=(0), a.amplitude)
+        @test iszero(a.amplitude[1]) && iszero(a.phase[1])
+        @test all(iszero, a.phase[iszero.(a.amplitude)])
+        f_min = minimum_frequency(g)
+        f_max = something(maximum_frequency(g), Float64(last(f)))
+        outside = [!(f_min <= fi <= f_max) for fi in f]
+        @test all(iszero, a.amplitude[outside]) && all(iszero, a.phase[outside])
+        face = amplitude_phase(f, merge(params, (; theta_jn = 0.0)), g)
+        @test a.amplitude == face.amplitude
+        @test a.phase == face.phase
+        h = hphc_fd(f, params, g)
+        strain = a.amplitude .* cis.(a.phase)
+        c = cos(params.theta_jn)
+        @test h.plus ≈ ((1 + c * c) / 2) .* strain
+        @test h.cross ≈ (-im * c) .* strain
     end
 end

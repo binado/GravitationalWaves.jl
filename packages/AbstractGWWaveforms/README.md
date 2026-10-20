@@ -28,3 +28,23 @@ Every generator provides `approximant`, `reference_frequency`, `minimum_frequenc
 their tests to check a generator against the contract.
 
 Licensed under GPL-2.0-or-later.
+
+## Aligned-spin quadrupole interface
+
+Generators for aligned-spin, quadrupole-only radiation may subtype
+`AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator` and implement
+
+```julia
+amplitude_phase(f, params, generator) -> (; amplitude, phase)
+```
+
+The returned real vectors describe the inclination-independent strain
+`amplitude .* exp.(im .* phase)`. Amplitude is nonnegative and includes distance normalization;
+phase is analytic and unwrapped, including reference-phase alignment and model time shifts.
+Both vectors are zero at DC and outside configured or intrinsic model support. Phase is zero
+wherever amplitude vanishes. Frequencies are in Hz and phase is in radians.
+
+The default `hphc_fd` evaluates `amplitude_phase` once and applies the inclination factors
+`(1 + cos(theta_jn)^2)/2` for plus and `-im * cos(theta_jn)` for cross.
+Generators continue to store fixed configuration. Backends supporting precession or higher
+modes implement `hphc_fd` directly and need not implement this optional interface.

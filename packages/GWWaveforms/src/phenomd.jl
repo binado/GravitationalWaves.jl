@@ -587,7 +587,7 @@ Frequency-domain IMRPhenomD strain for the optimally oriented source on `f_i = i
 end itself is zero, as in LAL. The inclination factors are applied by `hphc_fd`.
 
 The inputs are trusted (see [`validate_parameters`](@ref)).
-This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_fd_slice`](@ref) to apply the public frequency bounds.
+This is the reference loop; [`hphc_fd`](@ref) uses [`phenomd_amplitude_phase_slice`](@ref) to apply the public frequency bounds.
 """
 function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
     m1 = p.mass_1
@@ -616,16 +616,18 @@ function phenomd_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) wher
 end
 
 """
-    phenomd_fd_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
+    phenomd_amplitude_phase_slice(T, nout, lo, hi, deltaF, p, g, f_start, f_max)
 
-The same strain as [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
+Nonnegative amplitude and unwrapped phase of [`phenomd_fd`](@ref), restricted to the indices `lo:hi` from
 [`waveform_slice`](@ref). The loop skips bins at and beyond
 `floor(min(fCut, f_max) / deltaF)`, preserving LAL's exclusive upper edge.
 """
-function phenomd_fd_slice(
+function phenomd_amplitude_phase_slice(
         ::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g, f_start, f_max
     ) where {T}
-    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
+    amplitude = zeros(T, nout)
+    phase = zeros(T, nout)
+    lo > hi && return (; amplitude, phase)
     m1 = p.mass_1
     m2 = p.mass_2
     fRef = phenom_reference_frequency(g, f_start)
@@ -636,7 +638,6 @@ function phenomd_fd_slice(
     model = phenomd_model(m1, m2, p.chi_1, p.chi_2, fRef, p.phase)
     amp0 = phenom_amplitude_scale(m1, m2, p.luminosity_distance)
 
-    h = zeros(Complex{T}, nout)
     stop = floor(f_max_eff / deltaF)
     for i in lo:hi
         if i < stop
@@ -644,10 +645,10 @@ function phenomd_fd_slice(
             pm = useful_powers(Mf)
             amp = amp0 * _phenomd_amplitude(model.amp, Mf, pm)
             phi = _phenomd_phase(model, Mf, pm) - (model.t0 * (Mf - model.MfRef) + model.phi_precalc)
-            h[i + 1] = complex(amp * cos(phi), -(amp * sin(phi)))
+            amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, -phi)
         end
     end
-    return h
+    return (; amplitude, phase)
 end
 
 # Inputs `phenomd_fd` does not check; run by `validate_parameters`.

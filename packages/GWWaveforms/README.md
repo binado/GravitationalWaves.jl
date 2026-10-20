@@ -24,10 +24,19 @@ params = (
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),   # (anti-)aligned spins only
 )
 (; plus, cross) = hphc_fd(f, params, generator)
+(; amplitude, phase) = amplitude_phase(f, params, generator)
 ```
 
 Each model is its own generator type with only the options it uses; the generators and `hphc_fd` are the
 ones `LALWaveforms` shares, so code can switch between the native and the LAL-backed implementation.
+
+All three generators subtype `AlignedSpinQuadrupolarWaveformGenerator`. Their
+`amplitude_phase` methods return nonnegative amplitude (including distance normalization)
+and analytic, unwrapped phase in radians. The inclination-independent strain is
+`amplitude .* exp.(im .* phase)`; `hphc_fd` applies the shared inclination factors.
+Both vectors are zero at DC and outside waveform support, with phase set to zero wherever
+amplitude vanishes. TaylorF2's signed LAL amplitude is absorbed into the phase by a π shift.
+Changing the inclination does not change amplitude or phase.
 
 The element type of the output follows the parameters, so dual numbers pass through:
 
@@ -38,7 +47,7 @@ loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = 
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 
-Parameter values are not checked by `hphc_fd`. Call
+Parameter values are not checked by `hphc_fd` or `amplitude_phase`. Call
 `validate_parameters(f, params, generator)` once on the host: it throws `ArgumentError` for unknown
 keys, spins that are not (anti-)aligned, a nonzero `eccentricity`, non-positive masses or distance,
 and frequency ranges the model cannot produce, and returns `nothing` otherwise.
@@ -78,8 +87,10 @@ selected support and do not differentiate a bin entering or leaving it.
 
 ## Fidelity
 
-The TaylorF2 and IMRPhenomD ports follow LALSimulation (lalsuite 7.26) line by line, including the operation order, LAL's `UsefulPowers`
-and the natural cubic spline that GSL builds over the QNM tables. Against `LALWaveforms` the largest deviation
+The TaylorF2 and IMRPhenomD ports follow LALSimulation (lalsuite 7.26) line by line, retaining the numerical kernels, LAL's `UsefulPowers`
+and the natural cubic spline that GSL builds over the QNM tables. The public amplitude/phase
+convention absorbs signed prefactors into phase; reconstruction can differ from LAL by
+phase-rounding errors. Against `LALWaveforms` the largest deviation
 relative to the largest sample is about 1e-14 to 4e-13 for IMRPhenomD and 1e-13 to 7e-12 for TaylorF2 (limited by
 `cbrt`/`log`/`sin` ulp differences on phases of order 1e5 rad). Where LAL and a paper or ripple disagree, LAL wins.
 

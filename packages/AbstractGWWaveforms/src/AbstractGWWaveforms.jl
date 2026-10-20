@@ -2,14 +2,15 @@
     AbstractGWWaveforms
 
 The interface shared by the waveform backends (`GWWaveforms`, `LALWaveforms`): the supertype
-[`AbstractWaveformGenerator`](@ref), the generic functions [`hphc_fd`](@ref) and
-[`validate_parameters`](@ref) and the accessors
+[`AbstractWaveformGenerator`](@ref), the generic functions [`hphc_fd`](@ref),
+[`amplitude_phase`](@ref) and [`validate_parameters`](@ref), and the accessors
 and capability queries every generator provides. Dependency-free, so generic code can depend
 on it alone.
 """
 module AbstractGWWaveforms
 
-export AbstractWaveformGenerator, hphc_fd, validate_parameters
+export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
+export hphc_fd, amplitude_phase, validate_parameters
 export approximant, reference_frequency, minimum_frequency, maximum_frequency
 export spin_support, supports_mode_array, is_differentiable
 
@@ -27,9 +28,41 @@ post-Newtonian orders, ...); build it once and reuse it with [`hphc_fd`](@ref).
 A concrete subtype implements [`hphc_fd`](@ref), optionally [`validate_parameters`](@ref), and the accessors [`approximant`](@ref),
 [`reference_frequency`](@ref), [`minimum_frequency`](@ref) and [`maximum_frequency`](@ref). It
 may override the capability queries [`spin_support`](@ref), [`supports_mode_array`](@ref) and
-[`is_differentiable`](@ref).
+[`is_differentiable`](@ref). Aligned-spin quadrupole backends can instead subtype
+[`AlignedSpinQuadrupolarWaveformGenerator`](@ref) and implement [`amplitude_phase`](@ref)
+to inherit polarization assembly.
 """
 abstract type AbstractWaveformGenerator end
+
+"""
+    AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator
+
+Generator for aligned-spin, quadrupole-only radiation. Implement [`amplitude_phase`](@ref)
+with the usual generator accessors to obtain the default [`hphc_fd`](@ref) assembly.
+The inclination is `params.theta_jn`, since the orbital and total angular momenta are aligned.
+Generators retain fixed configuration; parameter-dependent coefficients are evaluated per call.
+"""
+abstract type AlignedSpinQuadrupolarWaveformGenerator <: AbstractWaveformGenerator end
+
+"""
+    amplitude_phase(f::AbstractRange, params::NamedTuple,
+                    generator::AlignedSpinQuadrupolarWaveformGenerator) -> (; amplitude, phase)
+
+Inclination-independent frequency-domain strain represented as `amplitude .* exp.(im .* phase)`.
+Both returned real arrays have `length(f)` entries. Frequencies are in Hz and phase is in radians.
+Amplitude is nonnegative and includes luminosity-distance normalization. Phase is analytic and
+unwrapped (not restricted to a principal interval), including orbital reference-phase alignment
+and any model time shift. It is defined modulo a constant integer multiple of `2π`.
+
+Both arrays are zero at DC, outside the configured frequency bounds, and outside intrinsic model
+support. Phase is also zero wherever amplitude vanishes. This is a finite placeholder: phase
+and its derivatives there have no physical meaning. Never evaluate singular formulas at DC.
+
+Parameters, grid requirements and host validation follow [`hphc_fd`](@ref). The arrays exclude
+inclination factors; changing `theta_jn` does not change their values. Differentiable backends
+must support this method under the same conditions as their `hphc_fd` implementation.
+"""
+function amplitude_phase end
 
 """
     hphc_fd(f::AbstractRange, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
@@ -49,8 +82,24 @@ callers run once on the host. Properties of the grid and the generator stay chec
 The returned arrays have `length(f)` entries and are zero outside
 `minimum_frequency(generator) ≤ f ≤ maximum_frequency(generator)`, where a `nothing` maximum
 means the last grid point ([`frequency_bounds`](@ref)).
+
+For [`AlignedSpinQuadrupolarWaveformGenerator`](@ref), the default calls [`amplitude_phase`](@ref)
+once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
+`-im * cos(theta_jn)` for cross.
 """
 function hphc_fd end
+
+function hphc_fd(f::AbstractRange, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
+    check_frequency_grid(f)
+    a = amplitude_phase(f, params, g)
+    cfac = cos(params.theta_jn)
+    pfac = 0.5 * (1.0 + cfac * cfac)
+    re = a.amplitude .* cos.(a.phase)
+    im = a.amplitude .* sin.(a.phase)
+    plus = complex.(pfac .* re, pfac .* im)
+    cross = complex.(cfac .* im, .-(cfac .* re))
+    return (; plus, cross)
+end
 
 """
     validate_parameters(f::AbstractRange, params::NamedTuple, generator::AbstractWaveformGenerator) -> nothing

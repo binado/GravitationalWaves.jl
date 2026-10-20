@@ -5,7 +5,7 @@ Supertype of the waveform models implemented here, each a concrete
 [`AbstractWaveformGenerator`](@ref) carrying only the options that model uses. Defaults are
 those of bilby's `lal_binary_black_hole`.
 """
-abstract type Approximant <: AbstractWaveformGenerator end
+abstract type Approximant <: AlignedSpinQuadrupolarWaveformGenerator end
 
 function check_pn_orders(; pn_spin_order = 0, pn_phase_order = 0, pn_amplitude_order = 0)
     -1 <= pn_spin_order <= 7 || throw(ArgumentError("invalid pn_spin_order $pn_spin_order"))

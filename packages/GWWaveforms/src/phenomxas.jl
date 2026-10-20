@@ -211,14 +211,15 @@ function phenomxas_model(m1in, m2in, chi1in, chi2in, fref, phase)
     return (; r, amplitude, phase = phase_coefficients, M_sec, linb, phiref)
 end
 
-function waveform_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) where {T}
+function amplitude_phase_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) where {T}
     lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    lo > hi && return complex.(zeros(T, length(f)), zeros(T, length(f)))
+    amplitude = zeros(T, length(f))
+    phase = zeros(T, length(f))
+    lo > hi && return (; amplitude, phase)
     fref = phenom_reference_frequency(g, f_start)
     m = phenomxas_model(p.mass_1, p.mass_2, p.chi_1, p.chi_2, fref, p.phase)
     amp0 = phenom_amplitude_scale(p.mass_1, p.mass_2, p.luminosity_distance)
     norm = amp0 * sqrt(2m.r.eta / 3) * Float64(π)^(-1 / 6)
-    h = zeros(Complex{T}, length(f))
     cutoff = 0.3 / m.M_sec
     for i in lo:hi
         frequency = i * Float64(step(f))
@@ -226,10 +227,10 @@ function waveform_fd(g::IMRPhenomXAS, ::Type{T}, f, p, f_start, f_min, f_max) wh
             Mf = m.M_sec * frequency
             amp = norm * phenomxas_amplitude(m.amplitude, Mf)
             phi = phenomxas_phase(m.phase, Mf) + m.linb * Mf + m.phiref
-            h[i + 1] = complex(amp * cos(phi), amp * sin(phi))
+            amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, phi)
         end
     end
-    return h
+    return (; amplitude, phase)
 end
 
 function check_waveform_inputs(g::IMRPhenomXAS, deltaF, p, f_start, f_max)

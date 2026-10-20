@@ -288,7 +288,7 @@ are applied by `hphc_fd`) on the grid `f_i = i deltaF`, `i = 0 … nout - 1`, ze
 the Schwarzschild ISCO. `p` holds the output of `aligned_parameters`, converted to `T`.
 
 The inputs are trusted (see [`validate_parameters`](@ref)). This loop is the reference for
-[`taylorf2_fd_slice`](@ref), which applies the public frequency bounds. Only this reference
+[`taylorf2_amplitude_phase_slice`](@ref), which applies the public frequency bounds. Only this reference
 supports `f_max == 0`.
 """
 function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) where {T}
@@ -331,7 +331,7 @@ function taylorf2_fd(::Type{T}, nout::Integer, deltaF, p, g, f_start, f_max) whe
     return h
 end
 
-# Inputs `taylorf2_fd` and `taylorf2_fd_slice` do not check; run by `validate_parameters`.
+# Inputs `taylorf2_fd` and `taylorf2_amplitude_phase_slice` do not check; run by `validate_parameters`.
 function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
     m1 = p.mass_1
     m2 = p.mass_2
@@ -348,13 +348,15 @@ function check_waveform_inputs(g::TaylorF2, deltaF, p, f_start, f_max)
 end
 
 """
-    taylorf2_fd_slice(T, nout, lo, hi, deltaF, p, g)
+    taylorf2_amplitude_phase_slice(T, nout, lo, hi, deltaF, p, g)
 
-The same waveform as [`taylorf2_fd`](@ref), restricted to the static indices `lo:hi` of
+Nonnegative amplitude and unwrapped phase of [`taylorf2_fd`](@ref), restricted to the static indices `lo:hi` of
 [`waveform_slice`](@ref) and zero elsewhere. The loop never evaluates the model at `f = 0`.
 """
-function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g) where {T}
-    lo > hi && return complex.(zeros(T, nout), zeros(T, nout))
+function taylorf2_amplitude_phase_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, deltaF, p, g) where {T}
+    amplitude = zeros(T, nout)
+    phase = zeros(T, nout)
+    lo > hi && return (; amplitude, phase)
     m1 = p.mass_1
     m2 = p.mass_2
     r = p.luminosity_distance * 1.0e6 * PC_SI
@@ -370,18 +372,17 @@ function taylorf2_fd_slice(::Type{T}, nout::Integer, lo::Integer, hi::Integer, d
         taylorf2_pn_phasing(m1, m2, p.chi_1, p.chi_2; spin_order = g.pn_spin_order),
         g.pn_phase_order,
     )
-    amplitude = TaylorF2Amplitude(eta, g.pn_amplitude_order)
+    correction = TaylorF2Amplitude(eta, g.pn_amplitude_order)
     amp0 = -4.0 * m1 * m2 / r * MRSUN_SI * MTSUN_SI * sqrt(Float64(π) / 12.0)
     ref_phasing = f_ref != 0 ? taylorf2_phasing(pn, cbrt(piM * f_ref)) : zero(amp0)
 
-    h = zeros(Complex{T}, nout)
     for i in lo:hi
         frequency = i * deltaF
         v = cbrt(piM * frequency)
         phasing = taylorf2_phasing(pn, v)
-        amp = amp0 * taylorf2_amplitude_factor(amplitude, v) * v
+        amp = amp0 * taylorf2_amplitude_factor(correction, v) * v
         x = (phasing + ((shft * frequency - 2.0 * p.phase) - ref_phasing)) - PI_4
-        h[i + 1] = complex(amp * cos(x), -(amp * sin(x)))
+        amplitude[i + 1], phase[i + 1] = canonical_amplitude_phase(amp, -x)
     end
-    return h
+    return (; amplitude, phase)
 end

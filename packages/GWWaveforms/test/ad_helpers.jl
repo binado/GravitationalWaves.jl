@@ -53,6 +53,29 @@ function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, I
                         @test isapprox(g, reference; rtol = 1.0e-10)
                     end
                 end
+                @testset "amplitude and phase gradients" begin
+                    for component in (:amplitude, :phase)
+                        function component_loss(x)
+                            a = amplitude_phase(AD_GRID, ad_params(x), generator)
+                            values = getproperty(a, component)
+                            scale = component === :amplitude ? 1.0e22 : inv(length(AD_GRID))
+                            return scale * sum(values)
+                        end
+                        expected = grad(fd, component_loss, AD_X0)[1]
+                        @test all(isfinite, expected)
+                        reference = ForwardDiff.gradient(component_loss, AD_X0)
+                        @test iszero(reference[6]) # inclination is applied only by hphc_fd
+                        @test iszero(reference[component === :amplitude ? 7 : 5])
+                        for (name, backend) in backends
+                            @testset "$name $component" begin
+                                g = DifferentiationInterface.gradient(component_loss, backend, AD_X0)
+                                @test all(isfinite, g)
+                                @test isapprox(g, expected; rtol = 1.0e-5)
+                                @test isapprox(g, reference; rtol = 1.0e-10)
+                            end
+                        end
+                    end
+                end
                 if G === IMRPhenomD
                     @testset "equal-mass gradients" begin
                         function component_loss(x)

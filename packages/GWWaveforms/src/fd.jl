@@ -40,57 +40,38 @@ function promote_parameters(p::NamedTuple)
     return T, map(T, p)
 end
 
+# Convert a signed prefactor to the public nonnegative-amplitude, exp(+im * phase)
+# convention without recovering phase from a complex strain or wrapping its analytic value.
+function canonical_amplitude_phase(amplitude, phase)
+    shifted = ifelse(amplitude < 0, phase + Float64(π), phase)
+    return abs(amplitude), ifelse(iszero(amplitude), zero(shifted), shifted)
+end
+
 """
-    hphc_fd(f::AbstractRange, params::NamedTuple, generator::Approximant) -> (; plus, cross)
+    amplitude_phase(f::AbstractRange, params::NamedTuple, generator::Approximant)
 
-Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz), following bilby's
-`lal_binary_black_hole` and the interface of [`AbstractGWWaveforms.hphc_fd`](@ref). `params` has bilby's
-names and units: required `mass_1`, `mass_2` (detector-frame solar masses; other mass
-parameters are converted by `GWParameterConversion.convert_parameters`),
-`luminosity_distance` (Mpc), `theta_jn`, `phase`; optional (default 0) `a_1`, `a_2`, `tilt_1`,
-`tilt_2`, `phi_12`, `phi_jl`, `eccentricity`.
-
-`f` must start at 0 and have a positive step, as bilby assumes. The output is zero outside
-`minimum_frequency ≤ f ≤ maximum_frequency`.
-
-The parameter values are **not** checked: spins must be (anti-)aligned with the orbital angular
-momentum, `eccentricity` zero, masses and distance positive, and so on. Run
-[`validate_parameters`](@ref) first (once, on the host) for that.
-`TaylorF2`, `IMRPhenomD` and `IMRPhenomXAS` support ForwardDiff and Mooncake.
-`maximum_frequency` must be positive (`ArgumentError` otherwise).
-
-The element type is `Complex{T}` with `T` the floating-point type promoted from the
-parameters, so dual numbers (ForwardDiff) and Mooncake reverse mode pass through.
+Nonnegative amplitude and analytic unwrapped phase of the inclination-independent strain,
+following the [`AbstractGWWaveforms.amplitude_phase`](@ref) convention `h = A * exp(im * Φ)`.
+All three native models share the default quadrupole polarization assembly in `hphc_fd`.
+Parameter values are trusted; run [`validate_parameters`](@ref) on the host first.
+The grid and generator are fixed configuration, and `maximum_frequency` must be positive.
+The real element type is the floating-point type promoted from the parameters, including duals.
 """
-function hphc_fd(f::AbstractRange, params::NamedTuple, g::Approximant)
+function amplitude_phase(f::AbstractRange, params::NamedTuple, g::Approximant)
     check_frequency_grid(f)
     T, p = promote_parameters(aligned_parameters(params))
-
     f_min, f_max = frequency_bounds(g, f)
     f_start = g.pn_amplitude_order != 0 ?
         f_low_to_f_start(f_min, g.pn_amplitude_order) : f_min
-
-    h = waveform_fd(g, T, f, p, f_start, f_min, f_max)
-
-    # The models return h(f) for ι = 0; other orientations multiply by the inclination
-    # dependence, hc ∝ -i hp (ChooseFDWaveform in LALSimInspiral).
-    cfac = cos(p.inclination)
-    pfac = 0.5 * (1.0 + cfac * cfac)
-    re = real.(h)
-    im = imag.(h)
-    plus = complex.(pfac .* re, pfac .* im)
-    cross = complex.(cfac .* im, .-(cfac .* re))
-    return (; plus, cross)
+    return amplitude_phase_fd(g, T, f, p, f_start, f_min, f_max)
 end
 
-# The inclination-independent kernels, selected by the generator type. They return zero outside
-# `[f_min, f_max]`.
-function waveform_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
+function amplitude_phase_fd(g::TaylorF2, T, f, p, f_start, f_min, f_max)
     lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    return taylorf2_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g)
+    return taylorf2_amplitude_phase_slice(T, length(f), lo, hi, Float64(step(f)), p, g)
 end
 
-function waveform_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
+function amplitude_phase_fd(g::IMRPhenomD, T, f, p, f_start, f_min, f_max)
     lo, hi = waveform_slice(f, f_start, f_min, f_max)
-    return phenomd_fd_slice(T, length(f), lo, hi, Float64(step(f)), p, g, f_start, f_max)
+    return phenomd_amplitude_phase_slice(T, length(f), lo, hi, Float64(step(f)), p, g, f_start, f_max)
 end

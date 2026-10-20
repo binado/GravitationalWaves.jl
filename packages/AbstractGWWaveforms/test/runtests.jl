@@ -26,6 +26,27 @@ function AbstractGWWaveforms.validate_parameters(f::AbstractRange, params::Named
     return nothing
 end
 
+# Implements only amplitude_phase; polarization assembly comes from the interface.
+struct DummyQuadrupole <: AlignedSpinQuadrupolarWaveformGenerator end
+AbstractGWWaveforms.approximant(::DummyQuadrupole) = "DummyQuadrupole"
+AbstractGWWaveforms.reference_frequency(::DummyQuadrupole) = 50.0
+AbstractGWWaveforms.minimum_frequency(::DummyQuadrupole) = 20.0
+AbstractGWWaveforms.maximum_frequency(::DummyQuadrupole) = 60.0
+
+function AbstractGWWaveforms.amplitude_phase(f::AbstractRange, params::NamedTuple, g::DummyQuadrupole)
+    check_frequency_grid(f)
+    lo, hi = frequency_bounds(g, f)
+    amplitude = [lo <= fi <= hi ? 2.0 : 0.0 for fi in f]
+    phase = [lo <= fi <= hi ? 0.1 * fi : 0.0 for fi in f]
+    return (; amplitude, phase)
+end
+
+function AbstractGWWaveforms.validate_parameters(f::AbstractRange, params::NamedTuple, ::DummyQuadrupole)
+    check_frequency_grid(f)
+    foreach(k -> k == :theta_jn || throw(ArgumentError("unknown parameter $k")), keys(params))
+    return nothing
+end
+
 @testset "AbstractGWWaveforms" begin
     @testset "Aqua" begin
         Aqua.test_all(AbstractGWWaveforms)
@@ -59,6 +80,8 @@ end
         @test sprint(show, Dummy(60.0)) ==
             "Dummy(\"Dummy\"; reference_frequency=50.0, minimum_frequency=20.0, maximum_frequency=60.0)"
     end
+
+    test_generator_contract(DummyQuadrupole(); params = (; theta_jn = 0.4), f = 0:0.5:100)
 
     test_generator_contract(Dummy(nothing); params = (mass_1 = 30.0, mass_2 = 30.0), f = 0:0.5:100)
     test_generator_contract(Dummy(60.0); params = (mass_1 = 30.0, mass_2 = 30.0), f = 0:0.5:100)

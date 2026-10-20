@@ -26,8 +26,9 @@ Julia packages live in `packages/`:
 The waveform packages depend on `GWParameterConversion` through relative `[sources]` paths.
 Shared bilby fixture tooling lives in `python/`; generated fixtures go to `reference/` (gitignored).
 Waveform scope remains FD only, uniform `AbstractRange` grids, detector-frame masses, no tides.
-Native Phenom models evaluate supplied frequencies directly and allow nonzero grid starts;
-TaylorF2 and LALWaveforms retain zero-start grids. Grid validation runs on the host.
+Native GWWaveforms models (TaylorF2, Phenom) evaluate supplied frequencies directly and allow
+nonzero grid starts; LALWaveforms retains zero-start grids. TaylorF2's phase keeps LAL's `-1/Δf`
+time shift, so it depends on the grid step. Grid validation runs on the host.
 The waveform backends, conversion, detector, series, noise, and matched-filtering packages use GPL-2.0-or-later; `AbstractGWWaveforms`, `GWDistributions` and `GWSurrogates` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 

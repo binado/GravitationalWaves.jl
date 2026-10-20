@@ -13,6 +13,20 @@ end
 # Internal signed-spin continuation used by acceptance finite differences at the
 # envelope boundaries. Public evaluations always pass the host validation above.
 function evaluated_spectrum(f, p, g)
+    x = collect(promote(p.mass_1, p.mass_2, p.chi_1, p.chi_2, p.luminosity_distance, p.inclination, p.phase))
+    y = spectrum_vector(f, x, g)
+    n = length(f)
+    return (; plus = y[1:n], cross = y[(n + 1):(2n)])
+end
+
+# Parameter order of `spectrum_vector`. Gives reverse-mode backends one differentiable
+# boundary: 7 real inputs, `[plus; cross]` out. Backend extensions replace it with a
+# Jacobian-based rule instead of differentiating the ODE solve.
+function spectrum_vector(f, x::AbstractVector, g)
+    p = (;
+        mass_1 = x[1], mass_2 = x[2], chi_1 = x[3], chi_2 = x[4],
+        luminosity_distance = x[5], inclination = x[6], phase = x[7],
+    )
     T = 1 / step(f)
     N = 2(length(f) - 1)
     dt = T / N
@@ -61,5 +75,5 @@ function evaluated_spectrum(f, p, g)
             cross[i] = zero(eltype(cross))
         end
     end
-    return (; plus, cross)
+    return vcat(plus, cross)
 end

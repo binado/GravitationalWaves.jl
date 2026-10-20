@@ -1,0 +1,72 @@
+# Mooncake reverse-mode probes against ForwardDiff; see integration/GWSEOBNR/probe_mooncake.jl.
+measured_date = "2026-10-19"
+platform = "macOS arm64"
+julia = "1.13.0"
+mooncake = "0.5.65"
+frequency_grid = "0:0.125:1024 Hz"
+raw_records = "reference/seobnr/mooncake (gitignored)"
+
+[[probes]]
+case = "calibration"
+status = "pass"
+forwarddiff_relative_error = 1.214e-15
+seconds_including_compilation = 7.0
+
+[[probes]]
+case = "hamiltonian"
+status = "pass"
+forwarddiff_relative_error = 3.699e-16
+seconds_including_compilation = 9.2
+
+[[probes]]
+case = "flux"
+status = "pass"
+forwarddiff_relative_error = 7.469e-16
+seconds_including_compilation = 2089.6
+note = "passes, but Mooncake rule compilation took about 35 minutes"
+
+[[probes]]
+case = "tail"
+status = "pass"
+forwarddiff_relative_error = 1.207e-15
+seconds_including_compilation = 12.7
+
+[[probes]]
+case = "fft"
+status = "pass"
+forwarddiff_relative_error = 1.562e-16
+seconds_including_compilation = 2.9
+note = "passes with the local real_fft rrule (GWSEOBNRMooncakeExt); without it Mooncake cannot build a rule through FFTW plan construction"
+
+[[probes]]
+case = "timing"
+status = "pass"
+forwarddiff_relative_error = 0.000e+00
+seconds_including_compilation = 3.8
+note = "passes with the stopgrad zero-adjoint rule; without it residual - stopgrad(residual) cancels and the gradient is zero"
+
+[[probes]]
+case = "initial"
+status = "pass"
+forwarddiff_relative_error = 2.086e-14
+seconds_including_compilation = 25.3
+note = "passes with zero-adjoint rules on the solution validators; without them cond(J) fails on try/catch inside LinearAlgebra"
+
+[[probes]]
+case = "evolution"
+status = "error"
+note = "fails: the default SciMLSensitivity adjoint rejects the NamedTuple parameters (not a SciMLStructure); the ODE is instead handled by the Jacobian rule used for the waveform"
+
+[[probes]]
+case = "waveform"
+status = "pass"
+forwarddiff_relative_error = 1.257e-16
+seconds_including_compilation = 28.7
+note = "passes through the ForwardDiff-backed spectrum_vector rule, which replaces reverse differentiation of the ODE solve"
+
+[[probes]]
+case = "likelihood"
+status = "pass"
+forwarddiff_relative_error = 1.008e-14
+seconds_including_compilation = 41.1
+note = "passes through the ForwardDiff-backed spectrum_vector rule"

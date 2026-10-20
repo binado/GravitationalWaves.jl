@@ -589,7 +589,7 @@ function amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::IM
     f_start = start_frequency(g, f_min)
     amplitude = zeros(T, length(f))
     phase = zeros(T, length(f))
-    lo, hi = phenom_frequency_slice(f, f_start, f_min, f_max)
+    lo, hi = frequency_slice(f, f_start, f_min, f_max)
     lo > hi && return (; amplitude, phase)
 
     m1 = p.mass_1

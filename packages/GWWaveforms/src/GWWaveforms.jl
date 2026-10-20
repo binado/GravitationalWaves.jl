@@ -30,6 +30,7 @@ export TaylorF2, IMRPhenomD, IMRPhenomXAS
 public taylorf2_pn_phasing, taylorf2_phasing, phenomd_model, phenomd_amplitude, phenomd_phase
 
 include("constants.jl")
+include("utils.jl")
 include("generators.jl")
 include("parameters.jl")
 include("taylorf2.jl")
@@ -38,6 +39,5 @@ include("phenomd/model.jl")
 include("phenomxas/fits.jl")
 include("phenomxas/utils.jl")
 include("phenomxas/model.jl")
-include("fd.jl")
 
 end

@@ -1,9 +1,3 @@
-# One-based indices into the requested grid; no relationship between index and frequency
-# is assumed. Grid and generator validation runs separately on the host.
-function phenom_frequency_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
-    return (searchsortedfirst(f, max(f_start, f_min)), searchsortedlast(f, f_max))
-end
-
 # LAL uses the starting frequency when no reference frequency is specified.
 phenom_reference_frequency(g, f_start) = g.reference_frequency == 0.0 ? f_start : g.reference_frequency
 

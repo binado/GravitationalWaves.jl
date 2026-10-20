@@ -24,3 +24,9 @@ function canonical_amplitude_phase(amplitude, phase)
     shifted = ifelse(amplitude < 0, phase + Float64(π), phase)
     return abs(amplitude), ifelse(iszero(amplitude), zero(shifted), shifted)
 end
+
+# One-based indices into the requested grid; no relationship between index and frequency
+# is assumed. Grid and generator validation runs separately on the host.
+function frequency_slice(f::AbstractRange{Float64}, f_start, f_min, f_max)
+    return (searchsortedfirst(f, max(f_start, f_min)), searchsortedlast(f, f_max))
+end

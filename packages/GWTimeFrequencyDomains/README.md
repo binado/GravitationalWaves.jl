@@ -49,6 +49,37 @@ and return `(new_domain, new_values)`. Padding before shifts time epoch or frequ
 origin; negative frequencies are rejected. Empty and singleton domains keep their
 origins and spacings. These operations are outside the compiled inference contract.
 
+## Fixed Planck taper
+
+`planck_window(td; start_width, end_width)` constructs a plain real vector with
+one weight per sample. Both widths are required, in seconds; zero disables an
+edge. Widths must be finite, nonnegative, and sum to at most `(N-1)*dt`, the span
+between the first and last stored samples. Empty and singleton domains accept
+only zero widths. Epoch and channel metadata do not affect the weights.
+
+```julia
+using FFTW
+h = randn(nsamples(td))
+check_data(td, h)                     # host-side validation
+w = planck_window(td; start_width=0.2, end_width=0.05) # construct once on the host
+windowed(h) = w .* h                 # broadcasting can be differentiated in h
+hpadded_td, hpadded = pad(td, windowed(h); after=8192)
+h_fd = to_frequencydomain(hpadded_td, hpadded) # physical dt*rfft normalization
+```
+
+The same broadcasting applies to complex vectors, views, and `(sample, channel)`
+matrices. Ordinary element-type promotion applies: Float64 weights promote
+Float32 data to Float64. Window precision promotes spacing and widths to at least
+Float64 and preserves BigFloat inputs. Callers retain responsibility for matching
+the window and data grids.
+
+Widths describe continuous Planck transitions anchored at the stored endpoints,
+without rounding to sample counts. Positive widths shorter than `dt` are valid.
+Transitions may meet, so a sampled unit plateau need not exist. Construct windows
+outside differentiation; only application to data is in the AD contract. Padding
+and Fourier conversion above are explicit host operations; FFT differentiation
+is outside this contract.
+
 ## Physical Fourier conversion
 
 ```julia

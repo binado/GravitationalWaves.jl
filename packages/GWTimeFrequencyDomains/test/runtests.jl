@@ -143,5 +143,6 @@ Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
     p, values = pad(e, Float64[]; after = 2)
     @test nsamples(p) == 2 && values == [0, 0]
 end
+include("test_windows.jl")
 include("test_fourier.jl")
 include("test_quality.jl")

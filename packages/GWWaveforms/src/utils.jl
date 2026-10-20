@@ -60,4 +60,3 @@ function check_phenom_parameters(params::NamedTuple)
         throw(ArgumentError("spins outside the range [-1, 1] are not supported"))
     return nothing
 end
-

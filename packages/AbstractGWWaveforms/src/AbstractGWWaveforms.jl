@@ -200,6 +200,7 @@ function Base.show(io::IO, g::AbstractWaveformGenerator)
     )
 end
 
+include("spherical_harmonics.jl")
 include("modes.jl")
 
 end

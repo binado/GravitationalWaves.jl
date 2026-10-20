@@ -47,6 +47,7 @@ end
 # Only the elements with m′ >= 0 are evaluated: D^ell_{-m′,-m} = (-1)^(m′-m) conj(D^ell_{m′ m}), so
 # each of them also gives the row -m′, from h[ell, -m].
 function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
+    2 <= ell_max <= 5 || throw(ArgumentError("ell_max must be in 2:5"))
     T = promote_type(eltype(h), eltype(quat))
     out = zeros(T, size(h))
     powers = SpinorPowers(complex(eltype(quat)), 2ell_max)
@@ -54,26 +55,39 @@ function rotate_modes(h::AbstractMatrix, quat, ell_max::Integer)
         ra = complex(quat[k, 1], quat[k, 4])
         rb = complex(quat[k, 3], quat[k, 2])
         fill_powers!(powers, ra, rb)
-        for l in 2:ell_max
-            acc = zero(T)
-            for m in (-l):l
-                acc += wigner_D_element(l, 0, m, powers) * h[k, mode_column(l, m)]
-            end
-            out[k, mode_column(l, 0)] = acc
-            for mp in 1:l
-                acc = zero(T)
-                acc_neg = zero(T)
-                for m in (-l):l
-                    d = wigner_D_element(l, mp, m, powers)
-                    acc += d * h[k, mode_column(l, m)]
-                    acc_neg += ifelse(iseven(mp - m), 1, -1) * conj(d) * h[k, mode_column(l, -m)]
-                end
-                out[k, mode_column(l, mp)] = acc
-                out[k, mode_column(l, -mp)] = acc_neg
-            end
-        end
+        rotate_block!(out, h, k, Val(2), powers)
+        ell_max >= 3 && rotate_block!(out, h, k, Val(3), powers)
+        ell_max >= 4 && rotate_block!(out, h, k, Val(4), powers)
+        ell_max >= 5 && rotate_block!(out, h, k, Val(5), powers)
     end
     return out
+end
+
+# The rotation of the ell block of sample `k`, with the sums written out for the literal `ell`: the power
+# table indices and factorial products of `wigner_D_element` become constants, with the same operation
+# order. Loops with runtime bounds over (ell, m′, m, s) are about 1.5 times slower.
+@generated function rotate_block!(out, h, k, ::Val{L}, p::SpinorPowers) where {L}
+    body = Expr(:block, :(ra = p.ra), :(ra_c = p.ra_c), :(nrb = p.nrb), :(rb_c = p.rb_c), :(T0 = eltype(ra)))
+    for mp in 0:L
+        rows = Any[]
+        rows_neg = Any[]
+        for m in (-L):L
+            acc = :(zero(T0))
+            for s in max(0, m - mp):min(L + m, L - mp)
+                den = FACTORIAL[L + m - s + 1] * FACTORIAL[s + 1] * FACTORIAL[mp - m + s + 1] * FACTORIAL[L - mp - s + 1]
+                acc = :($acc + ra_c[$(L + m - s + 1)] * ra[$(L - mp - s + 1)] * nrb[$(mp - m + s + 1)] * rb_c[$(s + 1)] / $den)
+            end
+            pref = sqrt(FACTORIAL[L + mp + 1] * FACTORIAL[L - mp + 1] * FACTORIAL[L + m + 1] * FACTORIAL[L - m + 1])
+            d = Symbol(:d_, mp, :_, m + L)
+            push!(body.args, :($d = $pref * $acc))
+            push!(rows, :($d * h[k, $(mode_column(L, m))]))
+            push!(rows_neg, :($(iseven(mp - m) ? 1 : -1) * conj($d) * h[k, $(mode_column(L, -m))]))
+        end
+        push!(body.args, :(out[k, $(mode_column(L, mp))] = $(reduce((a, b) -> :($a + $b), rows))))
+        mp > 0 && push!(body.args, :(out[k, $(mode_column(L, -mp))] = $(reduce((a, b) -> :($a + $b), rows_neg))))
+    end
+    push!(body.args, :(return nothing))
+    return body
 end
 
 """

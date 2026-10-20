@@ -40,6 +40,35 @@ using Random
         @test GWSurrogates.rotate_modes(r, qinv, 4) ≈ h
     end
 
+    @testset "rotate_modes against the full Wigner matrices" begin
+        rng = MersenneTwister(6)
+        n = 5
+        function reference(h, quat, ell_max)
+            out = zeros(promote_type(eltype(h), eltype(quat)), size(h))
+            for k in 1:n, l in 2:ell_max
+                D = GWSurrogates.wigner_D(l, quat[k, 1], quat[k, 2], quat[k, 3], quat[k, 4])
+                for mp in (-l):l, m in (-l):l
+                    out[k, GWSurrogates.mode_column(l, mp)] += D[mp + l + 1, m + l + 1] * h[k, GWSurrogates.mode_column(l, m)]
+                end
+            end
+            return out
+        end
+        for ell_max in 2:5
+            h = randn(rng, ComplexF64, n, GWSurrogates.n_modes(ell_max))
+            quat = randn(rng, n, 4)
+            quat ./= sqrt.(sum(abs2, quat; dims = 2))
+            @test GWSurrogates.rotate_modes(h, quat, ell_max) ≈ reference(h, quat, ell_max) rtol = 1.0e-13
+        end
+        # Dual numbers in the rotor and in the modes.
+        h = randn(rng, ComplexF64, n, GWSurrogates.n_modes(4))
+        quat0 = randn(rng, n, 4)
+        quat0 ./= sqrt.(sum(abs2, quat0; dims = 2))
+        f(rotate) = x -> sum(abs2, rotate(h .* x[1], quat0 .+ x[2] .* [0.1 0.2 -0.1 0.05], 4))
+        x0 = [1.1, 0.3]
+        @test ForwardDiff.gradient(f(GWSurrogates.rotate_modes), x0) ≈ ForwardDiff.gradient(f(reference), x0)
+        @test_throws ArgumentError GWSurrogates.rotate_modes(h, quat0, 6)
+    end
+
     @testset "mode_sum on a single mode" begin
         modes = zeros(ComplexF64, 1, GWSurrogates.n_modes(2))
         modes[1, GWSurrogates.mode_column(2, 2)] = 1.0

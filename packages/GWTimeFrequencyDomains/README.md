@@ -51,9 +51,9 @@ origins and spacings. These operations are outside the compiled inference contra
 
 ## Fixed Planck taper
 
-`planck_window(td; start_width, end_width)` constructs a plain real vector with
-one weight per sample. Both widths are required, in seconds; zero disables an
-edge. Widths must be finite, nonnegative, and sum to at most `(N-1)*dt`, the span
+`PlanckWindow(td; start_width, end_width)` prepares an object owning a real
+`weights` vector and the sample spacing. Both widths are required, in seconds;
+zero disables an edge. Widths must be finite, nonnegative, and sum to at most `(N-1)*dt`, the span
 between the first and last stored samples. Empty and singleton domains accept
 only zero widths. Epoch and channel metadata do not affect the weights.
 
@@ -61,17 +61,30 @@ only zero widths. Epoch and channel metadata do not affect the weights.
 using FFTW
 h = randn(nsamples(td))
 check_data(td, h)                     # host-side validation
-w = planck_window(td; start_width=0.2, end_width=0.05) # construct once on the host
-windowed(h) = w .* h                 # broadcasting can be differentiated in h
+window = PlanckWindow(td; start_width=0.2, end_width=0.05) # prepare once
+check_compatible(td, window)          # host-side grid check
+windowed(h) = apply_window(window, h) # differentiable application in h
 hpadded_td, hpadded = pad(td, windowed(h); after=8192)
 h_fd = to_frequencydomain(hpadded_td, hpadded) # physical dt*rfft normalization
 ```
 
-The same broadcasting applies to complex vectors, views, and `(sample, channel)`
-matrices. Ordinary element-type promotion applies: Float64 weights promote
-Float32 data to Float64. Window precision promotes spacing and widths to at least
-Float64 and preserves BigFloat inputs. Callers retain responsibility for matching
-the window and data grids.
+`apply_window` allocates without modifying its inputs and supports real or complex
+vectors, views, and `(sample, channel)` matrices. `apply_window!(h, window)` modifies
+samples in place; `apply_window!(dest, window, h)` writes to reusable destination
+storage and returns it, also allowing `dest === h`. Destination storage determines
+the element type for the mutating methods and must represent the result.
+The allocating method uses ordinary element-type promotion: Float64 weights
+promote Float32 data to Float64. Window precision promotes spacing and widths to at least
+Float64 and preserves BigFloat inputs. `nsamples(window)` and
+`sample_spacing(window)` expose its grid. `check_compatible(td, window)` checks
+count and spacing with the usual grid tolerance, independently of epoch or
+channels; use `check_data(td, h)` for the data shape. Application kernels assume
+these host checks have already passed. Treat `window.weights` as read-only.
+
+The prepared object can be stored in a time-domain generator or a Fourier wrapper
+and reused across waveform draws on the same fixed grid. The generator applies
+it to each polarization or mode matrix before explicit padding and Fourier
+conversion. Generator-level FFT composition is separate from this window API.
 
 Widths describe continuous Planck transitions anchored at the stored endpoints,
 without rounding to sample counts. Positive widths shorter than `dt` are valid.

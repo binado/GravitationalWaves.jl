@@ -10,7 +10,7 @@ const ComplexCPU = Union{Array{ComplexF32}, Array{ComplexF64}, SubArray{<:Union{
 
 function GWTimeFrequencyDomains.to_frequencydomain(d::TimeDomain, x::RealCPU)
     values = rfft(x, 1)
-    values .*= sample_spacing(d)
+    values .*= step(d)
     return values
 end
 function GWTimeFrequencyDomains.to_timedomain(d::FrequencyDomain, h::Union{RealCPU, ComplexCPU})
@@ -43,7 +43,7 @@ function GWTimeFrequencyDomains.plan_to_frequencydomain(d::TimeDomain, x::RealCP
     check_data(d, x)
     output = frequency_domain(d)
     shape = ntuple(i -> i == 1 ? nsamples(output) : size(x, i), ndims(x))
-    return make_plan(plan_rfft(x, 1; flags = FFTW.ESTIMATE), output, sample_spacing(d), nothing, Complex{eltype(x)}, size(x), shape)
+    return make_plan(plan_rfft(x, 1; flags = FFTW.ESTIMATE), output, step(d), nothing, Complex{eltype(x)}, size(x), shape)
 end
 function GWTimeFrequencyDomains.plan_to_timedomain(d::FrequencyDomain, h::Union{RealCPU, ComplexCPU})
     check_data(d, h)

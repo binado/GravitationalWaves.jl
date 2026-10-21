@@ -6,7 +6,7 @@
     window = PlanckWindow(td; start_width = 0.5, end_width = 0.5)
     @test window isa PlanckWindow
     @test nsamples(window) == nsamples(td)
-    @test sample_spacing(window) == sample_spacing(td)
+    @test step(window) == step(td)
     @test check_compatible(td, window) === nothing
     @test check_compatible(domain(17; epoch = 1126259460.125, channels = (:L1, :H1)), window) === nothing
     @test check_compatible(domain(17; fs = nextfloat(8.0)), window) === nothing

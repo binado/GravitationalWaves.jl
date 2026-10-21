@@ -25,8 +25,9 @@ of the arrays' element types. Epoch and spacing values are fields, not type para
 
 `epoch`, `channels`, and `nsamples` apply to both domains. The latter counts
 frequency bins for frequency domains. `times(td)` and `frequencies(fd)` are lazy
-ranges. `sample_spacing`, `sampling_frequency`, and `duration = N*dt` apply only to
-time domains; `frequency_spacing` applies to frequency domains.
+ranges. `Base.step(td)` gives the time sample spacing; `sampling_frequency` and
+`duration = N*dt` apply to time domains. `frequency_spacing` applies to frequency
+domains. Prepared windows also support `Base.step(window)`.
 
 `check_data(domain, array)` checks numeric vector/matrix storage, one-based axes,
 row count, and channel count. A one-channel domain accepts vectors and one-column
@@ -76,7 +77,7 @@ the element type for the mutating methods and must represent the result.
 The allocating method uses ordinary element-type promotion: Float64 weights
 promote Float32 data to Float64. Window precision promotes spacing and widths to at least
 Float64 and preserves BigFloat inputs. `nsamples(window)` and
-`sample_spacing(window)` expose its grid. `check_compatible(td, window)` checks
+`step(window)` expose its grid. `check_compatible(td, window)` checks
 count and spacing with the usual grid tolerance, independently of epoch or
 channels; use `check_data(td, h)` for the data shape. Application kernels assume
 these host checks have already passed. Treat `window.weights` as read-only.

@@ -37,7 +37,7 @@ struct PlanckWindow{D <: Real, T <: AbstractFloat}
 end
 
 function PlanckWindow(td::TimeDomain; start_width::Real, end_width::Real)
-    dt, start, stop = promote(sample_spacing(td), metadata(start_width), metadata(end_width))
+    dt, start, stop = promote(step(td), metadata(start_width), metadata(end_width))
     isfinite(start) && start >= 0 || throw(ArgumentError("start width must be finite and nonnegative"))
     isfinite(stop) && stop >= 0 || throw(ArgumentError("end width must be finite and nonnegative"))
     n = nsamples(td)
@@ -49,16 +49,16 @@ function PlanckWindow(td::TimeDomain; start_width::Real, end_width::Real)
         falling = iszero(stop) ? one(dt) : planck_transition(((n - i) * dt) / stop)
         w[i] = rising * falling
     end
-    return PlanckWindow(sample_spacing(td), w, Validated())
+    return PlanckWindow(step(td), w, Validated())
 end
 
 nsamples(w::PlanckWindow) = length(w.weights)
-sample_spacing(w::PlanckWindow) = w.spacing
+Base.step(w::PlanckWindow) = w.spacing
 
 """Check a time domain's sample count and spacing against a prepared window on the host; ignore epoch and channels."""
 function check_compatible(td::TimeDomain, w::PlanckWindow)
     nsamples(td) == nsamples(w) || throw(DimensionMismatch("sample count does not match window"))
-    dt, dw = sample_spacing(td), sample_spacing(w)
+    dt, dw = step(td), step(w)
     check_coordinate(dt, dw, min(dt, dw), "window sample spacings")
     check_coordinate(nsamples(td) * dt, nsamples(w) * dw, min(dt, dw), "window grid extents")
     return nothing

@@ -5,15 +5,15 @@
     loss(h) = sum(abs2, apply_window(window, h))
     inplace_loss(h) = sum(abs2, apply_window!(copy(h), window))
     buffered_loss(h) = sum(abs2, apply_window!(similar(h), window, h))
-    for h in (collect(range(-2.0, 3.0; length = 17)), reshape(collect(1.0:34), 17, 2))
-        expected_value = sum(w[i]^2 * h[i, j]^2 for i in axes(h, 1), j in axes(h, 2))
+    for h in (collect(range(-2.0, 3.0; length = 17)), reshape(collect(1.0:34), 17, 2), reshape(collect(1.0:68), 17, 2, 2))
+        expected_value = sum(w[i[1]]^2 * h[i]^2 for i in CartesianIndices(h))
         expected_gradient = 2 .* w .^ 2 .* h
         for objective in (loss, inplace_loss, buffered_loss), backend in (AutoForwardDiff(), AutoMooncake(; config = nothing))
             value, gradient = DifferentiationInterface.value_and_gradient(objective, backend, h)
             @test value ≈ expected_value
             @test gradient ≈ expected_gradient
             @test size(gradient) == size(h)
-            @test all(iszero, gradient[1, :]) && all(iszero, gradient[end, :])
+            @test all(iszero, selectdim(gradient, 1, 1)) && all(iszero, selectdim(gradient, 1, length(w)))
         end
     end
 end

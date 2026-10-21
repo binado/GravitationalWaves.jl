@@ -77,8 +77,10 @@
         real_data = collect(1.0:17)
         complex_data = complex.(real_data, reverse(real_data))
         matrix_data = hcat(real_data, -real_data)
+        tensor_data = reshape(collect(1.0:102), 17, 3, 2)
         for h in (
-                real_data, complex_data, matrix_data,
+                real_data, complex_data, matrix_data, tensor_data,
+                view(repeat(tensor_data; inner = (2, 1, 1)), 1:2:34, :, :),
                 view(real_data, :), view(complex_data, :), view(matrix_data, :, 1:2),
                 view(repeat(real_data; inner = 2), 1:2:34),
                 view(repeat(matrix_data; inner = (2, 1)), 1:2:34, :),
@@ -98,10 +100,8 @@
             @test h == result
             h .= original
             @test window.weights == w
-            @test all(iszero, result[1, :]) && all(iszero, result[end, :])
-            for j in axes(h, 2), i in axes(h, 1)
-                @test result[i, j] == w[i] * h[i, j]
-            end
+            @test all(iszero, selectdim(result, 1, 1)) && all(iszero, selectdim(result, 1, length(w)))
+            @test result == w .* original
         end
         @test eltype(apply_window(window, Float32.(real_data))) === Float64
         @test eltype(apply_window(window, ComplexF32.(complex_data))) === ComplexF64

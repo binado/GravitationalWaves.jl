@@ -70,7 +70,9 @@ h_fd = to_frequencydomain(hpadded_td, hpadded) # physical dt*rfft normalization
 ```
 
 `apply_window` allocates without modifying its inputs and supports real or complex
-vectors, views, and `(sample, channel)` matrices. `apply_window!(h, window)` modifies
+vectors, views, `(sample, channel)` matrices, and higher-dimensional numeric
+arrays whose axes broadcast with the weights. Weights act along the first
+dimension; `check_data` retains the domain API’s vector/matrix layout contract. `apply_window!(h, window)` modifies
 samples in place; `apply_window!(out, window, h)` writes to reusable destination
 storage and returns it, also allowing `out === h`. Destination storage determines
 the element type for the mutating methods and must represent the result.
@@ -79,8 +81,9 @@ promote Float32 data to Float64. Window precision promotes spacing and widths to
 Float64 and preserves BigFloat inputs. `nsamples(window)` and
 `step(window)` expose its grid. `check_compatible(td, window)` checks
 count and spacing with the usual grid tolerance, independently of epoch or
-channels; use `check_data(td, h)` for the data shape. Application kernels assume
-these host checks have already passed. Treat `window.weights` as read-only.
+channels; use `check_data(td, h)` for vector/matrix domain layouts. Application
+kernels use ordinary broadcasting without repeating domain checks. Treat
+`window.weights` as read-only.
 
 The prepared object can be stored in a time-domain generator or a Fourier wrapper
 and reused across waveform draws on the same fixed grid. The generator applies

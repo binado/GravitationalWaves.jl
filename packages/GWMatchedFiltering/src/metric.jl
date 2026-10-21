@@ -15,12 +15,14 @@ function analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
 end
 
 """
-    FrequencyDomainMetric(series::FrequencySeries, spectral_density;
-        minimum_frequency=first(frequencies(series)),
-        maximum_frequency=last(frequencies(series)), nsamples=nothing)
+    FrequencyDomainMetric(series::FrequencySeries, spectral_density; kwargs...)
+    FrequencyDomainMetric(spectral_density; frequencies, channels,
+        minimum_frequency=first(frequencies), maximum_frequency=last(frequencies), nsamples=nothing)
 
 Prepare a joint metric with first-argument conjugation and normalization `4Δf` stored through the metric frequency grid.
-The domain frequency grid must be a uniform nonnegative `AbstractRange`. Supply PSDs with shape
+The series form takes the frequency grid and channels from `series`; the keyword form takes them directly.
+The frequency grid must be a uniform `AbstractRange` of at least two finite, nonnegative values
+with a positive step. Supply PSDs with shape
 `(frequency, channel)` (or a vector for one channel), or Hermitian spectral
 matrices with shape `(frequency, channel, channel)`. Define cross spectra by
 `S[k,i,j] = 2Δf * E[n[k,i] * conj(n[k,j])]` for interior bins.

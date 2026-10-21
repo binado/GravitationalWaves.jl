@@ -2,7 +2,7 @@
 module GWMatchedFiltering
 
 import GWSeries
-using GWSeries: FrequencySeries, metadata, check_same_grid, check_data, check_same_frequency_grid, frequencies, channels
+using GWSeries: FrequencySeries, check_same_grid, check_same_frequency_grid, frequencies, channels
 import GWSeries: check_compatible, frequency_spacing
 
 using LinearAlgebra: Hermitian, I, cholesky, ishermitian

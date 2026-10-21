@@ -78,7 +78,7 @@ function log_likelihood_ratio(template, data, metric::FrequencyDomainMetric)
     stats = likelihood_statistics(template, data, metric)
     return real(stats.h_inner_d) - stats.h_inner_h / 2
 end
-"""Host-only check of domain compatibility, data shape, and finite positive template norm."""
+"""Host-only check of series compatibility, data shape, and finite positive template norm."""
 function check_template(template, metric::FrequencyDomainMetric)
     if template isa FrequencySeries
         check_compatible(template, metric)

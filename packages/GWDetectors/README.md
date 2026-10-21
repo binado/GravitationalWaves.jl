@@ -33,8 +33,9 @@ LAL's UTC-based approximation without a UT1 correction. At a positive leap secon
 `detectors` also includes triangular ET sites `E1`–`E3`, ET L sites
 `S1`, `S2`, `R1`, `R2`, and CE sites `C1`, `C2`. Their inline definitions are transcribed from the supplied
 [geometry catalog](data/geometry.toml), with nominal full arm
-lengths of 10 km, 15 km, and 40 km respectively. `S1`/`R1` are aligned;
-`S2`/`R2` are misaligned. `C1`/`C2` use the Hanford/Livingston sites.
+lengths of 10 km, 15 km, and 40 km respectively. `S1` and `S2` currently share
+one geometry; `R2` differs from `R1` in orientation and elevation.
+`C1`/`C2` use the Hanford/Livingston sites.
 The original four detectors retain their pinned LAL Cartesian constants.
 
 GWNoise bundles twelve text tables of one-sided PSDs

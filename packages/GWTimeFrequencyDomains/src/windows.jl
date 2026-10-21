@@ -73,7 +73,7 @@ ordinary element-type promotion applies. Views and complex samples are supported
 Check data and window compatibility on the host before evaluation; this kernel
 does not repeat domain checks. Differentiation is with respect to `h` only.
 """
-apply_window(w::PlanckWindow, h::Samples) = w.weights .* h
+apply_window(w::PlanckWindow, h::AbstractVecOrMat{<:Number}) = w.weights .* h
 
 """
     apply_window!(h, window::PlanckWindow)
@@ -85,8 +85,8 @@ host. Destination storage determines the element type and must represent the
 result. The two-argument form modifies `h`; the three-argument form also permits
 `out === h`. Keep window weights as read-only configuration.
 """
-function apply_window!(out::Samples, w::PlanckWindow, h::Samples)
+function apply_window!(out::AbstractVecOrMat{<:Number}, w::PlanckWindow, h::AbstractVecOrMat{<:Number})
     out .= w.weights .* h
     return out
 end
-apply_window!(h::Samples, w::PlanckWindow) = apply_window!(h, w, h)
+apply_window!(h::AbstractVecOrMat{<:Number}, w::PlanckWindow) = apply_window!(h, w, h)

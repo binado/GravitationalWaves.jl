@@ -111,3 +111,23 @@ end
     big[:, :] = src
     @test @allocated(big[:, :] = src) < 10_000
 end
+
+# A storage type no backend implements: the generic AbstractFFTs fallbacks would recurse or fail obscurely.
+struct OpaqueMatrix <: AbstractMatrix{Float64}
+    data::Matrix{Float64}
+end
+Base.size(a::OpaqueMatrix) = size(a.data)
+Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
+
+@testset "Missing AbstractFFTs backend" begin
+    @test GWSeries.backend_loaded(AbstractFFTs.plan_rfft, Tuple{Matrix{Float64}, Int})
+    @test GWSeries.backend_loaded(AbstractFFTs.plan_brfft, Tuple{Matrix{ComplexF64}, Int, Int})
+    opaque = OpaqueMatrix(randn(MersenneTwister(2), 8, 1))
+    @test !GWSeries.backend_loaded(AbstractFFTs.plan_rfft, Tuple{OpaqueMatrix, Int})
+    @test !GWSeries.backend_loaded(AbstractFFTs.plan_brfft, Tuple{OpaqueMatrix, Int, Int})
+    @test_throws "no AbstractFFTs backend" GWSeries.require_backend(opaque, false)
+    @test_throws "no AbstractFFTs backend" GWSeries.require_backend(opaque, true)
+    # rfft reads the wrapped storage directly; the plans and irfft copy into ordinary arrays first.
+    x = TimeSeries(opaque; epoch = 0, sampling_interval = 0.25, channels = (:H1,))
+    @test_throws "no AbstractFFTs backend" rfft(x)
+end

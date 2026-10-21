@@ -78,6 +78,10 @@ h = to_frequencydomain(x)      # real samples only
 z = to_timedomain(h)
 ```
 
+GWSeries depends only on the AbstractFFTs interface. If no backend is loaded for the
+parent storage, series transforms and plans throw an `ArgumentError` naming the fix
+(`using FFTW` for CPU arrays).
+
 Series transforms act only on dimension one, preserve epoch and channels, and
 use physical normalization. Transforms of `parent(x)` retain standard backend
 conventions. Real transforms support odd and even lengths; the original length is always required

@@ -8,6 +8,22 @@ function check_fourier_domain(s::FrequencySeries; nsamples::Integer)
     return nothing
 end
 
+# AbstractFFTs only defines the interface; without a backend its generic fallbacks recurse
+# (a StackOverflowError for rfft) or raise an unhelpful MethodError. Detect that on the host.
+function backend_loaded(f, types::Type{<:Tuple})
+    hasmethod(f, types) || return false
+    return parentmodule(which(f, types)) !== AbstractFFTs
+end
+function require_backend(a::AbstractArray, inverse::Bool)
+    loaded = if inverse
+        backend_loaded(AbstractFFTs.plan_brfft, Tuple{typeof(a), Int, Int})
+    else
+        backend_loaded(AbstractFFTs.plan_rfft, Tuple{typeof(a), Int})
+    end
+    loaded || throw(ArgumentError("no AbstractFFTs backend is loaded for $(typeof(a)); load one, for example `using FFTW` for CPU arrays"))
+    return nothing
+end
+
 function transform_dims(dims)
     (dims == 1 || dims == (1,) || dims == [1]) || throw(ArgumentError("series FFTs transform only the sample dimension (1)"))
     return 1
@@ -33,6 +49,7 @@ end
 function AbstractFFTs.rfft(s::TimeSeries{<:Real}, dims = 1)
     transform_dims(dims)
     check_fourier_domain(s)
+    require_backend(parent(s), false)
     a = AbstractFFTs.rfft(parent(s), 1)
     a .*= sampling_interval(s)
     return FrequencySeries(a, fourier_metadata(s), Validated())
@@ -44,7 +61,9 @@ function AbstractFFTs.irfft(s::FrequencySeries, n::Integer, dims = 1)
     transform_dims(dims)
     n = inverse_length(s, n)
     check_fourier_domain(s; nsamples = n)
-    a = AbstractFFTs.irfft(complex.(parent(s)), n, 1)
+    spectrum = complex.(parent(s))
+    require_backend(spectrum, true)
+    a = AbstractFFTs.irfft(spectrum, n, 1)
     a .*= n * frequency_spacing(s)
     return TimeSeries(a, inverse_metadata(s, n), Validated())
 end
@@ -89,6 +108,7 @@ output_type(::SeriesFFTPlan{Inverse}) = TimeSeries
 function plan_to_frequencydomain(s::TimeSeries{<:Real}; kwargs...)
     check_fourier_domain(s)
     input = copy(parent(s))
+    require_backend(input, false)
     fft = AbstractFFTs.plan_rfft(input, 1; kwargs...)
     shape = (nsamples(s) ÷ 2 + 1, size(s, 2))
     work = similar(input, Complex{real(eltype(input))}, shape)
@@ -101,6 +121,7 @@ function plan_to_timedomain(s::FrequencySeries; nsamples::Union{Nothing, Integer
     nsamples = inverse_length(s, nsamples)
     check_fourier_domain(s; nsamples)
     input = complex.(parent(s))
+    require_backend(input, true)
     fft = AbstractFFTs.plan_irfft(input, nsamples, 1; kwargs...)
     work = similar(input, real(eltype(input)), (nsamples, size(s, 2)))
     return SeriesFFTPlan{Inverse}(fft, input, work, metadata(s), inverse_metadata(s, nsamples), nsamples * frequency_spacing(s))

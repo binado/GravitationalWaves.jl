@@ -4,9 +4,13 @@ end
 @testset "Checked series and unchecked array statistics" begin
     f = 0:0.5:4
     names = (:H1, :L1)
-    a = FrequencySeries(reshape(complex.(1:18), 9, 2); frequencies = f, epoch = 1126259460.0, channels = names)
+    a = FrequencySeries(reshape(complex.(1:18), 9, 2); frequency_spacing = step(f), epoch = 1126259460.0, channels = names)
     b = (0.3 + 0.2im) .* a
     metric = FrequencyDomainMetric(a, ones(9, 2))
+    bins = frequency_bins(a; fmin = 1.1, fmax = 3.1)
+    band_metric = FrequencyDomainMetric(ones(length(bins), 2); frequencies = frequencies(a)[bins], channels = names)
+    full_metric = FrequencyDomainMetric(a, ones(9, 2); minimum_frequency = 1.1, maximum_frequency = 3.1)
+    @test complex_inner_product(a[bins, :], b[bins, :], band_metric) ≈ complex_inner_product(a, b, full_metric)
     @test check_template(a, metric) === nothing
     @test check_template(parent(a), metric) === nothing
     @test_throws DomainError check_template(zero(parent(a)), metric)
@@ -18,9 +22,7 @@ end
         @test_throws ArgumentError statistic(a, later, metric)
         @test_throws ArgumentError statistic(a, reordered, metric)
     end
-    full = FrequencySeries(parent(a); metadata(a)..., spectrum = :twosided)
-    @test_throws ArgumentError FrequencyDomainMetric(full, ones(9, 2))
-    @test_throws ArgumentError check_compatible(full, metric)
+
 end
 
 @testset "Single-channel vectors, views, and column matrices" begin

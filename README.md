@@ -63,7 +63,7 @@ params = (
     theta_jn = 0.4, phase = 1.3,
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 1.0, tilt_2 = 0.6, phi_12 = 0.3, phi_jl = 4.0,
 )
-(; plus, cross) = hphc_fd(f, params, generator)
+h = hphc_fd(f, params, generator)  # ordinary matrix: plus/cross columns
 ```
 
 `LALWaveformGenerator` builds the LAL waveform dictionary once; reuse it across calls. Optional parameters
@@ -84,7 +84,7 @@ Mooncake, and its tests check it against `LALWaveforms` to about 1e-12.
 using FrequencyDomainWaveforms
 
 generator = IMRPhenomD()
-(; plus, cross) = hphc_fd(range(0, 1024; step = 0.25), params, generator)
+h = hphc_fd(range(0, 1024; step = 0.25), params, generator)  # plus/cross columns
 ```
 
 Both packages implement the interface of [`AbstractWaveforms`](packages/AbstractWaveforms): a concrete
@@ -105,7 +105,8 @@ f = 0.0:0.25:512.0
 sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
 detector = detectors.H1  # built-ins: H1, L1, V1, K1; use Detector(...) for custom geometry
 for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
-    polarizations = hphc_fd(f, params, generator)
+    prototype = FrequencySeries(zeros(ComplexF64, length(f)); epoch=1126259460.0, frequency_spacing=step(f), channels=(:H1,))
+    polarizations = hphc_fd(prototype, params, generator)
     strain = project_fd(polarizations, sky, detector; epoch=1126259460.0, channel=:H1)
 end
 ```

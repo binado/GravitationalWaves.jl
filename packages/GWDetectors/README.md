@@ -62,14 +62,15 @@ The supplied catalog comments retain their original project context.
 
 ## Composition with waveform generators
 
-Assembled waveforms are FrequencySeries with channels `(:plus, :cross)`:
+Use a series prototype to generate FrequencySeries polarizations with channels `(:plus, :cross)`:
 
 ```julia
 using FrequencyDomainWaveforms, GWDetectors, GWSeries
 f = 0.0:0.25:512.0
 p = (; mass_1=36.0, mass_2=29.0, luminosity_distance=500.0, theta_jn=0.4, phase=1.3)
 sky = (; ra=1.2, dec=-0.4, psi=0.7, geocent_time=1126259462.25)
-polarizations = hphc_fd(f, p, IMRPhenomD())
+prototype = FrequencySeries(zeros(ComplexF64, length(f)); epoch=1126259460.0, frequency_spacing=step(f), channels=(:H1,))
+polarizations = hphc_fd(prototype, p, IMRPhenomD())
 strain = project_fd(polarizations, sky, detectors.H1; epoch=1126259460.0, channel=:H1)
 ```
 

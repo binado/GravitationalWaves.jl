@@ -272,7 +272,8 @@ with `total_mass` (solar masses), `luminosity_distance` (Mpc), `mass_ratio` (`q 
 Specify the grid with the step `dt` (s) or the array `times` (s); the default is the model grid.
 Modes exclude `inclination` and `phi_ref`. The source frame is the LAL source frame at the
 reference epoch, with optional `init_orbphase` and `init_quat` fixing the initial frame.
-`hphc_td` uses shared assembly at `(inclination, π/2 - phi_ref)` and returns `(t, hplus, hcross)`.
+`hphc_td` uses shared assembly at `(inclination, π/2 - phi_ref)` and returns a TimeSeries when called with `dt` or a uniform `times` keyword.
+Coordinate-first `hphc_td(times, params, generator)` returns an ordinary plus/cross matrix.
 """
 function waveform_modes_td(g::PrecessingGenerator, params::NamedTuple; dt = nothing, times = nothing)
     M = params.total_mass

@@ -123,3 +123,10 @@ harmonic assembly separately from generation and compare the previous Wigner-D s
 
 For assembled strain use `times(h)`, `h[:, :plus]`, and `h[:, :cross]` from GWSeries.
 Lower-level `waveform_modes_td` and `inertial_modes` retain native irregular grids.
+
+Coordinate-first `hphc_td(times, params, generator)` returns an ordinary matrix with
+plus/cross columns and supports the same time coordinates as `waveform_modes_td`.
+`hphc_td(prototype::TimeSeries, params, generator)` returns a TimeSeries on the
+prototype's peak-relative time grid with channels `(:plus, :cross)`. The existing
+`hphc_td(generator, params; dt=...)` and `times=uniform_range` conveniences still
+return TimeSeries. Detector GPS arrival-time placement is separate from these calls.

@@ -75,19 +75,34 @@ function sum_modes(modes, coefficients)
     return h
 end
 
+"""Evaluate plus/cross columns at backend-supported, peak-relative time coordinates."""
+function hphc_td(t::AbstractVector{<:Real}, params::NamedTuple, g::HigherModesWaveformGenerator; kwargs...)
+    r = waveform_modes_td(g, params; times = t, kwargs...)
+    return assemble_td(r, params, g)
+end
+
+function assemble_td(r, params, g)
+    theta, phi = mode_angles(params, g)
+    h = sum_modes(r.modes, mode_coefficients(r.mode_indices, theta, phi))
+    return hcat(real.(h), -imag.(h))
+end
+
+"""Sample polarizations at a time prototype's peak-relative coordinates, without detector placement."""
+function hphc_td(prototype::TimeSeries, params::NamedTuple, g::AbstractWaveformGenerator; kwargs...)
+    data = hphc_td(times(prototype), params, g; kwargs...)
+    return TimeSeries(data; epoch = epoch(prototype), sampling_interval = sampling_interval(prototype), channels = (:plus, :cross))
+end
+
 function hphc_td(g::HigherModesWaveformGenerator, params::NamedTuple; dt = nothing, times = nothing, kwargs...)
     (dt === nothing) != (times === nothing) || throw(ArgumentError("assembled TD waveforms require exactly one of dt and a uniform times range"))
     if times !== nothing
         times isa AbstractRange{<:Real} && step(times) > 0 && !isempty(times) || throw(ArgumentError("times must be a nonempty increasing uniform range"))
-    else
-        isfinite(dt) && dt > 0 || throw(ArgumentError("dt must be finite and positive"))
+        data = hphc_td(times, params, g; kwargs...)
+        return TimeSeries(data; epoch = first(times), sampling_interval = step(times), channels = (:plus, :cross))
     end
-    r = waveform_modes_td(g, params; dt, times, kwargs...)
-    theta, phi = mode_angles(params, g)
-    h = sum_modes(r.modes, mode_coefficients(r.mode_indices, theta, phi))
-    spacing = dt === nothing ? step(times) : dt
-    start = times === nothing ? first(r.t) : first(times)
-    return TimeSeries(hcat(real.(h), -imag.(h)); epoch = start, sampling_interval = spacing, channels = (:plus, :cross))
+    isfinite(dt) && dt > 0 || throw(ArgumentError("dt must be finite and positive"))
+    r = waveform_modes_td(g, params; dt, kwargs...)
+    return TimeSeries(assemble_td(r, params, g); epoch = first(r.t), sampling_interval = dt, channels = (:plus, :cross))
 end
 
 function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::HigherModesWaveformGenerator)
@@ -96,5 +111,5 @@ function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::HigherModesWa
     coefficients = mode_coefficients(r.mode_indices, theta, phi)
     hp = sum_modes(r.positive, coefficients)
     hn = sum_modes(r.negative, coefficients)
-    return FrequencySeries(hcat((hp .+ conj.(hn)) ./ 2, (im / 2) .* (hp .- conj.(hn))); frequencies = f, epoch = 0.0, channels = (:plus, :cross))
+    return hcat((hp .+ conj.(hn)) ./ 2, (im / 2) .* (hp .- conj.(hn)))
 end

@@ -156,7 +156,7 @@ end
     g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
     base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
     a = hphc_fd(f, merge(base, (; mass_1 = 36.0, mass_2 = 29.0, a_1 = 0.5, a_2 = 0.3)), g)
-    @test isfinite(sum(abs2, a[:, :plus]))
+    @test isfinite(sum(abs2, a[:, 1]))
     @test_throws ArgumentError validate_parameters(
         f, merge(base, (; mass_1 = 29.0, mass_2 = 36.0, a_1 = 0.3, a_2 = 0.5)), g,
     )

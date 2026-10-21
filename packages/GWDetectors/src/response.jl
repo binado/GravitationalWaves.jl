@@ -112,7 +112,7 @@ function project_fd(
     source = (; plus = view(parent(polarizations), :, 1), cross = view(parent(polarizations), :, 2))
     f = frequencies(polarizations)
     a = _project_fd(first(f), step(f), length(f), epoch, source, sky, d, reference_time, GWSeries.epoch(polarizations))
-    return FrequencySeries(a; epoch, frequency_start = first(f), frequency_spacing = step(f), channels = (channel,), spectrum = metadata(polarizations).spectrum)
+    return FrequencySeries(a; epoch, frequency_spacing = step(f), channels = (channel,))
 end
 function _project_fd(f0, df, n, start_time, polarizations, sky, d, reference_time, source_epoch = 0.0)
     hp, hc = polarizations.plus, polarizations.cross

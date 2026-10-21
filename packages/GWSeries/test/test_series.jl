@@ -41,28 +41,46 @@ end
     @test x[:, :H1] == a[:, 1]
     @test x[:, :H1] isa Vector
     @test x[2, :] isa Vector
-    s = x[2:2:8, [:V1, :H1]]
+    s = x[2:8, [:V1, :H1]]
     @test s isa TimeSeries
     @test channels(s) == (:V1, :H1)
-    @test parent(s) == a[2:2:8, [3, 1]]
+    @test parent(s) == a[2:8, [3, 1]]
     @test epoch(s) == 100.25
-    @test sampling_interval(s) == 0.5
+    @test sampling_interval(s) == 0.25
     @test size(x[:, (:L1,)]) == (8, 1)
     @test_throws ArgumentError x[:, :missing]
     @test x[:, [1, 1]] isa Matrix
     @test x[[1, 3, 4], :] isa Matrix
     @test x[end:-1:1, :] isa Matrix
     @test x[1:0, :] isa TimeSeries
-    v = view(x, 2:2:8, [:L1, :H1])
+    v = view(x, 2:8, [:L1, :H1])
     @test v isa TimeSeries
     @test parent(v) isa SubArray
     v[1, 1] = 99
     @test x[2, :L1] == 99
     @test x[2:4, :].data !== a
-    h = FrequencySeries(complex.(a); epoch = 100, frequencies = 0:0.5:3.5, channels = channels(x))
-    @test frequencies(h[3:2:7, :]) == 1:1:3
+    h = FrequencySeries(complex.(a); epoch = 100, frequency_spacing = 0.5, channels = channels(x))
+    @test h[3:2:7, :] isa Matrix
+    @test x[2:2:8, :] isa Matrix
+    @test h[axes(h, 1), [:L1]] isa FrequencySeries
+    @test view(h, 2:4, :) isa SubArray
+    @test channels(view(h, :, [:L1, :H1])) == (:L1, :H1)
+    @test h[:, :H1] isa Vector
+    @test h[:, Symbol[]] isa Matrix
+    @test h[:, [:H1, :H1]] isa Matrix
+    @test frequencies(h) == 0:0.5:3.5
+    @test frequency_bins(h; fmin = 0.6, fmax = 1.6) == 3:4
+    @test frequency_bins(h; fmin = -1, fmax = 1) == 1:3
+    @test frequency_bins(h) == axes(h, 1)
+    @test isempty(frequency_bins(h; fmin = 4, fmax = 5))
+    @test isempty(frequency_bins(h; fmin = -2, fmax = -1))
+    @test_throws ArgumentError frequency_bins(h; fmin = 2, fmax = 1)
+    @test_throws ArgumentError frequency_bins(h; fmax = Inf)
+    for kw in ((; frequency_start = 0), (; frequencies = 0:0.5:3.5), (; spectrum = :onesided))
+        @test_throws MethodError FrequencySeries(parent(h); metadata(h)..., kw...)
+    end
     huge = TimeSeries(ones(1); epoch = 0, sampling_interval = 1.0e300, channels = (:H1,))
-    @test_throws ArgumentError huge[1:typemax(Int):1, :]
+    @test huge[1:typemax(Int):1, :] isa Matrix
 end
 
 @testset "Metadata-preserving operations" begin
@@ -117,8 +135,9 @@ end
     @test parent(z)[3:10, :] == parent(x)
     @test all(iszero, parent(z)[1:2, :])
     @test_throws ArgumentError pad(x; before = -1)
-    f = FrequencySeries(ones(4); epoch = 0, frequency_start = 0, frequency_spacing = 1, channels = (:H1,))
-    @test_throws ArgumentError pad(f; before = 1)
+    f = FrequencySeries(ones(4); epoch = 0, frequency_spacing = 1, channels = (:H1,))
+    @test_throws MethodError pad(f; before = 1)
+    @test_throws MethodError crop(f; start = 0, stop = 1)
 end
 
 include("prototypes.jl")
@@ -150,7 +169,7 @@ include("prototypes.jl")
     @test check_same_grid(h, other(; f = LinRange(0, 4, 9))) === nothing
     @test check_same_grid(h, other(; epoch = nextfloat(t0))) === nothing
     @test_throws ArgumentError check_same_grid(h, other(; f = 0:0.25:2))
-    @test_throws ArgumentError check_same_grid(h, other(; f = 0.5:0.5:4.5))
+    @test_throws ArgumentError check_same_frequency_grid(frequencies(h), 0.5:0.5:4.5)
     @test_throws ArgumentError check_same_grid(h, other(; f = 0:0.5001:4.0008))
     @test_throws ArgumentError check_same_grid(h, other(; epoch = t0 + 0.01))
     @test check_same_frequency_grid(0:0.5:4, LinRange(0, 4, 9)) === nothing
@@ -184,7 +203,6 @@ Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
     @test check_data(d, view(ones(8), 1:2:8)) === nothing
     e = frequency_prototype(; frequencies = range(0.0; step = 0.5, length = 0), epoch = 0, channels = (:H1,))
     @test frequency_spacing(e) == 0.5
-    p = pad(e; after = 2)
-    values = vec(parent(p))
-    @test nsamples(p) == 2 && values == [0, 0]
+    @test isempty(frequency_bins(e))
+    @test_throws MethodError pad(e; after = 2)
 end

@@ -47,7 +47,7 @@ spacing is `fs/N`, and the FD vector has `N÷2+1` elements. Interior real and im
 parts independently have variance `PSD/(4Δf)`. The physical Fourier convention is:
 
 ```julia
-n_td = to_timedomain(model.time_domain, n_fd)
+n_td = to_timedomain(n_fd; nsamples=nsamples(td))
 ```
 
 Each draw is a finite periodic FFT segment. Concatenating independent segments does

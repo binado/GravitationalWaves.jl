@@ -55,7 +55,7 @@ using LinearAlgebra
         )
         for equal in (false, true)
             x = [36.0, equal ? 36.0 : 29.0, 0.3, 0.2]
-            loss(x) = sum(real, hphc_fd(f, merge(p, (mass_1 = x[1], mass_2 = x[2], a_1 = x[3], a_2 = x[4])), IMRPhenomXAS())[:, :plus]) * 1.0e22
+            loss(x) = sum(real, hphc_fd(f, merge(p, (mass_1 = x[1], mass_2 = x[2], a_1 = x[3], a_2 = x[4])), IMRPhenomXAS())[:, 1]) * 1.0e22
             g = ForwardDiff.gradient(loss, x)
             fd = [(loss(x .+ (1:4 .== i) .* 1.0e-5) - loss(x .- (1:4 .== i) .* 1.0e-5)) / 2.0e-5 for i in 1:4]
             @test all(isfinite, g)
@@ -68,8 +68,8 @@ using LinearAlgebra
         cutoff = 0.3 / ((p.mass_1 + p.mass_2) * FrequencyDomainWaveforms.MTSUN_SI)
         f = range(0; step = cutoff / 64, length = 130)
         h = hphc_fd(f, p, IMRPhenomXAS())
-        @test !iszero(h[:, :plus][65])
-        @test all(iszero, h[:, :plus][66:end])
+        @test !iszero(h[:, 1][65])
+        @test all(iszero, h[:, 1][66:end])
         @test_throws ArgumentError IMRPhenomXAS(pn_amplitude_order = 1)
         @test_throws MethodError IMRPhenomXAS(mode_array = [(2, 2)])
         @test validate_parameters(f, p, IMRPhenomXAS()) === nothing

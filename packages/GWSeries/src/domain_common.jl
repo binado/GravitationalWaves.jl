@@ -24,7 +24,7 @@ check_data(::AbstractSeries, values) = throw(ArgumentError("data must be a numer
 """Host compatibility check extended by packages owning prepared numerical objects."""
 function check_compatible end
 
-"""Check even-length one-sided real-FFT eligibility on the host."""
+"""Check real-FFT eligibility on the host; frequency input requires explicit nsamples."""
 function check_fourier_domain end
 
 # Four ulps of each absolute coordinate and eight ulps of relative displacement/spacing.

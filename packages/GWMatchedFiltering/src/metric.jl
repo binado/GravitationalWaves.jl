@@ -47,7 +47,6 @@ function FrequencyDomainMetric(
     return FrequencyDomainMetric(f, names, prepared, bins)
 end
 function FrequencyDomainMetric(series::FrequencySeries, spectrum::AbstractArray{<:Number}; kwargs...)
-    metadata(series).spectrum == :onesided || throw(ArgumentError("one-sided metrics require a one-sided spectrum"))
     return FrequencyDomainMetric(spectrum; frequencies = frequencies(series), channels = channels(series), kwargs...)
 end
 frequency_spacing(metric::FrequencyDomainMetric) = step(metric.frequencies)
@@ -81,7 +80,6 @@ end
 
 """Host-only stationary metric compatibility; the segment epoch is irrelevant."""
 function check_compatible(d::FrequencySeries, metric::FrequencyDomainMetric)
-    metadata(d).spectrum == :onesided || throw(ArgumentError("one-sided metrics require a one-sided spectrum"))
     check_same_frequency_grid(frequencies(d), metric.frequencies)
     channels(d) == metric.channels || throw(ArgumentError("metric channel orders differ"))
     return nothing

@@ -5,7 +5,13 @@ struct TimeSeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{
     TimeSeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T} = new{T, typeof(a), typeof(m)}(a, m)
 end
 
-"""FrequencySeries(array; epoch, frequency_start, frequency_spacing, channels, spectrum=:onesided)."""
+"""
+    FrequencySeries(array; epoch, frequency_spacing, channels)
+
+Complete one-sided spectrum with DC in the first row and ordered channels in columns.
+Frequency coordinates are `(0:size(array, 1)-1) * frequency_spacing`; original time
+length is not stored and must be supplied explicitly for inverse transforms.
+"""
 struct FrequencySeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{T}
     data::A
     meta::M
@@ -41,27 +47,18 @@ function TimeSeries(a; kwargs...)
     return TimeSeries(data, m, Validated())
 end
 
-function frequency_metadata(; epoch::Real, channels, frequency_start = nothing, frequency_spacing = nothing, frequencies = nothing, spectrum = :onesided)
-    spectrum in (:onesided, :twosided) || throw(ArgumentError("spectrum must be :onesided or :twosided"))
-    if frequencies !== nothing
-        frequencies isa AbstractRange{<:Real} || throw(ArgumentError("frequencies must be a uniform real range"))
-        frequency_start === nothing && frequency_spacing === nothing || throw(ArgumentError("conflicting frequency specifications"))
-        frequency_start, frequency_spacing = first(frequencies), step(frequencies)
-    end
-    frequency_start isa Real && frequency_spacing isa Real || throw(ArgumentError("supply frequency_start and frequency_spacing, or frequencies"))
-    t0, f0, df = metadata_value(epoch), metadata_value(frequency_start), metadata_value(frequency_spacing)
+function frequency_metadata(; epoch::Real, channels, frequency_spacing::Real)
+    t0, df = metadata_value(epoch), metadata_value(frequency_spacing)
     isfinite(t0) || throw(ArgumentError("epoch must be finite"))
-    isfinite(f0) && isfinite(df) && df > 0 || throw(ArgumentError("frequency origin must be finite and spacing finite and positive"))
-    spectrum == :onesided && f0 < 0 && throw(ArgumentError("one-sided frequencies must be nonnegative"))
-    return (; epoch = t0, frequency_start = f0, frequency_spacing = df, channels = channel_order(channels), spectrum)
+    isfinite(df) && df > 0 || throw(ArgumentError("frequency spacing must be finite and positive"))
+    return (; epoch = t0, frequency_spacing = df, channels = channel_order(channels))
 end
 
-function FrequencySeries(a; frequencies = nothing, kwargs...)
+function FrequencySeries(a; kwargs...)
     data = matrix_storage(a)
-    m = frequency_metadata(; frequencies, kwargs...)
+    m = frequency_metadata(; kwargs...)
     check_storage(data, m.channels)
-    frequencies === nothing || length(frequencies) == size(data, 1) || throw(DimensionMismatch("frequency count does not match storage"))
-    isfinite(m.frequency_start + max(size(data, 1) - 1, 0) * m.frequency_spacing) || throw(ArgumentError("frequency coordinates must be finite"))
+    isfinite(max(size(data, 1) - 1, 0) * m.frequency_spacing) || throw(ArgumentError("frequency coordinates must be finite"))
     return FrequencySeries(data, m, Validated())
 end
 
@@ -110,6 +107,6 @@ sampling_frequency(s::TimeSeries) = inv(sampling_interval(s))
 duration(s::TimeSeries) = nsamples(s) * sampling_interval(s)
 times(s::TimeSeries) = range(epoch(s); step = sampling_interval(s), length = nsamples(s))
 frequency_spacing(s::FrequencySeries) = metadata(s).frequency_spacing
-frequencies(s::FrequencySeries) = range(metadata(s).frequency_start; step = frequency_spacing(s), length = nsamples(s))
+frequencies(s::FrequencySeries) = range(zero(frequency_spacing(s)); step = frequency_spacing(s), length = nsamples(s))
 coordinates(s::TimeSeries) = times(s)
 coordinates(s::FrequencySeries) = frequencies(s)

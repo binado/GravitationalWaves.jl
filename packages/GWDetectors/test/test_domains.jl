@@ -11,7 +11,7 @@ end
     @test h isa Vector{ComplexF64}
     renamed = frequency_prototype(; frequencies = f, epoch = epoch(fd), channels = (:L1,))
     @test project_fd(pol, sky, detectors.H1; frequencies = frequencies(renamed), epoch = epoch(renamed)) == h
-    series = FrequencySeries(hcat(pol.plus, pol.cross); frequencies = f, epoch = 0, channels = (:plus, :cross))
+    series = FrequencySeries(hcat(pol.plus, pol.cross); frequency_spacing = step(f), epoch = 0, channels = (:plus, :cross))
     actual = project_fd(series, sky, detectors.H1; epoch = epoch(fd), channel = :H1)
     @test actual isa FrequencySeries
     @test channels(actual) == (:H1,)

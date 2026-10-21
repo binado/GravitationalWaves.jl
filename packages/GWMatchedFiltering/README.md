@@ -6,7 +6,7 @@ Series use `(frequency, channel)` storage and one-sided physical Fourier normali
 ```julia
 using GWSeries, GWMatchedFiltering
 f = 0:0.25:1024
-h = FrequencySeries(ones(ComplexF64, length(f), 2); frequencies=f,
+h = FrequencySeries(ones(ComplexF64, length(f), 2); frequency_spacing=step(f),
                     epoch=1126259460.0, channels=(:H1, :L1))
 data = copy(h)
 metric = FrequencyDomainMetric(h, ones(length(f), 2);
@@ -25,7 +25,7 @@ inverse covariance matrix. Diagonal PSDs must be positive and finite in the acti
 Band limits are inclusive. DC is excluded. Supplying the original time sample
 count also excludes even-length Nyquist; odd-length last bins remain active.
 Stationary metric compatibility checks grid and ordered channels but ignores epoch.
-Two-sided series are rejected. No interpolation or channel reordering is implicit.
+FrequencySeries always describes a complete one-sided grid. No interpolation or channel reordering is implicit.
 
 Series methods check alignment and metric compatibility before unwrapping storage.
 Raw-array methods with the same argument order perform no metadata checks:
@@ -50,3 +50,8 @@ kernels; traced arrays retain broadcast/reduction kernels. Heavy AD acceptance
 lives in `integration/GWMatchedFiltering`. Construct metrics outside differentiation;
 only strain parameters are active. Single-channel raw vector kernels avoid
 reshaping mixed-activity array headers inside Enzyme calls.
+
+For band-only work, keep `bins = frequency_bins(h; fmin=20, fmax=512)` and prepare
+`FrequencyDomainMetric(psd_values[bins, :]; frequencies=frequencies(h)[bins], channels=channels(h))`.
+Pass ordinary arrays on that same band to its statistics. The series constructor does not
+represent cropped grids. Explicit `nsamples` is only accepted with a complete zero-origin grid.

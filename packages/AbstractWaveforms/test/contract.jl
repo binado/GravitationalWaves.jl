@@ -30,21 +30,27 @@ function test_generator_contract(g; params, f)
 
         @testset "output" begin
             h = hphc_fd(f, params, g)
-            @test h isa FrequencySeries
-            @test channels(h) == (:plus, :cross)
-            @test frequencies(h) == f
-            @test epoch(h) == 0
-            @test h[:, :plus] isa AbstractVector{<:Complex}
-            @test h[:, :cross] isa AbstractVector{<:Complex}
-            @test length(h[:, :plus]) == length(f)
-            @test length(h[:, :cross]) == length(f)
+            @test h isa Matrix
+            prototype = FrequencySeries(zeros(length(f), 1); epoch = 1126259460.0, frequency_spacing = step(f), channels = (:H1,))
+            wrapped = hphc_fd(prototype, params, g)
+            @test wrapped isa FrequencySeries
+            @test channels(wrapped) == (:plus, :cross)
+            @test frequencies(wrapped) == f
+            @test epoch(wrapped) == 0
+            @test parent(wrapped) == h
+            later = FrequencySeries(parent(prototype); metadata(prototype)..., epoch = 1126259461.0)
+            @test parent(hphc_fd(later, params, g)) == h
+            @test h[:, 1] isa AbstractVector{<:Complex}
+            @test h[:, 2] isa AbstractVector{<:Complex}
+            @test length(h[:, 1]) == length(f)
+            @test length(h[:, 2]) == length(f)
 
             f_min = minimum_frequency(g)
             f_max = something(maximum_frequency(g), Float64(last(f)))
             outside = [!(f_min <= fi <= f_max) for fi in f]
             inside = .!outside
             @test any(outside) && any(inside)
-            for x in (h[:, :plus], h[:, :cross])
+            for x in (h[:, 1], h[:, 2])
                 @test all(iszero, x[outside])
                 @test any(!iszero, x[inside])
                 @test all(isfinite, x)
@@ -75,8 +81,8 @@ function test_amplitude_phase_fd_contract(g; params, f)
         h = hphc_fd(f, params, g)
         strain = a.amplitude .* cis.(a.phase)
         c = cos(params.theta_jn)
-        @test h[:, :plus] ≈ ((1 + c * c) / 2) .* strain
-        @test h[:, :cross] ≈ (-im * c) .* strain
+        @test h[:, 1] ≈ ((1 + c * c) / 2) .* strain
+        @test h[:, 2] ≈ (-im * c) .* strain
     end
 end
 
@@ -102,8 +108,8 @@ function test_modes_td_contract(g; params, viewing_params = merge(params, (; the
         @test out isa TimeSeries
         @test channels(out) == (:plus, :cross)
         @test collect(times(out)) ≈ r.t
-        @test out[:, :plus] ≈ real.(h)
-        @test out[:, :cross] ≈ -imag.(h)
+        @test out[:, 1] ≈ real.(h)
+        @test out[:, 2] ≈ -imag.(h)
     end
 end
 

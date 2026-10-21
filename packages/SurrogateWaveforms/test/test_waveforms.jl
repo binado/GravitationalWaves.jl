@@ -159,6 +159,17 @@ end
                 )
                 gen = SurrogateWaveforms.PrecessingGenerator(sur; f_ref = ref["mks_f_ref"])
                 out = SurrogateWaveforms.hphc_td(gen, params; dt = ref["mks_dt"])
+                grid = times(out)[2:(end - 1)]
+                explicit = SurrogateWaveforms.hphc_td(grid, params, gen)
+                prototype = TimeSeries(zeros(length(grid)); epoch = first(grid), sampling_interval = step(grid), channels = (:unused,))
+                sampled = SurrogateWaveforms.hphc_td(prototype, params, gen)
+                @test explicit isa Matrix
+                @test explicit ≈ parent(out)[2:(end - 1), :]
+                @test parent(sampled) == explicit
+                @test times(sampled) == grid
+                @test channels(sampled) == (:plus, :cross)
+                irregular = collect(grid)[[1, 3, 8, 9]]
+                @test SurrogateWaveforms.hphc_td(irregular, params, gen) ≈ explicit[[1, 3, 8, 9], :]
                 modes_si = SurrogateWaveforms.waveform_modes_td(gen, params; dt = ref["mks_dt"])
                 @test all(isapprox.(modes_si.t, times(out); rtol = 0, atol = 8eps(maximum(abs, modes_si.t))))
                 @test modes_si.mode_indices == Tuple((l, m) for l in 2:gen.ell_max for m in (-l):l)

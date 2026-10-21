@@ -11,21 +11,19 @@
         @test channels(h) == channels(x)
         @test parent(irfft(h, n)) ≈ a
         @test metadata(irfft(h, n)) == metadata(x)
-        full = fft(x)
-        @test metadata(full).spectrum == :twosided
-        @test frequencies(full) == range(-fld(n, 2) / (n * 0.125); step = inv(n * 0.125), length = n)
-        @test parent(full) ≈ fftshift(fft(a, 1), 1) .* 0.125
-        @test parent(ifft(full)) ≈ a
         @test parent(to_timedomain(to_frequencydomain(x); nsamples = n)) ≈ a
         @test_throws ArgumentError rfft(x, 2)
         @test_throws ArgumentError ifft(h)
-        @test_throws ArgumentError irfft(full, n)
+        @test_throws ArgumentError fft(x)
         @test_throws ArgumentError fft!(x)
-        @test_throws ArgumentError to_timedomain(h[2:end, :])
-        for real_transform in (true, false)
-            p = plan_to_frequencydomain(x; real_transform)
+        @test_throws MethodError to_timedomain(h[2:end, :]; nsamples = n)
+        @test_throws UndefKeywordError to_timedomain(h)
+        @test_throws UndefKeywordError plan_to_timedomain(h)
+        @test_throws ArgumentError irfft(h, 2n)
+        let
+            p = plan_to_frequencydomain(x)
             actual = transform(p, x)
-            expected = real_transform ? h : full
+            expected = h
             @test parent(actual) ≈ parent(expected)
             @test metadata(p) == metadata(expected)
             raw = transform(p, parent(x))
@@ -48,10 +46,20 @@
         end
     end
     x = TimeSeries(randn(rng, 16, 2) .+ im .* randn(rng, 16, 2); epoch = -2, sampling_frequency = 8, channels = (:plus, :cross))
-    @test parent(to_timedomain(to_frequencydomain(x))) ≈ parent(x)
+    @test_throws ArgumentError rfft(x)
+    @test_throws ArgumentError plan_fft(x)
+    @test_throws ArgumentError to_frequencydomain(x)
+    @test_throws ArgumentError plan_to_frequencydomain(x)
     h = to_frequencydomain(real.(x))
-    @test sum(abs2, parent(x)) * sampling_interval(x) ≈ sum(abs2, parent(fft(x))) * frequency_spacing(fft(x))
+    @test sum(abs2, parent(x)) ≈ sum(abs2, fft(parent(x), 1)) / size(x, 1)
     @test_throws ArgumentError to_frequencydomain(TimeSeries(ones(1); epoch = 0, sampling_frequency = 1, channels = (:H1,)))
     @test_throws DimensionMismatch transform!(zeros(1, 1), plan_to_frequencydomain(real.(x)), parent(real.(x)))
-    @test to_timedomain(h) isa TimeSeries
+    @test to_timedomain(h; nsamples = 16) isa TimeSeries
+    bins = frequency_bins(h; fmin = 1.1, fmax = 2.6)
+    full = similar(h)
+    fill!(full, 0)
+    full[bins, :] = h[bins, :]
+    reference = zeros(eltype(h), size(h))
+    reference[bins, :] = parent(h)[bins, :]
+    @test parent(irfft(full, 16)) ≈ irfft(reference, 16, 1) .* (16 * frequency_spacing(h))
 end

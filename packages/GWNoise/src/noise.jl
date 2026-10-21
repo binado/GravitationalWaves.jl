@@ -28,10 +28,10 @@ function GaussianNoise(
     spectrum = [minimum_frequency <= x <= upper ? psd(x, curve) : 0.0 for x in f]
     spectrum[1] = 0.0
     iseven(nsamples) && (spectrum[end] = 0.0)
-    fm = (; epoch = tm.epoch, frequency_start = 0.0, frequency_spacing = df, channels = tm.channels, spectrum = :onesided)
+    fm = (; epoch = tm.epoch, frequency_spacing = df, channels = tm.channels)
     return GaussianNoise(tm, fm, Int(nsamples), spectrum)
 end
-frequencies(model::GaussianNoise) = range(model.frequency_metadata.frequency_start; step = model.frequency_metadata.frequency_spacing, length = length(model.spectrum))
+frequencies(model::GaussianNoise) = range(0.0; step = model.frequency_metadata.frequency_spacing, length = length(model.spectrum))
 psd(model::GaussianNoise) = copy(model.spectrum)
 
 """Draw a one-channel frequency series with interior variance PSD/(4Δf) per component."""
@@ -68,7 +68,6 @@ function check_compatible(s::TimeSeries, model::GaussianNoise)
     return nothing
 end
 function check_compatible(s::FrequencySeries, model::GaussianNoise)
-    metadata(s).spectrum == :onesided || throw(ArgumentError("noise requires a one-sided spectrum"))
     check_same_frequency_grid(frequencies(s), frequencies(model))
     channels(s) == model.frequency_metadata.channels || throw(ArgumentError("noise channel orders differ"))
     return nothing

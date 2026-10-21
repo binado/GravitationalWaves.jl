@@ -21,7 +21,7 @@ test_waveform_gradients(
                 luminosity_distance = 500.0, theta_jn = 0.4, phase = 0.2,
             )
             h = hphc_fd(AD_GRID, p, generator)
-            return 1.0e22 * (sum(real, h[:, :plus]) + sum(imag, h[:, :cross]))
+            return 1.0e22 * (sum(real, h[:, 1]) + sum(imag, h[:, 2]))
         end
         # Cross component ordering, spline segments, waveform regions and cutoff bins.
         cache = Mooncake.prepare_gradient_cache(loss, [36.0, 29.0, 0.3, 0.2])

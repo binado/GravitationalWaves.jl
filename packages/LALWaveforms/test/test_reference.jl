@@ -43,8 +43,8 @@ using NPZ
 
             h = hphc_fd(f, params, settings)
             rtol = Float64(get(c, "rtol", spec["default_rtol"]))
-            @test isapprox(h[:, :plus], ref["plus"]; rtol)
-            @test isapprox(h[:, :cross], ref["cross"]; rtol)
+            @test isapprox(h[:, 1], ref["plus"]; rtol)
+            @test isapprox(h[:, 2], ref["cross"]; rtol)
 
             fref = get(kw, :reference_frequency, 50.0)
             s = LW.bilby_to_lalsimulation_spins(LW.bilby_parameters(params), fref)

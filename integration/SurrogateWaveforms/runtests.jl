@@ -55,7 +55,7 @@ end
         check_gradients(
             x -> begin
                 h = hphc_fd(0.0:1.0:4.0, (; x, theta_jn = x[3]), ADModes())
-                sum(real, h[:, :plus]) + 0.2 * sum(imag, h[:, :cross])
+                sum(real, h[:, 1]) + 0.2 * sum(imag, h[:, 2])
             end,
             [0.7, 0.2, theta],
         )

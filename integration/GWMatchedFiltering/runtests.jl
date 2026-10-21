@@ -27,7 +27,7 @@ const PIPE_METRIC = FrequencyDomainMetric(PIPE_METRIC_domain, repeat(reshape([2.
 
 function pipeline_signal(x)
     params = (; mass_1 = x[1], mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = x[2])
-    pol = hphc_fd(PIPE_F, params, PIPE_GENERATOR)
+    pol = hphc_fd(PIPE_H1_DOMAIN, params, PIPE_GENERATOR)
     h1 = project_fd(pol, PIPE_SKY, detectors.H1; epoch = epoch(PIPE_H1_DOMAIN), channel = :H1)
     l1 = project_fd(pol, PIPE_SKY, detectors.L1; epoch = epoch(PIPE_L1_DOMAIN), channel = :L1)
     return hcat(parent(h1), parent(l1))

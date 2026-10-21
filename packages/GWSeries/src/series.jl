@@ -1,8 +1,20 @@
-"""TimeSeries(array; epoch, sampling_interval, channels). Rows are time samples."""
-struct TimeSeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{T}
+"""
+    TimeSeries(array; epoch, channels, sampling_interval | sampling_frequency)
+
+Rows are time samples and columns are ordered channels. Supply exactly one of
+`sampling_interval` and `sampling_frequency`. The grid fields are immutable; only the
+samples can change.
+"""
+struct TimeSeries{T, A <: AbstractMatrix{T}, E <: Real, D <: Real, C <: Tuple} <: AbstractSeries{T}
     data::A
-    meta::M
-    TimeSeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T} = new{T, typeof(a), typeof(m)}(a, m)
+    epoch::E
+    sampling_interval::D
+    channels::C
+    function TimeSeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T}
+        return new{T, typeof(a), typeof(m.epoch), typeof(m.sampling_interval), typeof(m.channels)}(
+            a, m.epoch, m.sampling_interval, m.channels,
+        )
+    end
 end
 
 """
@@ -12,10 +24,16 @@ Complete one-sided spectrum with DC in the first row and ordered channels in col
 Frequency coordinates are `(0:size(array, 1)-1) * frequency_spacing`; original time
 length is not stored and must be supplied explicitly for inverse transforms.
 """
-struct FrequencySeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{T}
+struct FrequencySeries{T, A <: AbstractMatrix{T}, E <: Real, D <: Real, C <: Tuple} <: AbstractSeries{T}
     data::A
-    meta::M
-    FrequencySeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T} = new{T, typeof(a), typeof(m)}(a, m)
+    epoch::E
+    frequency_spacing::D
+    channels::C
+    function FrequencySeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T}
+        return new{T, typeof(a), typeof(m.epoch), typeof(m.frequency_spacing), typeof(m.channels)}(
+            a, m.epoch, m.frequency_spacing, m.channels,
+        )
+    end
 end
 
 matrix_storage(a::AbstractMatrix{<:Number}) = a
@@ -69,7 +87,8 @@ function check_storage(a, names)
 end
 
 """Canonical constructor keywords, independent of sample storage and precision."""
-metadata(s::AbstractSeries) = s.meta
+metadata(s::TimeSeries) = (; epoch = s.epoch, sampling_interval = s.sampling_interval, channels = s.channels)
+metadata(s::FrequencySeries) = (; epoch = s.epoch, frequency_spacing = s.frequency_spacing, channels = s.channels)
 """Return parent storage and constructor keywords without copying samples."""
 flatten(s::AbstractSeries) = (parent(s), metadata(s))
 Base.parent(s::AbstractSeries) = s.data
@@ -100,15 +119,15 @@ Base.similar(s::AbstractSeries, dims::Dims) = similar(parent(s), eltype(s), dims
 rebuild(::TimeSeries, a, m) = TimeSeries(a, m, Validated())
 rebuild(::FrequencySeries, a, m) = FrequencySeries(a, m, Validated())
 
-epoch(s::AbstractSeries) = metadata(s).epoch
-channels(s::AbstractSeries) = metadata(s).channels
+epoch(s::AbstractSeries) = s.epoch
+channels(s::AbstractSeries) = s.channels
 nsamples(s::AbstractSeries) = size(s, 1)
-sampling_interval(s::TimeSeries) = metadata(s).sampling_interval
+sampling_interval(s::TimeSeries) = s.sampling_interval
 Base.step(s::TimeSeries) = sampling_interval(s)
 sampling_frequency(s::TimeSeries) = inv(sampling_interval(s))
 duration(s::TimeSeries) = nsamples(s) * sampling_interval(s)
 times(s::TimeSeries) = range(epoch(s); step = sampling_interval(s), length = nsamples(s))
-frequency_spacing(s::FrequencySeries) = metadata(s).frequency_spacing
+frequency_spacing(s::FrequencySeries) = s.frequency_spacing
 frequencies(s::FrequencySeries) = range(zero(frequency_spacing(s)); step = frequency_spacing(s), length = nsamples(s))
 coordinates(s::TimeSeries) = times(s)
 coordinates(s::FrequencySeries) = frequencies(s)

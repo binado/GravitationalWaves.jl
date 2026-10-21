@@ -44,10 +44,10 @@ function PlanckWindow(td::TimeDomain; start_width::Real, end_width::Real)
     span = max(n - 1, 0) * dt
     start <= span && stop <= span - start || throw(ArgumentError("taper widths must fit between stored endpoints"))
     w = Vector{typeof(dt)}(undef, n)
-    for i in 0:(n - 1)
-        rising = iszero(start) ? one(dt) : planck_transition((i * dt) / start)
-        falling = iszero(stop) ? one(dt) : planck_transition(((n - 1 - i) * dt) / stop)
-        w[i + 1] = rising * falling
+    for i in eachindex(w)
+        rising = iszero(start) ? one(dt) : planck_transition(((i - 1) * dt) / start)
+        falling = iszero(stop) ? one(dt) : planck_transition(((n - i) * dt) / stop)
+        w[i] = rising * falling
     end
     return PlanckWindow(sample_spacing(td), w, Validated())
 end

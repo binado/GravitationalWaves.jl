@@ -1,17 +1,17 @@
 const _PSD_DIRECTORY = joinpath(@__DIR__, "..", "data", "noise_curves")
 const _PSD_FILES = (
-    AplusDesign="AplusDesign_psd.txt",
-    ET_000A_18_ETD_hlf="ET-000A-18_ETD_hlf_psd.txt",
-    ET_COBA_10km="ET_COBA_10km_psd.txt",
-    ET_COBA_15km="ET_COBA_15km_psd.txt",
-    ET_COBA_20km="ET_COBA_20km_psd.txt",
-    avirgo_O5high_NEW="avirgo_O5high_NEW_psd.txt",
-    avirgo_O5low_NEW="avirgo_O5low_NEW_psd.txt",
-    cosmic_explorer_20km_pm_strain="cosmic_explorer_20km_pm_strain_psd.txt",
-    cosmic_explorer_20km_strain="cosmic_explorer_20km_strain_psd.txt",
-    cosmic_explorer_40km_lf_strain="cosmic_explorer_40km_lf_strain_psd.txt",
-    cosmic_explorer_strain="cosmic_explorer_strain_psd.txt",
-    kagra_128Mpc="kagra_128Mpc_psd.txt",
+    AplusDesign = "AplusDesign_psd.txt",
+    ET_000A_18_ETD_hlf = "ET-000A-18_ETD_hlf_psd.txt",
+    ET_COBA_10km = "ET_COBA_10km_psd.txt",
+    ET_COBA_15km = "ET_COBA_15km_psd.txt",
+    ET_COBA_20km = "ET_COBA_20km_psd.txt",
+    avirgo_O5high_NEW = "avirgo_O5high_NEW_psd.txt",
+    avirgo_O5low_NEW = "avirgo_O5low_NEW_psd.txt",
+    cosmic_explorer_20km_pm_strain = "cosmic_explorer_20km_pm_strain_psd.txt",
+    cosmic_explorer_20km_strain = "cosmic_explorer_20km_strain_psd.txt",
+    cosmic_explorer_40km_lf_strain = "cosmic_explorer_40km_lf_strain_psd.txt",
+    cosmic_explorer_strain = "cosmic_explorer_strain_psd.txt",
+    kagra_128Mpc = "kagra_128Mpc_psd.txt",
 )
 """
     available_psds()

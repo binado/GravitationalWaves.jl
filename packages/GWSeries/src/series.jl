@@ -92,9 +92,11 @@ Base.getindex(s::AbstractSeries, i::CartesianIndex) = parent(s)[i]
 Base.setindex!(s::AbstractSeries, v, i::CartesianIndex) = (setindex!(parent(s), v, i); s)
 Base.dataids(s::AbstractSeries) = Base.dataids(parent(s))
 Base.copy(s::AbstractSeries) = rebuild(s, copy(parent(s)), metadata(s))
-Base.similar(s::AbstractSeries, ::Type{T}) where {T} = rebuild(s, similar(parent(s), T), metadata(s))
-Base.similar(s::AbstractSeries, ::Type{T}, dims::Dims) where {T} = size(s) == dims ? rebuild(s, similar(parent(s), T, dims), metadata(s)) : similar(parent(s), T, dims)
-Base.similar(s::AbstractSeries, dims::Dims) = similar(s, eltype(s), dims)
+# Base routines such as reverse, circshift and cumsum allocate through `similar` and then reorder or
+# combine samples, so `similar` must not claim the source grid. Use `copy` for a series-valued buffer.
+Base.similar(s::AbstractSeries, ::Type{T}) where {T} = similar(parent(s), T)
+Base.similar(s::AbstractSeries, ::Type{T}, dims::Dims) where {T} = similar(parent(s), T, dims)
+Base.similar(s::AbstractSeries, dims::Dims) = similar(parent(s), eltype(s), dims)
 rebuild(::TimeSeries, a, m) = TimeSeries(a, m, Validated())
 rebuild(::FrequencySeries, a, m) = FrequencySeries(a, m, Validated())
 

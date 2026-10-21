@@ -58,10 +58,10 @@ using GWNoise
             @test iseven(n) ? fd[end] == 0 : fd[end] != 0
             @test length(td) == n
             @test rfft(parent(td), 1) / 128 ≈ parent(fd)
-            @test noise_fd!(Xoshiro(42), similar(fd), model) == fd
+            @test noise_fd!(Xoshiro(42), copy(fd), model) == fd
             @test length(noise_fd(model)) == length(fd)
             @test length(noise_td(model)) == n
-            @test noise_fd!(similar(fd), model) isa FrequencySeries{ComplexF64}
+            @test noise_fd!(copy(fd), model) isa FrequencySeries{ComplexF64}
         end
         model = GaussianNoise(curve, time_prototype(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); minimum_frequency = 10.5, maximum_frequency = 30)
         expected = [10.5 <= x <= 30 ? 2.0 : 0.0 for x in frequencies(model)]

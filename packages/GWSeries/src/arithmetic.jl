@@ -45,14 +45,15 @@ function array_operation(f, a, b)
     validate_inputs(inputs)
     return wrap_result(first(inputs), f(unwrap(a), unwrap(b)))
 end
-for op in (:+, :-, :*)
+# Only `+` and `-` keep metadata. Matrix products have no grid; use `.*` for the elementwise product.
+for op in (:+, :-)
     @eval begin
         Base.$op(a::AbstractSeries, b::AbstractMatrix) = array_operation($op, a, b)
         Base.$op(a::AbstractMatrix, b::AbstractSeries) = array_operation($op, a, b)
         Base.$op(a::AbstractSeries, b::AbstractSeries) = array_operation($op, a, b)
     end
 end
-Base.:*(a::AbstractSeries, b::AbstractVector) = parent(a) * b
+Base.diff(s::AbstractSeries; kwargs...) = diff(parent(s); kwargs...)
 Base.:*(a::AbstractSeries, b::Number) = wrap_result(a, parent(a) * b)
 Base.:*(a::Number, b::AbstractSeries) = wrap_result(b, a * parent(b))
 Base.:/(a::AbstractSeries, b::Number) = wrap_result(a, parent(a) / b)
@@ -92,8 +93,6 @@ function Base.copyto!(destination::AbstractSeries, source::AbstractSeries)
     return destination
 end
 
-Base.:*(a::Transpose{<:Any, <:AbstractVector}, b::AbstractSeries) = array_operation(*, a, b)
-Base.:*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractSeries) = array_operation(*, a, b)
 Base.prod(f, s::AbstractSeries; kwargs...) = prod(f, parent(s); kwargs...)
 Base.maximum(f, s::AbstractSeries; kwargs...) = maximum(f, parent(s); kwargs...)
 Base.minimum(f, s::AbstractSeries; kwargs...) = minimum(f, parent(s); kwargs...)

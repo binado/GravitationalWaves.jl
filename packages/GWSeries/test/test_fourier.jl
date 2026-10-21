@@ -56,7 +56,7 @@
     @test_throws DimensionMismatch transform!(zeros(1, 1), plan_to_frequencydomain(real.(x)), parent(real.(x)))
     @test to_timedomain(h; nsamples = 16) isa TimeSeries
     bins = frequency_bins(h; fmin = 1.1, fmax = 2.6)
-    full = similar(h)
+    full = copy(h)
     fill!(full, 0)
     full[bins, :] = h[bins, :]
     reference = zeros(eltype(h), size(h))

@@ -86,12 +86,23 @@ end
 @testset "Metadata-preserving operations" begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     b = ones(8, 2)
-    for y in (2 .* x, x .+ b, b .+ x, x + b, b + x, x - b, 2x, x / 2, -x, map(sin, x), x * Matrix{Float64}(I, 2, 2))
+    for y in (2 .* x, x .+ b, b .+ x, x + b, b + x, x - b, 2x, x / 2, -x, map(sin, x), x .* x)
         @test y isa TimeSeries
         @test metadata(y) == metadata(x)
     end
     @test parent(@. 2 * x + b) == 2 .* parent(x) .+ b
+    # Matrix products carry no grid: channel-mixing must not keep the channel labels.
+    mix = [0.0 1.0; 1.0 0.0]
+    @test x * mix isa Matrix
+    @test x * mix == parent(x) * mix
+    @test x * x' isa Matrix
     @test x * ones(2, 3) isa Matrix
+    # Reordering or accumulating Base routines must not keep the source grid.
+    for y in (reverse(x; dims = 1), circshift(x, 1), cumsum(x; dims = 1), diff(x; dims = 1), similar(x), similar(x, Float32))
+        @test y isa Matrix
+    end
+    @test diff(x; dims = 1) == diff(parent(x); dims = 1)
+    @test reverse(x; dims = 1) == reverse(parent(x); dims = 1)
     singleton = TimeSeries(ones(1, 2); epoch = 0, sampling_interval = 1, channels = (:H1, :L1))
     @test singleton .+ b isa Matrix
     @test reshape(x, :) isa Vector
@@ -100,7 +111,6 @@ end
     @test maximum(abs, x; dims = 1) isa Matrix
     @test minimum(abs, x; dims = 2) isa Matrix
     @test prod(abs, x; dims = 1) isa Matrix
-    @test similar(x, Float32) isa TimeSeries
     @test similar(x, (4, 2)) isa Matrix
     @test copy(x) !== x
     out = copy(x)

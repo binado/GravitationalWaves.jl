@@ -4,17 +4,17 @@ version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]
-AbstractGWWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
+AbstractWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 GWParameterConversion = "8025f710-d0ad-4738-9700-57195c00f751"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 Preferences = "21216c6a-2e73-6563-6e65-726566657250"
 
 [sources]
-AbstractGWWaveforms = {path = "../AbstractGWWaveforms"}
+AbstractWaveforms = {path = "../AbstractWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 
 [compat]
-AbstractGWWaveforms = "0.3"
+AbstractWaveforms = "0.3"
 Aqua = "0.8"
 GWParameterConversion = "0.1"
 JET = "0.11, 0.12"

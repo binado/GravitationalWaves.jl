@@ -2,8 +2,8 @@
 
 An isolated experiment for the three phase coefficient systems used by IMRPhenomXAS:
 4×4 inspiral, 5×5 intermediate, and 5×5 ringdown. This directory preserves the solve
-investigation; the complete waveform now lives in `packages/GWWaveforms` and its
-ForwardDiff/Mooncake acceptance tests in `integration/GWWaveforms`. Production now
+investigation; the complete waveform now lives in `packages/FrequencyDomainWaveforms` and its
+ForwardDiff/Mooncake acceptance tests in `integration/FrequencyDomainWaveforms`. Production now
 uses StaticArrays and pivoted solves. The Reactant/Enzyme dependencies and explicit
 pullback below belong to this historical experiment, outside the supported waveform AD contract.
 

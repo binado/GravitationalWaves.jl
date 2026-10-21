@@ -81,7 +81,7 @@ samples and physical parameters are differentiated; metric preparation and
 metadata are outside the AD contract. Metric kernels and the separately validated
 inference boundary are checked with ForwardDiff, Enzyme, Mooncake, and Reactant CPU.
 Waveform → domain-first projection → correlated likelihood composition is checked
-with ForwardDiff and Mooncake, matching GWWaveforms' supported AD backends.
+with ForwardDiff and Mooncake, matching FrequencyDomainWaveforms' supported AD backends.
 Dynamic whole-domain Reactant arguments and GPU execution have not been established.
 
 Native host matrices and their views retain the allocation-free contraction

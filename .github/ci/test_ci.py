@@ -4,7 +4,7 @@ import unittest
 from ci import PACKAGES, check_status, select_matrix, select_packages
 
 
-CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "GWWaveforms"]
+CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "FrequencyDomainWaveforms"]
 
 
 class SelectionTests(unittest.TestCase):
@@ -15,10 +15,10 @@ class SelectionTests(unittest.TestCase):
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
             "GWMatchedFiltering": ["GWMatchedFiltering"],
-            "GWSurrogates": ["GWSurrogates"],
-            "GWWaveforms": ["GWWaveforms"],
-            "LALWaveforms": ["LALWaveforms", "GWWaveforms"],
-            "AbstractGWWaveforms": ["AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSurrogates"],
+            "SurrogateWaveforms": ["SurrogateWaveforms"],
+            "FrequencyDomainWaveforms": ["FrequencyDomainWaveforms"],
+            "LALWaveforms": ["LALWaveforms", "FrequencyDomainWaveforms"],
+            "AbstractWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"],
             "GWParameterConversion": CONVERSION_AFFECTED,
         }
         for package, expected in cases.items():
@@ -71,7 +71,7 @@ class SelectionTests(unittest.TestCase):
             "python/surrogates/pyproject.toml",
         ):
             with self.subTest(path=path):
-                self.assertEqual(select_packages([path]), ["GWSurrogates"])
+                self.assertEqual(select_packages([path]), ["SurrogateWaveforms"])
 
     def test_documentation_only_and_empty(self):
         self.assertEqual(
@@ -89,7 +89,7 @@ class SelectionTests(unittest.TestCase):
                     "README.md",
                 ]
             ),
-            ["LALWaveforms", "GWWaveforms", "GWDistributions"],
+            ["LALWaveforms", "FrequencyDomainWaveforms", "GWDistributions"],
         )
 
     def test_cross_package_rename(self):
@@ -106,8 +106,8 @@ class SelectionTests(unittest.TestCase):
 
     def test_unusual_filenames_are_data(self):
         self.assertEqual(
-            select_packages(["packages/GWWaveforms/test/space ' quote $(cmd)\n.jl"]),
-            ["GWWaveforms"],
+            select_packages(["packages/FrequencyDomainWaveforms/test/space ' quote $(cmd)\n.jl"]),
+            ["FrequencyDomainWaveforms"],
         )
 
     def test_event_matrices(self):
@@ -149,7 +149,7 @@ class StatusTests(unittest.TestCase):
 
     def test_success(self):
         check_status(self.needs(list(PACKAGES)))
-        check_status(self.needs(["GWWaveforms"]))
+        check_status(self.needs(["FrequencyDomainWaveforms"]))
         check_status(self.needs([], test="skipped"))
 
     def test_unsuccessful_dependencies(self):
@@ -173,8 +173,8 @@ class StatusTests(unittest.TestCase):
             "",
             ["unknown"],
             [1],
-            [["GWWaveforms"]],
-            ["GWWaveforms", "GWWaveforms"],
+            [["FrequencyDomainWaveforms"]],
+            ["FrequencyDomainWaveforms", "FrequencyDomainWaveforms"],
         ):
             with self.subTest(packages=packages), self.assertRaises(ValueError):
                 check_status(self.needs(packages))

@@ -33,7 +33,7 @@ LAL's UTC-based approximation without a UT1 correction. At a positive leap secon
 Both waveform backends return the `(; plus, cross)` accepted by `project_fd`:
 
 ```julia
-using GWWaveforms, LALWaveforms, GWDetectors, GWTimeFrequencyDomains
+using FrequencyDomainWaveforms, LALWaveforms, GWDetectors, GWTimeFrequencyDomains
 
 f = range(0, 512; step = 0.25)
 fd = FrequencyDomain(;frequencies=f, epoch=1126259460.0, channels=(:H1,))

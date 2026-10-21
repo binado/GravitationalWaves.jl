@@ -77,16 +77,16 @@ apply_window(w::PlanckWindow, h::Samples) = w.weights .* h
 
 """
     apply_window!(h, window::PlanckWindow)
-    apply_window!(dest, window::PlanckWindow, h)
+    apply_window!(out, window::PlanckWindow, h)
 
-Apply prepared weights in place, or write tapered `h` into `dest`, returning the
+Apply prepared weights in place, or write tapered `h` into `out`, returning the
 destination. Arrays must have matching sample counts and shapes, checked on the
 host. Destination storage determines the element type and must represent the
 result. The two-argument form modifies `h`; the three-argument form also permits
-`dest === h`. Keep window weights as read-only configuration.
+`out === h`. Keep window weights as read-only configuration.
 """
-function apply_window!(dest::Samples, w::PlanckWindow, h::Samples)
-    dest .= w.weights .* h
-    return dest
+function apply_window!(out::Samples, w::PlanckWindow, h::Samples)
+    out .= w.weights .* h
+    return out
 end
 apply_window!(h::Samples, w::PlanckWindow) = apply_window!(h, w, h)

@@ -70,8 +70,8 @@ h_fd = to_frequencydomain(hpadded_td, hpadded) # physical dt*rfft normalization
 
 `apply_window` allocates without modifying its inputs and supports real or complex
 vectors, views, and `(sample, channel)` matrices. `apply_window!(h, window)` modifies
-samples in place; `apply_window!(dest, window, h)` writes to reusable destination
-storage and returns it, also allowing `dest === h`. Destination storage determines
+samples in place; `apply_window!(out, window, h)` writes to reusable destination
+storage and returns it, also allowing `out === h`. Destination storage determines
 the element type for the mutating methods and must represent the result.
 The allocating method uses ordinary element-type promotion: Float64 weights
 promote Float32 data to Float64. Window precision promotes spacing and widths to at least

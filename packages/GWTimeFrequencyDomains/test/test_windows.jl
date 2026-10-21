@@ -87,9 +87,9 @@
             result = apply_window(window, h)
             @test size(result) == size(h)
             @test h == original
-            dest = similar(h)
-            @test apply_window!(dest, window, h) === dest
-            @test dest == result
+            out = similar(h)
+            @test apply_window!(out, window, h) === out
+            @test out == result
             @test h == original
             @test apply_window!(h, window) === h
             @test h == result

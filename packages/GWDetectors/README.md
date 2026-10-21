@@ -31,7 +31,7 @@ LAL's UTC-based approximation without a UT1 correction. At a positive leap secon
 ## Sensitivities and detector designs
 
 `detectors` also includes triangular ET sites `E1`–`E3`, ET L sites
-`S1`, `S2`, `R1`, `R2`, and CE sites `C1`, `C2`. These use the supplied
+`S1`, `S2`, `R1`, `R2`, and CE sites `C1`, `C2`. Their inline definitions are transcribed from the supplied
 [geometry catalog](data/geometry.toml), with nominal full arm
 lengths of 10 km, 15 km, and 40 km respectively. `S1`/`R1` are aligned;
 `S2`/`R2` are misaligned. `C1`/`C2` use the Hanford/Livingston sites.

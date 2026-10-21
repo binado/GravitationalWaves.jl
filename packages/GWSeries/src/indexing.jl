@@ -42,10 +42,12 @@ Base.getindex(s::AbstractSeries, i) = getindex(parent(s), i)
 Base.view(s::AbstractSeries, i) = view(parent(s), i)
 function Base.setindex!(s::AbstractSeries, v, rows, cols)
     if v isa AbstractSeries
-        destination = s[rows, cols]
+        # A view carries the destination grid without copying samples.
+        destination = view(s, rows, cols)
         destination isa AbstractSeries && check_same_grid(destination, v)
+        v = parent(v)
     end
-    setindex!(parent(s), v isa AbstractSeries ? parent(v) : v, rows, channel_indices(s, cols))
+    setindex!(parent(s), v, rows, channel_indices(s, cols))
     return s
 end
 Base.setindex!(s::AbstractSeries, v, i) = (setindex!(parent(s), v, i); s)

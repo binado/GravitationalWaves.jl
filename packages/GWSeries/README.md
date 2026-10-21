@@ -29,8 +29,12 @@ Same-shape arithmetic with ordinary arrays preserves metadata. Multiple series
 operands must agree on coordinates, epoch, and ordered channels.
 Broadcasting validates the operands and destination before executing on parent
 storage. Use `flatten` around repeated numerical work to avoid repeated checks.
-Shape-changing arithmetic, irregular sample selections, reductions, reshape,
-transpose, and dimension permutations return ordinary arrays.
+Only `+`, `-`, scalar scaling and broadcasting keep metadata: use `.*` for an
+elementwise product. Matrix products (`x * A`), `similar`, reductions, reshape,
+transpose, dimension permutations, and routines that reorder or accumulate samples
+(`reverse`, `circshift`, `cumsum`, `diff`, ...) return ordinary arrays, because the
+result has no meaningful grid. Use `copy(x)` for a series-valued buffer.
+Irregular sample selections also return ordinary arrays.
 
 ```julia
 2 .* x                         # TimeSeries, unchanged metadata
@@ -68,9 +72,10 @@ supporting your parent storage (for example FFTW for CPU arrays):
 ```julia
 using AbstractFFTs, FFTW
 h = rfft(x)                    # FrequencySeries: dt*rfft(parent(x), 1)
-z = irfft(h, nsamples(x))       # TimeSeries, original epoch and channels
+z = irfft(h)                   # TimeSeries, original epoch, channels and length
+z = irfft(h, nsamples(x))      # explicit length, checked against the recorded one
 h = to_frequencydomain(x)      # real samples only
-z = to_timedomain(h; nsamples=8192)
+z = to_timedomain(h)
 ```
 
 Series transforms act only on dimension one, preserve epoch and channels, and
@@ -84,7 +89,7 @@ follow the backend's real-inverse convention.
 ```julia
 forward = plan_to_frequencydomain(x)
 h = transform(forward, x)
-inverse = plan_to_timedomain(h; nsamples=nsamples(x))
+inverse = plan_to_timedomain(h)
 metadata(forward)               # output constructor keywords
 transform!(h, forward, x)
 raw_h = transform(forward, parent(x))
@@ -122,11 +127,15 @@ explicitly to produce a band-limited signal; zeros do not recover discarded valu
 ```julia
 bins = frequency_bins(h; fmin=20.1, fmax=1024.0)
 band = view(h, bins, :)
-full = similar(h)
+full = copy(h)
 fill!(full, 0)
 full[bins, :] = band
-t_bandlimited = irfft(full, nsamples(x))
+t_bandlimited = irfft(full)
 ```
 
-No original time length is stored in FrequencySeries. Changing the number of bins while
-holding Δf fixed changes the time sampling implied by a chosen inverse length.
+A spectrum from `rfft` records its original length (`time_samples(h)`), which removes the
+even/odd ambiguity of the inverse: lengths `N` and `N + 1` can share a bin count, and
+`irfft(h, N + 1)` throws for a spectrum recorded at `N`. A `FrequencySeries` built from
+elsewhere, such as a waveform, has `time_samples(h) === nothing` and needs the length
+passed explicitly. Changing the number of bins while holding Δf fixed changes the time
+sampling implied by a chosen inverse length.

@@ -16,7 +16,7 @@ end
 Prepare a Planck taper on the fixed sampling grid `td`. Widths are finite,
 nonnegative transition durations in seconds; zero disables the corresponding edge.
 Their sum must not exceed the span between stored endpoints, `(nsamples(td)-1)*dt`.
-Empty and singleton domains accept only zero widths.
+Empty and singleton series accept only zero widths.
 
 Transitions are anchored at the first and last stored samples and evaluated
 continuously, without rounding widths to sample counts. Positive widths shorter
@@ -27,7 +27,7 @@ spacing and widths to at least `Float64`, preserving `BigFloat` inputs.
 The object owns a real `weights` vector and the sample spacing, independent of
 epoch and channels. Treat its weights as read-only configuration. Construct it
 on the host, outside differentiation, and use `check_compatible(td, window)` there.
-Use `check_data(td, h)` for vector/matrix domain layouts. Apply it using [`apply_window`](@ref) or
+Use `check_data(td, h)` for vector/matrix layouts. Apply it using [`apply_window`](@ref) or
 [`apply_window!`](@ref) inside numerical kernels.
 """
 struct PlanckWindow{D <: Real, T <: AbstractFloat}
@@ -55,7 +55,7 @@ end
 nsamples(w::PlanckWindow) = length(w.weights)
 Base.step(w::PlanckWindow) = w.spacing
 
-"""Check a time domain's sample count and spacing against a prepared window on the host; ignore epoch and channels."""
+"""Check a time series sample count and spacing against a prepared window on the host; ignore epoch and channels."""
 function check_compatible(td::TimeSeries, w::PlanckWindow)
     nsamples(td) == nsamples(w) || throw(DimensionMismatch("sample count does not match window"))
     dt, dw = step(td), step(w)
@@ -72,9 +72,9 @@ Weights act along the first dimension; trailing dimensions broadcast normally.
 Inputs are unchanged and
 ordinary element-type promotion applies. Views and complex samples are supported.
 Check window/grid compatibility on the host before evaluation; for vector/matrix
-domain layouts, use `check_data` for shape validation. Higher-dimensional arrays
+layouts, use `check_data` for shape validation. Higher-dimensional arrays
 are also supported when their axes broadcast with the weights. This kernel does
-not repeat domain checks. Differentiation is with respect to `h` only.
+not repeat series checks. Differentiation is with respect to `h` only.
 """
 apply_window(w::PlanckWindow, h::AbstractArray{<:Number}) = w.weights .* h
 

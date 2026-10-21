@@ -1,13 +1,13 @@
 """
     check_same_grid(a, b)
 
-Validate equal domain, sample count, grid, epoch, and ordered channels; return nothing.
+Validate equal series kind, sample count, grid, epoch, and ordered channels; return nothing.
 Throws `ArgumentError` (or `DimensionMismatch` for counts) naming the differing
 quantity, both values, and the tolerance.
 
 Coordinates are compared with a few-ulp tolerance (see the README), not exactly;
-identical values always pass. Time domains compare the epoch as the grid origin.
-Frequency domains additionally compare epochs using the spacing `1/(N df)` of the
+identical values always pass. Time series compare the epoch as the grid origin.
+Frequency series additionally compare epochs using the spacing `1/(N df)` of the
 even-length FFT that would produce them. Epochs must match because
 frequency-domain phases are referenced to the epoch.
 """
@@ -19,11 +19,13 @@ end
 function check_same_grid(a::FrequencySeries, b::FrequencySeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
     check_range(frequencies(a), frequencies(b), "origins")
-    epoch_spacing = inv(max(2 * (nsamples(a) - 1), 1) * frequency_spacing(a))
+    ta, tb = time_samples(a), time_samples(b)
+    ta === nothing || tb === nothing || ta == tb || throw(ArgumentError("original time lengths differ: $ta vs $tb"))
+    epoch_spacing = inv(something(ta, tb, max(2 * (nsamples(a) - 1), 1)) * frequency_spacing(a))
     check_coordinate(epoch(a), epoch(b), epoch_spacing, "epochs", EPOCH_HINT)
     return nothing
 end
-check_same_grid(::AbstractSeries, ::AbstractSeries) = throw(ArgumentError("domain kinds differ"))
+check_same_grid(::AbstractSeries, ::AbstractSeries) = throw(ArgumentError("series kinds differ"))
 
 """
     check_same_frequency_grid(a, b)

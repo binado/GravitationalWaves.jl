@@ -3,10 +3,9 @@ module GWNoise
 
 import GWSeries
 
-using GWSeries: TimeSeries, FrequencySeries, metadata, sampling_interval, nsamples, sampling_frequency, channels
-using GWSeries: epoch, frequency_spacing, check_coordinate, check_same_frequency_grid
-using GWSeries: to_timedomain
-import GWSeries: frequencies, check_compatible
+using GWSeries: TimeSeries, FrequencySeries, metadata, sampling_interval, nsamples, channels
+using GWSeries: check_coordinate, check_same_frequency_grid, time_samples, to_timedomain
+import GWSeries: frequencies, frequency_spacing, check_compatible
 
 using DelimitedFiles: readdlm
 using Random: AbstractRNG, default_rng, randn

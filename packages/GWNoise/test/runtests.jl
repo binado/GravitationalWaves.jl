@@ -69,7 +69,7 @@ using GWNoise
         @test all(iszero, noise_fd(model)[expected .== 0])
         @test_throws ArgumentError GaussianNoise(curve, time_prototype(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); maximum_frequency = 65)
         @test_throws DimensionMismatch check_data(frequency_prototype(; frequencies = frequencies(model), epoch = 0, channels = (:H1,)), zeros(ComplexF64, 3))
-        @test_throws DimensionMismatch check_data(time_prototype(; epoch = 0, nsamples = model.nsamples, sampling_frequency = inv(model.time_metadata.sampling_interval), channels = (:H1,)), zeros(3))
+        @test_throws DimensionMismatch check_data(time_prototype(; epoch = 0, nsamples = model.nsamples, sampling_frequency = inv(model.sampling_interval), channels = (:H1,)), zeros(3))
         @test_throws MethodError noise_fd!(zeros(length(frequencies(model))), model)
         for kwargs in ((sampling_frequency = 0, nsamples = 128), (sampling_frequency = 128, nsamples = 1))
             @test_throws ArgumentError GaussianNoise(curve, time_prototype(; epoch = 0, channels = (:H1,), kwargs...))
@@ -99,12 +99,32 @@ using GWNoise
         for bin in (11, 41)
             @test sum(abs2, colored_draws[bin, :]) / count ≈ psd(colored)[bin] / 2 rtol = 0.06
         end
-        td = irfft(draws, model.nsamples, 1) .* inv(model.time_metadata.sampling_interval)
+        td = irfft(draws, model.nsamples, 1) .* inv(model.sampling_interval)
         # Each active interior bin contributes S Δf to the TD variance.
         @test sum(abs2, td) / length(td) ≈ sum(psd(model)) * step(frequencies(model)) rtol = 0.02
     end
 
     include("test_bundled.jl")
-    include("test_domains.jl")
+    include("test_series.jl")
     include("test_quality.jl")
+end
+
+@testset "GaussianNoise invariants" begin
+    good = [0.0, 1.0, 2.0, 0.0]  # 6 samples: 4 bins, zero DC and Nyquist
+    model = GaussianNoise(good, 6, 0.0, 1 / 16, (:H1,))
+    @test model.nsamples == 6 && model.channels == (:H1,)
+    @test frequency_spacing(model) == inv(6 * (1 / 16))
+    @test time_samples(noise_fd(model)) == 6
+    @test_throws DimensionMismatch GaussianNoise(good, 8, 0.0, 1 / 16, (:H1,))
+    @test_throws ArgumentError GaussianNoise([1.0, 1.0, 2.0, 0.0], 6, 0.0, 1 / 16, (:H1,))
+    @test_throws ArgumentError GaussianNoise([0.0, 1.0, 2.0, 1.0], 6, 0.0, 1 / 16, (:H1,))
+    @test GaussianNoise([0.0, 1.0, 2.0, 1.0], 7, 0.0, 1 / 16, (:H1,)) isa GaussianNoise
+    @test_throws ArgumentError GaussianNoise([0.0, -1.0, 2.0, 0.0], 6, 0.0, 1 / 16, (:H1,))
+    @test_throws ArgumentError GaussianNoise([0.0, NaN, 2.0, 0.0], 6, 0.0, 1 / 16, (:H1,))
+    @test_throws ArgumentError GaussianNoise(good, 6, 0.0, 1 / 16, (:H1, :L1))
+    @test_throws ArgumentError GaussianNoise(good, 6, 0.0, -1.0, (:H1,))
+    @test_throws ArgumentError GaussianNoise([0.0], 1, 0.0, 1.0, (:H1,))
+    # A spectrum recorded for a different time length is not compatible.
+    other = FrequencySeries(zeros(ComplexF64, 4); epoch = 0, frequency_spacing = frequency_spacing(model), channels = (:H1,), time_samples = 7)
+    @test_throws ArgumentError check_compatible(other, model)
 end

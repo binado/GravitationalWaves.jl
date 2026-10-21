@@ -3,7 +3,7 @@ from pathlib import Path
 import math
 from gwtools.harmonics import sYlm
 
-out = Path(__file__).resolve().parents[2] / "packages/AbstractGWWaveforms/test/harmonics.csv"
+out = Path(__file__).resolve().parents[2] / "packages/AbstractWaveforms/test/harmonics.csv"
 with out.open("w") as f:
     f.write("# gwtools 1.2.0 sYlm(-2,l,m,theta,phi): l,m,theta,phi,real,imag\n")
     for theta in (0., 1e-4, .37, 1.4, math.pi - 1e-4, math.pi):

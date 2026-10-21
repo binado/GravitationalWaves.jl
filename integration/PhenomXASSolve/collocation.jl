@@ -1,6 +1,6 @@
 # Prototype of XAS phase collocation solves, not a waveform implementation.
 # Formulas follow Ripple revision 58c53024718697e0430b666ef5dd40ff3c2e029d.
-# GPL-2.0-or-later, as for GWWaveforms and the underlying LAL model.
+# GPL-2.0-or-later, as for FrequencyDomainWaveforms and the underlying LAL model.
 module PhenomXASSolve
 
 using LinearAlgebra

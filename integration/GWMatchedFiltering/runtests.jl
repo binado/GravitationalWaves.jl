@@ -2,7 +2,7 @@ using Test
 using GWMatchedFiltering
 using GWTimeFrequencyDomains
 using GWDetectors
-using GWWaveforms
+using FrequencyDomainWaveforms
 using GWNoise
 using LinearAlgebra
 using ForwardDiff

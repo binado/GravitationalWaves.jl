@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractGWWaveforms packages/LALWaveforms packages/GWParameterConversion packages/GWWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering packages/GWSurrogates; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractWaveforms packages/LALWaveforms packages/GWParameterConversion packages/FrequencyDomainWaveforms packages/GWDistributions packages/GWDetectors packages/GWTimeFrequencyDomains packages/GWNoise packages/GWMatchedFiltering packages/SurrogateWaveforms; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:
@@ -48,7 +48,7 @@ test-integration-conversion:
 
 # ForwardDiff and Mooncake waveform gradients against finite differences.
 test-integration-waveforms:
-    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWWaveforms -e 'using Pkg; Pkg.instantiate(); include("integration/GWWaveforms/runtests.jl")'
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/FrequencyDomainWaveforms -e 'using Pkg; Pkg.instantiate(); include("integration/FrequencyDomainWaveforms/runtests.jl")'
 
 # Native and compiled geometry, timing, and phase-sensitive projection gradients.
 test-integration-detectors:
@@ -60,7 +60,7 @@ test-integration-inference:
 
 # NRSur7dq4/v2 AD: ForwardDiff and Mooncake. Downloads the model data on first use (or set GWSURROGATES_DATA_DIR); the compile times are several minutes.
 test-integration-surrogates:
-    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSurrogates -e 'using Pkg; Pkg.instantiate(); include("integration/GWSurrogates/runtests.jl")'
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/SurrogateWaveforms -e 'using Pkg; Pkg.instantiate(); include("integration/SurrogateWaveforms/runtests.jl")'
 
 # Layout comparison; output includes timings, allocations, CPU, and Julia version.
 benchmark-inference:

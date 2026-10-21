@@ -5,28 +5,28 @@ import os
 import sys
 
 PACKAGES = (
-    "AbstractGWWaveforms",
+    "AbstractWaveforms",
     "LALWaveforms",
     "GWParameterConversion",
-    "GWWaveforms",
+    "FrequencyDomainWaveforms",
     "GWDistributions",
     "GWDetectors",
     "GWTimeFrequencyDomains",
     "GWNoise",
     "GWMatchedFiltering",
-    "GWSurrogates",
+    "SurrogateWaveforms",
 )
 AFFECTED = {
     "GWTimeFrequencyDomains": {"GWTimeFrequencyDomains", "GWNoise", "GWDetectors", "GWMatchedFiltering"},
-    "AbstractGWWaveforms": {"AbstractGWWaveforms", "LALWaveforms", "GWWaveforms", "GWSurrogates"},
-    "LALWaveforms": {"LALWaveforms", "GWWaveforms"},
-    "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "GWWaveforms"},
-    "GWWaveforms": {"GWWaveforms"},
+    "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
+    "LALWaveforms": {"LALWaveforms", "FrequencyDomainWaveforms"},
+    "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "FrequencyDomainWaveforms"},
+    "FrequencyDomainWaveforms": {"FrequencyDomainWaveforms"},
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
     "GWMatchedFiltering": {"GWMatchedFiltering"},
-    "GWSurrogates": {"GWSurrogates"},
+    "SurrogateWaveforms": {"SurrogateWaveforms"},
 }
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 
@@ -44,7 +44,7 @@ def select_packages(paths):
         if len(parts) >= 3 and parts[0] == "packages" and parts[1] in AFFECTED:
             selected.update(AFFECTED[parts[1]])
         elif path.startswith("python/surrogates/") or path == "python/generate_surrogates.py":
-            selected.update(AFFECTED["GWSurrogates"])
+            selected.update(AFFECTED["SurrogateWaveforms"])
         elif path.startswith("python/"):
             selected.update(AFFECTED["GWParameterConversion"] | {"GWDetectors", "GWMatchedFiltering"})
         else:

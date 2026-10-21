@@ -1,4 +1,4 @@
-"""Generate GWSurrogates reference fixtures from gwsurrogate (NRSur7dq4, NRSur7dq4v2).
+"""Generate SurrogateWaveforms reference fixtures from gwsurrogate (NRSur7dq4, NRSur7dq4v2).
 
 Writes ``reference/surrogates/<model>_coorbital.npz``: for each case the mass ratio, the
 time-dependent coorbital-frame spins on the ``t_coorb`` grid, the node fit values of one
@@ -36,7 +36,7 @@ MODELS: dict[str, str] = {
 
 ZENODO_RECORD = "https://zenodo.org/records/22257361/files"
 
-# Must match MODEL_FILES in packages/GWSurrogates/src/data.jl.
+# Must match MODEL_FILES in packages/SurrogateWaveforms/src/data.jl.
 SHA256: dict[str, str] = {
     "NRSur7dq4": "3fc2f58f6ed7a4fff58856b6c01a7dc9155954d2b9fa5d58126a7807826d45d5",
     "NRSur7dq4v2": "62f3afb2baeb837ea19692ff6ca8737808e336cfbd9881c474147ae133efc9de",

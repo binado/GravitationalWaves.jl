@@ -1,7 +1,7 @@
 using Test
 using LALWaveforms
 
-include("../../AbstractGWWaveforms/test/contract.jl")
+include("../../AbstractWaveforms/test/contract.jl")
 
 @testset "LALWaveforms" begin
     include("test_library.jl")

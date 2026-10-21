@@ -1,5 +1,5 @@
 @testset "geometry" begin
-    @test keys(detectors) == (:H1, :L1, :V1, :K1)
+    @test keys(detectors) == (:H1, :L1, :V1, :K1, :E1, :E2, :E3, :S1, :S2, :R1, :R2, :C1, :C2)
     for (key, d) in pairs(detectors)
         @test d isa Detector
         @test detectors[key] === d

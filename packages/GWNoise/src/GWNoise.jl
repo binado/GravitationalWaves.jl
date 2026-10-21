@@ -14,10 +14,12 @@ import FFTW
 import LinearAlgebra
 using Random: AbstractRNG, default_rng, randn
 
+export available_psds, psd_path
 export TabulatedPSD, read_psd, read_asd, psd, asd
 export GaussianNoise, frequencies, noise_fd, noise_fd!, noise_td
 
 include("psd.jl")
+include("bundled.jl")
 include("noise.jl")
 
 end

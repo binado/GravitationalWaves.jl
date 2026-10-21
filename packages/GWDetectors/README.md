@@ -28,6 +28,38 @@ after the last table entry GPS−UTC is assumed to remain 18 seconds. This follo
 LAL's UTC-based approximation without a UT1 correction. At a positive leap second,
 23:59:60 and the following 00:00:00 map to the same Julian day.
 
+## Sensitivities and detector designs
+
+`detectors` also includes triangular ET sites `E1`–`E3`, ET L sites
+`S1`, `S2`, `R1`, `R2`, and CE sites `C1`, `C2`. These use the supplied
+[geometry catalog](data/geometry.toml), with nominal full arm
+lengths of 10 km, 15 km, and 40 km respectively. `S1`/`R1` are aligned;
+`S2`/`R2` are misaligned. `C1`/`C2` use the Hanford/Livingston sites.
+The original four detectors retain their pinned LAL Cartesian constants.
+
+GWNoise bundles twelve text tables of one-sided PSDs
+in strain²/Hz, with frequency in Hz. Load them explicitly with GWNoise:
+
+```julia
+using GWDetectors, GWNoise
+
+curve = read_psd(psd_path(sensitivities.H1))
+value = psd(100.0, curve)
+curve_names = available_psds()  # all designs, including alternatives
+alternative = read_psd(psd_path(:ET_COBA_20km); interpolation = :loglog)
+```
+
+`psd_path` accepts symbols or strings. Detector defaults in `sensitivities` come from the supplied
+[sensitivity catalog](data/sensitivity.toml): H1/L1 use A+,
+V1 uses Virgo O5 low, K1 uses KAGRA 128 Mpc, E1–E3 use ET COBA 10 km,
+S1/S2/R1/R2 use ET COBA 15 km, and C1/C2 use the CE reference curve.
+Curve names identify sensitivity designs independently of geometry; choosing
+an alternative PSD does not change arm lengths. GWNoise controls interpolation
+and frequency coverage; its default is to throw outside the tabulated band.
+GWNoise provides local paths; GWDetectors maps detector names to curve names
+without depending on GWNoise at runtime.
+The supplied catalog comments retain their original project context.
+
 ## Composition with waveform generators
 
 Both waveform backends return the `(; plus, cross)` accepted by `project_fd`:

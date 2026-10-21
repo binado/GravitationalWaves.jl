@@ -82,3 +82,28 @@ known target length. `frequency_domain(td)` still requires even lengths.
 
 Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
 with `GaussianNoise(curve, td; ...)` and requires separate output validation.
+
+## Bundled detector noise curves
+
+`available_psds()` lists twelve bundled designs: A+, Virgo O5 low/high, KAGRA
+128 Mpc, ET D and COBA 10/15/20 km, and CE reference, 20 km,
+20 km post-merger, and 40 km low-frequency curves. `psd_path(name)` accepts
+a symbol or string and returns a local table path.
+
+```julia
+using GWNoise
+curve = read_psd(psd_path(:AplusDesign))
+value = psd(100.0, curve)
+```
+
+The supplied files are retained verbatim in `data/noise_curves`; columns are
+frequency in Hz and one-sided PSD in strain²/Hz. No additional provenance or
+licensing information was supplied with the tables. Interpolation and coverage
+follow `read_psd` and `psd`, including errors outside the tabulated band by default.
+
+GWDetectors provides independent geometry and default sensitivity mappings:
+
+```julia
+using GWDetectors
+curve = read_psd(psd_path(sensitivities.H1))
+```

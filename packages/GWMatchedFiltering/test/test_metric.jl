@@ -94,3 +94,10 @@ end
     blocks = FrequencyDomainMetric(blocks_domain, diagonal_blocks)
     @test complex_inner_product(a, b, diagonal) ≈ complex_inner_product(a, b, blocks)
 end
+
+@testset "Metric keyword metadata uses floating coordinates" begin
+    f = 0:(1 << 62):(1 << 62)
+    metric = FrequencyDomainMetric(ones(2, 1); frequencies = f, channels = (:H1,))
+    @test frequency_spacing(metric) isa Float64
+    @test optimal_snr_squared(ones(ComplexF64, 2, 1), metric) > 0
+end

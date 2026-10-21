@@ -39,8 +39,8 @@ function FrequencyDomainMetric(
         spectrum::AbstractArray{<:Number}; frequencies::AbstractRange, channels,
         minimum_frequency = first(frequencies), maximum_frequency = last(frequencies), nsamples = nothing,
     )
-    f = frequencies
-    check_grid(f)
+    check_grid(frequencies)
+    f = range(GWSeries.metadata_value(first(frequencies)); step = GWSeries.metadata_value(step(frequencies)), length = length(frequencies))
     names = GWSeries.channel_order(channels)
     bins = analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
     prepared = prepare_metric(spectrum, length(f), length(names), bins)

@@ -104,5 +104,6 @@ arrays. Prepare windows outside differentiation.
 
 AD acceptance covers fixed metadata and numerical samples, including the
 `flatten → raw kernel → reconstruction` boundary. FFT differentiation is outside
-this contract. ArrayInterface integration is optional and does not advertise
+this contract. StaticArrays interoperability uses a small optional StaticArraysCore extension.
+ArrayInterface integration is optional and does not advertise
 pointer/stride capabilities or change host-versus-traced kernel selection.

@@ -4,12 +4,12 @@ Read one-sided PSD/ASD tables and draw stationary Gaussian strain noise in Julia
 PSD estimation and continuous streaming are outside the current scope.
 
 ```julia
-using GWNoise, GWTimeFrequencyDomains, Random
+using GWNoise, GWSeries, Random, FFTW
 
 curve = read_psd("H1_psd.txt")  # or read_asd("H1_asd.txt")
 S = psd.(range(20, 1024; step = 0.25), curve)
 
-td = TimeDomain(;epoch=1126259460.0, nsamples=8192, sampling_frequency=2048, channels=(:H1,))
+td = TimeSeries(zeros(8192); epoch=1126259460.0, sampling_frequency=2048, channels=(:H1,))
 model = GaussianNoise(
     curve, td;
     minimum_frequency = 20.0, maximum_frequency = 1024.0,
@@ -62,26 +62,21 @@ buffers are cached in the model.
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.
 
-## Domain preparation and explicit validation
+## Series and metadata preparation
 
-`GaussianNoise(curve, td; ...)` takes a single-channel `TimeDomain` and prepares
-stationary numerical state. Epoch does not affect a draw. Draws return arrays;
-`noise_fd` and `noise_td` consume only their prepared model. There are no sample
-wrappers or series-returning overloads.
+`GaussianNoise(curve, prototype::TimeSeries; ...)` prepares a single-channel
+stationary segment. Alternatively supply `nsamples`, `epoch`, `channels`, and
+`sampling_frequency` or `sampling_interval` as keywords without allocating a prototype.
+Models store sampling metadata and the effective PSD, independently of sample buffers.
 
-Before repeated draws into `out`, call `check_data(domain, out)`
-and `check_compatible(domain, model)` explicitly. Compatibility checks sampling
-and channel identity, ignoring epoch; numerical draw methods do not repeat these
-checks. Invalid output shapes are outside their preconditions. `frequencies`
-is shared with GWTimeFrequencyDomains.
+Draws return one-channel FrequencySeries or TimeSeries. `noise_fd!` accepts either
+series or ordinary vector/matrix storage; series compatibility checks grid and channels
+while ignoring epoch. Raw-buffer methods check shape. The original time sample count
+is retained for correct odd/even inverse transforms.
 
-All FFT conversions are implemented by GWTimeFrequencyDomains; GWNoise loads FFTW
-and LinearAlgebra to activate that package's FFT extension. Odd time-domain lengths
-remain supported through `to_timedomain(model.time_domain, n_fd)`, which uses the
-known target length. `frequency_domain(td)` still requires even lengths.
-
-Version 0.2 replaces `GaussianNoise(curve; sampling_frequency, nsamples, ...)`
-with `GaussianNoise(curve, td; ...)` and requires separate output validation.
+GWSeries implements physical transforms through AbstractFFTs. Load a backend such as
+FFTW when drawing time-domain noise; GWNoise does not load a backend implicitly.
+Frequency-domain draws and PSD preparation do not need an FFT backend.
 
 ## Bundled detector noise curves
 

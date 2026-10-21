@@ -1,3 +1,6 @@
+if !isdefined(@__MODULE__, :time_prototype)
+    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
+end
 using JSON
 
 @testset "bilby and NumPy references" begin
@@ -14,20 +17,20 @@ using JSON
         h = ComplexF64[0 0; 1 + 2im 2 - im; 2im -1; -1 im; 0.5 2]
         d = ComplexF64[0 0; 2 - im -1 + 3im; im 2; 1 + 2im -im; 1 -0.5im]
         psds = Float64[0 0; 2 3; 3 4; 4 5; 5 6]
-        metric_domain = FrequencyDomain(; frequencies = f, epoch = 0.0, channels = (:A, :B))
+        metric_domain = frequency_prototype(; frequencies = f, epoch = 0.0, channels = (:A, :B))
         metric = FrequencyDomainMetric(metric_domain, psds)
-        @test complex_inner_product(metric_domain, h, d, metric) ≈ ascomplex(reference["diagonal_overlap"]) rtol = 1.0e-14
-        @test optimal_snr_squared(metric_domain, h, metric) ≈ reference["diagonal_norm"] rtol = 1.0e-14
-        single_domain = FrequencyDomain(; frequencies = f, epoch = 0.0, channels = (:A,))
+        @test complex_inner_product(h, d, metric) ≈ ascomplex(reference["diagonal_overlap"]) rtol = 1.0e-14
+        @test optimal_snr_squared(h, metric) ≈ reference["diagonal_norm"] rtol = 1.0e-14
+        single_domain = frequency_prototype(; frequencies = f, epoch = 0.0, channels = (:A,))
         single = FrequencyDomainMetric(single_domain, psds[:, 1])
-        @test matched_filter_snr(single_domain, h[:, 1], d[:, 1], single) ≈ ascomplex(reference["single_matched"]) rtol = 1.0e-14
+        @test matched_filter_snr(h[:, 1], d[:, 1], single) ≈ ascomplex(reference["single_matched"]) rtol = 1.0e-14
         S = zeros(ComplexF64, 5, 2, 2)
         S[:, 1, 1] = psds[:, 1]
         S[:, 2, 2] = psds[:, 2]
         S[2:end, 1, 2] .= 0.2 + 0.3im
         S[2:end, 2, 1] .= 0.2 - 0.3im
-        correlated_domain = FrequencyDomain(; frequencies = f, epoch = 0.0, channels = (:A, :B))
+        correlated_domain = frequency_prototype(; frequencies = f, epoch = 0.0, channels = (:A, :B))
         correlated = FrequencyDomainMetric(correlated_domain, S)
-        @test complex_inner_product(correlated_domain, h, d, correlated) ≈ ascomplex(reference["correlated_overlap"]) rtol = 1.0e-14
+        @test complex_inner_product(h, d, correlated) ≈ ascomplex(reference["correlated_overlap"]) rtol = 1.0e-14
     end
 end

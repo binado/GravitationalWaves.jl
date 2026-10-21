@@ -11,7 +11,7 @@ function planck_transition(x)
 end
 
 """
-    PlanckWindow(td::TimeDomain; start_width::Real, end_width::Real)
+    PlanckWindow(td::TimeSeries; start_width::Real, end_width::Real)
 
 Prepare a Planck taper on the fixed sampling grid `td`. Widths are finite,
 nonnegative transition durations in seconds; zero disables the corresponding edge.
@@ -36,8 +36,8 @@ struct PlanckWindow{D <: Real, T <: AbstractFloat}
     PlanckWindow(spacing, weights, ::Validated) = new{typeof(spacing), eltype(weights)}(spacing, weights)
 end
 
-function PlanckWindow(td::TimeDomain; start_width::Real, end_width::Real)
-    dt, start, stop = promote(step(td), metadata(start_width), metadata(end_width))
+function PlanckWindow(td::TimeSeries; start_width::Real, end_width::Real)
+    dt, start, stop = promote(step(td), metadata_value(start_width), metadata_value(end_width))
     isfinite(start) && start >= 0 || throw(ArgumentError("start width must be finite and nonnegative"))
     isfinite(stop) && stop >= 0 || throw(ArgumentError("end width must be finite and nonnegative"))
     n = nsamples(td)
@@ -56,7 +56,7 @@ nsamples(w::PlanckWindow) = length(w.weights)
 Base.step(w::PlanckWindow) = w.spacing
 
 """Check a time domain's sample count and spacing against a prepared window on the host; ignore epoch and channels."""
-function check_compatible(td::TimeDomain, w::PlanckWindow)
+function check_compatible(td::TimeSeries, w::PlanckWindow)
     nsamples(td) == nsamples(w) || throw(DimensionMismatch("sample count does not match window"))
     dt, dw = step(td), step(w)
     check_coordinate(dt, dw, min(dt, dw), "window sample spacings")
@@ -93,3 +93,21 @@ function apply_window!(out::AbstractArray{<:Number}, w::PlanckWindow, h::Abstrac
     return out
 end
 apply_window!(h::AbstractArray{<:Number}, w::PlanckWindow) = apply_window!(h, w, h)
+
+function PlanckWindow(; nsamples::Integer, sampling_interval::Real, start_width::Real, end_width::Real)
+    nsamples >= 0 || throw(ArgumentError("sample count must be nonnegative"))
+    # A range is a storage-free prototype; no sample buffer is allocated.
+    prototype = TimeSeries(range(0.0; length = nsamples, step = 0.0); epoch = 0.0, sampling_interval, channels = (:window,))
+    return PlanckWindow(prototype; start_width, end_width)
+end
+function apply_window(w::PlanckWindow, h::TimeSeries)
+    check_compatible(h, w)
+    return rebuild(h, apply_window(w, parent(h)), metadata(h))
+end
+function apply_window!(out::TimeSeries, w::PlanckWindow, h::TimeSeries)
+    check_same_grid(out, h)
+    check_compatible(h, w)
+    apply_window!(parent(out), w, parent(h))
+    return out
+end
+apply_window!(h::TimeSeries, w::PlanckWindow) = apply_window!(h, w, h)

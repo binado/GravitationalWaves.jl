@@ -31,7 +31,7 @@ Labels follow [`waveform_modes_fd`](@ref). The backend documents its reference-p
 function waveform_modes_td end
 
 """
-    hphc_td(generator, params; kwargs...) -> (; t, hplus, hcross)
+    hphc_td(generator, params; kwargs...) -> TimeSeries
 
 Time-domain polarizations in seconds and physical strain. Higher-mode generators evaluate
 [`waveform_modes_td`](@ref) once and assemble H = Σ ₋₂Yₗₘ hₗₘ, hplus = real(H),
@@ -75,11 +75,19 @@ function sum_modes(modes, coefficients)
     return h
 end
 
-function hphc_td(g::HigherModesWaveformGenerator, params::NamedTuple; kwargs...)
-    r = waveform_modes_td(g, params; kwargs...)
+function hphc_td(g::HigherModesWaveformGenerator, params::NamedTuple; dt = nothing, times = nothing, kwargs...)
+    (dt === nothing) != (times === nothing) || throw(ArgumentError("assembled TD waveforms require exactly one of dt and a uniform times range"))
+    if times !== nothing
+        times isa AbstractRange{<:Real} && step(times) > 0 && !isempty(times) || throw(ArgumentError("times must be a nonempty increasing uniform range"))
+    else
+        isfinite(dt) && dt > 0 || throw(ArgumentError("dt must be finite and positive"))
+    end
+    r = waveform_modes_td(g, params; dt, times, kwargs...)
     theta, phi = mode_angles(params, g)
     h = sum_modes(r.modes, mode_coefficients(r.mode_indices, theta, phi))
-    return (; t = r.t, hplus = real.(h), hcross = -imag.(h))
+    spacing = dt === nothing ? step(times) : dt
+    start = times === nothing ? first(r.t) : first(times)
+    return TimeSeries(hcat(real.(h), -imag.(h)); epoch = start, sampling_interval = spacing, channels = (:plus, :cross))
 end
 
 function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::HigherModesWaveformGenerator)
@@ -88,5 +96,5 @@ function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::HigherModesWa
     coefficients = mode_coefficients(r.mode_indices, theta, phi)
     hp = sum_modes(r.positive, coefficients)
     hn = sum_modes(r.negative, coefficients)
-    return (; plus = (hp .+ conj.(hn)) ./ 2, cross = (im / 2) .* (hp .- conj.(hn)))
+    return FrequencySeries(hcat((hp .+ conj.(hn)) ./ 2, (im / 2) .* (hp .- conj.(hn))); frequencies = f, epoch = 0.0, channels = (:plus, :cross))
 end

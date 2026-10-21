@@ -12,7 +12,7 @@ function numerical_api(x, hp, hc)
         time_delay_from_geocenter(x[1], x[2], x[5], d),
         time_delay(sky, d, other), light_travel_time(d, other),
         project_fd(
-            AD_DOMAIN, (; plus = hp, cross = hc), sky, d;
+            (; plus = hp, cross = hc), sky, d; frequencies = AD_F, epoch = epoch(AD_DOMAIN),
             reference_time = 1126259462 + x[5]
         ),
     )

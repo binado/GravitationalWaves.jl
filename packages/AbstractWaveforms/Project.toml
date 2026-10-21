@@ -3,7 +3,14 @@ uuid = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
+[deps]
+GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
+
+[sources]
+GWSeries = {path = "../GWSeries"}
+
 [compat]
+GWSeries = "0.1"
 Aqua = "0.8"
 JET = "0.11, 0.12"
 Test = "1"

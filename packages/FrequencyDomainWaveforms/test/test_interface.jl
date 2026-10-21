@@ -8,7 +8,7 @@ using LALWaveforms
     )
     f = range(0, 512; step = 0.25)
     # Code written against the interface only.
-    strain_norm(g) = sqrt(sum(abs2, hphc_fd(f, params, g).plus))
+    strain_norm(g) = sqrt(sum(abs2, hphc_fd(f, params, g)[:, :plus]))
 
     if lal_available()
         @test AbstractWaveformGenerator === LALWaveforms.AbstractWaveformGenerator

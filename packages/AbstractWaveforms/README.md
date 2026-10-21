@@ -2,12 +2,12 @@
 
 The interface shared by the gravitational-wave waveform backends in this repository,
 [`FrequencyDomainWaveforms`](../FrequencyDomainWaveforms) (pure Julia, differentiable) and [`LALWaveforms`](../LALWaveforms)
-(LALSimulation through `ccall`). It has no dependencies.
+(LALSimulation through `ccall`). It depends on the MIT GWSeries package.
 
 It defines `AbstractWaveformGenerator` and the generic function
 
 ```julia
-hphc_fd(f, params, generator) -> (; plus, cross)
+hphc_fd(f, params, generator) -> FrequencySeries
 ```
 
 where `f` is a uniform frequency grid starting at 0, `params` a `NamedTuple` with bilby's
@@ -81,3 +81,9 @@ coefficients are computed once per call, independently of sample count.
 `viewing_params` supplies a second observer configuration to check mode independence.
 The small committed `test/harmonics.csv` oracle is regenerated with
 `uv run --project python/surrogates python python/surrogates/generate_harmonics.py`.
+
+Assembled FD and TD outputs have channels `(:plus, :cross)`. Use `h[:, :plus]`
+or `h[:, :cross]` for ordinary vectors, and `flatten(h)` for raw matrix kernels.
+FD waveforms use epoch zero; TD coordinates are relative to the waveform peak.
+Assembled TD waveforms require `dt` or a uniform `times` range. Mode and
+amplitude/phase APIs retain their existing ordinary arrays and explicit labels.

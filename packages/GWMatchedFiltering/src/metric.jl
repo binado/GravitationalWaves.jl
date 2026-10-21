@@ -15,11 +15,11 @@ function analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
 end
 
 """
-    FrequencyDomainMetric(domain::FrequencyDomain, spectral_density;
-        minimum_frequency=first(frequencies(domain)),
-        maximum_frequency=last(frequencies(domain)), nsamples=nothing)
+    FrequencyDomainMetric(series::FrequencySeries, spectral_density;
+        minimum_frequency=first(frequencies(series)),
+        maximum_frequency=last(frequencies(series)), nsamples=nothing)
 
-Prepare a joint metric with first-argument conjugation and normalization supplied by the evaluation domain as `4frequency_spacing(domain)`.
+Prepare a joint metric with first-argument conjugation and normalization `4Δf` stored through the metric frequency grid.
 The domain frequency grid must be a uniform nonnegative `AbstractRange`. Supply PSDs with shape
 `(frequency, channel)` (or a vector for one channel), or Hermitian spectral
 matrices with shape `(frequency, channel, channel)`. Define cross spectra by
@@ -36,16 +36,21 @@ Zeros outside the band are allowed. No interpolation, jitter, pseudoinverse or
 automatic channel reordering is performed. Setup copies the prepared weights.
 """
 function FrequencyDomainMetric(
-        domain::FrequencyDomain, spectrum::AbstractArray{<:Number};
-        minimum_frequency = first(frequencies(domain)), maximum_frequency = last(frequencies(domain)), nsamples = nothing,
+        spectrum::AbstractArray{<:Number}; frequencies::AbstractRange, channels,
+        minimum_frequency = first(frequencies), maximum_frequency = last(frequencies), nsamples = nothing,
     )
-    f = frequencies(domain)
+    f = frequencies
     check_grid(f)
-    names = channels(domain)
+    names = GWSeries.channel_order(channels)
     bins = analysis_bins(f, minimum_frequency, maximum_frequency, nsamples)
     prepared = prepare_metric(spectrum, length(f), length(names), bins)
     return FrequencyDomainMetric(f, names, prepared, bins)
 end
+function FrequencyDomainMetric(series::FrequencySeries, spectrum::AbstractArray{<:Number}; kwargs...)
+    metadata(series).spectrum == :onesided || throw(ArgumentError("one-sided metrics require a one-sided spectrum"))
+    return FrequencyDomainMetric(spectrum; frequencies = frequencies(series), channels = channels(series), kwargs...)
+end
+frequency_spacing(metric::FrequencyDomainMetric) = step(metric.frequencies)
 
 prepare_metric(spectrum::AbstractVector{<:Real}, nf, nc, bins) =
     prepare_metric(reshape(spectrum, :, 1), nf, nc, bins)
@@ -75,7 +80,8 @@ function prepare_metric(spectrum::AbstractArray{<:Number, 3}, nf, nc, bins)
 end
 
 """Host-only stationary metric compatibility; the segment epoch is irrelevant."""
-function check_compatible(d::FrequencyDomain, metric::FrequencyDomainMetric)
+function check_compatible(d::FrequencySeries, metric::FrequencyDomainMetric)
+    metadata(d).spectrum == :onesided || throw(ArgumentError("one-sided metrics require a one-sided spectrum"))
     check_same_frequency_grid(frequencies(d), metric.frequencies)
     channels(d) == metric.channels || throw(ArgumentError("metric channel orders differ"))
     return nothing

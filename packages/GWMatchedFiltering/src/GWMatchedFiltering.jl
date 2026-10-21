@@ -1,9 +1,9 @@
 """Joint frequency-domain noise metrics, inner products, and SNR statistics."""
 module GWMatchedFiltering
 
-import GWTimeFrequencyDomains
-using GWTimeFrequencyDomains: FrequencyDomain, check_data, check_same_frequency_grid, frequencies, channels, frequency_spacing
-import GWTimeFrequencyDomains: check_compatible
+import GWSeries
+using GWSeries: FrequencySeries, metadata, check_same_grid, check_data, check_same_frequency_grid, frequencies, channels
+import GWSeries: check_compatible, frequency_spacing
 
 using LinearAlgebra: Hermitian, I, cholesky, ishermitian
 using StaticArrays: SMatrix, SVector

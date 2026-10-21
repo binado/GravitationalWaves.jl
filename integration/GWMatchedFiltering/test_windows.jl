@@ -1,5 +1,8 @@
+if !isdefined(@__MODULE__, :time_prototype)
+    include(joinpath(@__DIR__, "../../packages/GWSeries/test/prototypes.jl"))
+end
 @testset "Fixed Planck window ForwardDiff and Mooncake" begin
-    td = TimeDomain(; epoch = 1126259460.125, nsamples = 17, sampling_frequency = 8, channels = (:H1,))
+    td = time_prototype(; epoch = 1126259460.125, nsamples = 17, sampling_frequency = 8, channels = (:H1,))
     window = PlanckWindow(td; start_width = 0.5, end_width = 0.75)
     w = window.weights
     loss(h) = sum(abs2, apply_window(window, h))

@@ -1,3 +1,6 @@
+if !isdefined(@__MODULE__, :time_prototype)
+    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
+end
 using JSON
 
 @testset "LAL and Bilby fixtures" begin
@@ -46,10 +49,10 @@ using JSON
             d = detectors[Symbol(c["name"])]
             p = (; plus = complex_vector(c["plus"]), cross = complex_vector(c["cross"]))
             f = range(first(c["f"]); step = c["f"][2] - c["f"][1], length = length(c["f"]))
-            domain = FrequencyDomain(; frequencies = f, epoch = c["start_time"], channels = (Symbol(c["name"]),))
+            domain = frequency_prototype(; frequencies = f, epoch = c["start_time"], channels = (Symbol(c["name"]),))
             check_data(domain, p.plus)
             check_data(domain, p.cross)
-            actual = project_fd(domain, p, sky, d; reference_time = c["reference_time"])
+            actual = project_fd(p, sky, d; frequencies = frequencies(domain), epoch = epoch(domain), reference_time = c["reference_time"])
             expected = complex_vector(c["strain"])
             # Bilby reduces sidereal angles internally; timing differences of
             # ~1e-13 s accumulate phase at the largest frequency.

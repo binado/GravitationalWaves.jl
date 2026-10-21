@@ -102,13 +102,13 @@ const CASES = [
                 g = generator(approximant; kw...)
                 h = hphc_fd(grid, params, g)
                 h_lal = hphc_fd(grid, params, lal_twin(g))
-                err_plus = relative_error(h.plus, h_lal.plus)
-                err_cross = relative_error(h.cross, h_lal.cross)
+                err_plus = relative_error(h[:, :plus], h_lal[:, :plus])
+                err_cross = relative_error(h[:, :cross], h_lal[:, :cross])
                 @info "$name: relative error" plus = err_plus cross = err_cross
                 @test err_plus <= rtol
                 @test err_cross <= rtol
                 # The support must coincide exactly.
-                @test iszero.(h.plus) == iszero.(h_lal.plus)
+                @test iszero.(h[:, :plus]) == iszero.(h_lal[:, :plus])
             end
         end
 
@@ -119,7 +119,7 @@ const CASES = [
                 g = generator(approximant)
                 h = hphc_fd(grid, params, g)
                 h_lal = hphc_fd(grid, params, lal_twin(g))
-                @test relative_error(h.plus, h_lal.plus) <= 1.0e-10
+                @test relative_error(h[:, :plus], h_lal[:, :plus]) <= 1.0e-10
             end
         end
     end

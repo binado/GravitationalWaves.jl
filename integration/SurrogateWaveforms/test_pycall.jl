@@ -16,7 +16,7 @@ import AbstractWaveforms
             native = SurrogateWaveforms.PrecessingGenerator(surrogate; ell_max, f_ref = 25.0)
             oracle = SurrogatePyCallWaveforms.load_generator(SurrogateWaveforms.data_path(model); model, ell_max, f_ref = 25.0)
             labels = Tuple((l, m) for l in 2:ell_max for m in (-l):l)
-            for grid in ((;), (; dt = 1 / 2048), (; times = collect(-0.1:(1 / 2048):0.01)))
+            for grid in ((;), (; dt = 1 / 2048), (; times = -0.1:(1 / 2048):0.01))
                 @testset "$(keys(grid))" begin
                     expected = AbstractWaveforms.waveform_modes_td(oracle, params; grid...)
                     actual = AbstractWaveforms.waveform_modes_td(native, params; grid...)
@@ -30,11 +30,12 @@ import AbstractWaveforms
                     keep = expected.t .<= surrogate.coorbital.t[end - 1] * tscale
                     @test any(keep)
                     @test maximum(abs, actual.modes[keep, :] - expected.modes[keep, :]) < 1.0e-11 * maximum(abs, expected.modes)
+                    isempty(grid) && continue
                     expected_hp = AbstractWaveforms.hphc_td(oracle, params; grid...)
                     actual_hp = AbstractWaveforms.hphc_td(native, params; grid...)
-                    @test actual_hp.t ≈ expected_hp.t
-                    @test maximum(abs, actual_hp.hplus[keep] - expected_hp.hplus[keep]) < 1.0e-11 * maximum(abs, expected_hp.hplus)
-                    @test maximum(abs, actual_hp.hcross[keep] - expected_hp.hcross[keep]) < 1.0e-11 * maximum(abs, expected_hp.hcross)
+                    @test collect(times(actual_hp)) ≈ collect(times(expected_hp))
+                    @test maximum(abs, actual_hp[:, :plus][keep] - expected_hp[:, :plus][keep]) < 1.0e-11 * maximum(abs, expected_hp[:, :plus])
+                    @test maximum(abs, actual_hp[:, :cross][keep] - expected_hp[:, :cross][keep]) < 1.0e-11 * maximum(abs, expected_hp[:, :cross])
                 end
             end
         end

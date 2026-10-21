@@ -1,8 +1,8 @@
 module GWDetectors
 
 import TOML
-import GWTimeFrequencyDomains
-using GWTimeFrequencyDomains: FrequencyDomain, frequencies, frequency_spacing, nsamples, epoch
+import GWSeries
+using GWSeries: FrequencySeries, metadata, channels, frequencies, frequency_spacing, nsamples, epoch
 
 using LinearAlgebra: cross, dot
 using StaticArrays: SVector, @SMatrix

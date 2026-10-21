@@ -11,19 +11,20 @@ Frequency domains additionally compare epochs using the spacing `1/(N df)` of th
 even-length FFT that would produce them. Epochs must match because
 frequency-domain phases are referenced to the epoch.
 """
-function check_same_grid(a::TimeDomain, b::TimeDomain)
+function check_same_grid(a::TimeSeries, b::TimeSeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
     check_range(times(a), times(b), "epochs", EPOCH_HINT)
     return nothing
 end
-function check_same_grid(a::FrequencyDomain, b::FrequencyDomain)
+function check_same_grid(a::FrequencySeries, b::FrequencySeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
+    metadata(a).spectrum == metadata(b).spectrum || throw(ArgumentError("spectrum conventions differ"))
     check_range(frequencies(a), frequencies(b), "origins")
     epoch_spacing = inv(max(2 * (nsamples(a) - 1), 1) * frequency_spacing(a))
     check_coordinate(epoch(a), epoch(b), epoch_spacing, "epochs", EPOCH_HINT)
     return nothing
 end
-check_same_grid(::AbstractDomain, ::AbstractDomain) = throw(ArgumentError("domain kinds differ"))
+check_same_grid(::AbstractSeries, ::AbstractSeries) = throw(ArgumentError("domain kinds differ"))
 
 """
     check_same_frequency_grid(a, b)
@@ -37,7 +38,7 @@ check_same_frequency_grid(a::AbstractRange, b::AbstractRange) = check_range(a, b
 function boundary_index(x, boundary::Real)
     grid = coordinates(x)
     origin, spacing = first(grid), step(grid)
-    value = metadata(boundary)
+    value = metadata_value(boundary)
     isfinite(value) || throw(ArgumentError("crop boundary must be finite"))
     displacement = value - origin
     value == origin && return 0
@@ -52,41 +53,26 @@ end
     crop(domain, values; start, stop)
 
 Copy the half-open interval `[start, stop)` with grid-aligned boundaries. Bounds
-are in seconds for a `TimeDomain` and Hz for a `FrequencyDomain`. Throws
+are in seconds for a `TimeSeries` and Hz for a `FrequencySeries`. Throws
 `ArgumentError` for non-finite, off-grid, or out-of-extent boundaries and when
 `start` follows `stop`.
 """
-function crop(x::AbstractDomain, values::AbstractVecOrMat{<:Number}; start::Real, stop::Real)
-    check_data(x, values)
+function crop(x::AbstractSeries; start::Real, stop::Real)
     lo, hi = boundary_index(x, start), boundary_index(x, stop)
     lo <= hi || throw(ArgumentError("crop start must precede stop"))
-    data = ndims(values) == 1 ? values[(lo + 1):hi] : values[(lo + 1):hi, :]
-    return (rebuild(x, size(data, 1), first(coordinates(x)) + lo * step(coordinates(x))), data)
+    return x[(lo + 1):hi, :]
 end
 
-"""
-    pad(domain, values; before = 0, after = 0)
-
-Zero pad by sample/bin counts; shift the epoch (time) or origin (frequency) when
-padding before. Counts must be nonnegative, and frequency padding cannot create
-negative frequencies.
-"""
-function pad(x::AbstractDomain, values::AbstractVecOrMat{<:Number}; before::Integer = 0, after::Integer = 0)
-    check_data(x, values)
+"""Zero-pad sample/bin counts, shifting the origin when padding before."""
+function pad(x::AbstractSeries; before::Integer = 0, after::Integer = 0)
     before >= 0 && after >= 0 || throw(ArgumentError("padding counts must be nonnegative"))
     n = Base.checked_add(Base.checked_add(nsamples(x), Int(before)), Int(after))
     origin = first(coordinates(x)) - before * step(coordinates(x))
-    isfinite(origin) || throw(ArgumentError("padded origin must be finite"))
-    x isa FrequencyDomain && origin < 0 && throw(ArgumentError("padding creates negative frequencies"))
-    isfinite(origin + max(n - 1, 0) * step(coordinates(x))) ||
-        throw(ArgumentError("padded coordinates must be finite"))
-    dims = ndims(values) == 1 ? (n,) : (n, size(values, 2))
-    data = similar(values, dims)
+    isfinite(origin) && isfinite(origin + max(n - 1, 0) * step(coordinates(x))) || throw(ArgumentError("padded coordinates must be finite"))
+    x isa FrequencySeries && metadata(x).spectrum == :onesided && origin < 0 && throw(ArgumentError("padding creates negative one-sided frequencies"))
+    data = similar(parent(x), (n, size(x, 2)))
     fill!(data, zero(eltype(data)))
-    if ndims(data) == 1
-        data[(before + 1):(before + nsamples(x))] .= values
-    else
-        data[(before + 1):(before + nsamples(x)), :] .= values
-    end
-    return (rebuild(x, size(data, 1), origin), data)
+    data[(before + 1):(before + nsamples(x)), :] .= parent(x)
+    m = x isa TimeSeries ? merge(metadata(x), (; epoch = origin)) : merge(metadata(x), (; frequency_start = origin))
+    return rebuild(x, data, m)
 end

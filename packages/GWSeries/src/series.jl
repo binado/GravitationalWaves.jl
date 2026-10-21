@@ -1,0 +1,115 @@
+"""TimeSeries(array; epoch, sampling_interval, channels). Rows are time samples."""
+struct TimeSeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{T}
+    data::A
+    meta::M
+    TimeSeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T} = new{T, typeof(a), typeof(m)}(a, m)
+end
+
+"""FrequencySeries(array; epoch, frequency_start, frequency_spacing, channels, spectrum=:onesided)."""
+struct FrequencySeries{T, A <: AbstractMatrix{T}, M <: NamedTuple} <: AbstractSeries{T}
+    data::A
+    meta::M
+    FrequencySeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T} = new{T, typeof(a), typeof(m)}(a, m)
+end
+
+matrix_storage(a::AbstractMatrix{<:Number}) = a
+matrix_storage(a::AbstractVector{<:Number}) = reshape(a, :, 1)
+matrix_storage(a) = throw(ArgumentError("samples must be a numeric vector or matrix"))
+
+function time_metadata(; epoch::Real, channels, sampling_interval = nothing, sampling_frequency = nothing)
+    (sampling_interval === nothing) != (sampling_frequency === nothing) ||
+        throw(ArgumentError("supply exactly one of sampling_interval and sampling_frequency"))
+    t0 = metadata_value(epoch)
+    isfinite(t0) || throw(ArgumentError("epoch must be finite"))
+    spacing = if sampling_interval === nothing
+        fs = metadata_value(sampling_frequency)
+        isfinite(fs) && fs > 0 || throw(ArgumentError("sampling frequency must be finite and positive"))
+        inv(fs)
+    else
+        metadata_value(sampling_interval)
+    end
+    isfinite(spacing) && spacing > 0 || throw(ArgumentError("sampling interval must be finite and positive"))
+    return (; epoch = t0, sampling_interval = spacing, channels = channel_order(channels))
+end
+
+function TimeSeries(a; kwargs...)
+    data = matrix_storage(a)
+    m = time_metadata(; kwargs...)
+    check_storage(data, m.channels)
+    isfinite(m.epoch + max(size(data, 1) - 1, 0) * m.sampling_interval) ||
+        throw(ArgumentError("sample coordinates must be finite"))
+    return TimeSeries(data, m, Validated())
+end
+
+function frequency_metadata(; epoch::Real, channels, frequency_start = nothing, frequency_spacing = nothing, frequencies = nothing, spectrum = :onesided)
+    spectrum in (:onesided, :twosided) || throw(ArgumentError("spectrum must be :onesided or :twosided"))
+    if frequencies !== nothing
+        frequencies isa AbstractRange{<:Real} || throw(ArgumentError("frequencies must be a uniform real range"))
+        frequency_start === nothing && frequency_spacing === nothing || throw(ArgumentError("conflicting frequency specifications"))
+        frequency_start, frequency_spacing = first(frequencies), step(frequencies)
+    end
+    frequency_start isa Real && frequency_spacing isa Real || throw(ArgumentError("supply frequency_start and frequency_spacing, or frequencies"))
+    t0, f0, df = metadata_value(epoch), metadata_value(frequency_start), metadata_value(frequency_spacing)
+    isfinite(t0) || throw(ArgumentError("epoch must be finite"))
+    isfinite(f0) && isfinite(df) && df > 0 || throw(ArgumentError("frequency origin must be finite and spacing finite and positive"))
+    spectrum == :onesided && f0 < 0 && throw(ArgumentError("one-sided frequencies must be nonnegative"))
+    return (; epoch = t0, frequency_start = f0, frequency_spacing = df, channels = channel_order(channels), spectrum)
+end
+
+function FrequencySeries(a; frequencies = nothing, kwargs...)
+    data = matrix_storage(a)
+    m = frequency_metadata(; frequencies, kwargs...)
+    check_storage(data, m.channels)
+    frequencies === nothing || length(frequencies) == size(data, 1) || throw(DimensionMismatch("frequency count does not match storage"))
+    isfinite(m.frequency_start + max(size(data, 1) - 1, 0) * m.frequency_spacing) || throw(ArgumentError("frequency coordinates must be finite"))
+    return FrequencySeries(data, m, Validated())
+end
+
+function check_storage(a, names)
+    Base.require_one_based_indexing(a)
+    size(a, 2) == length(names) || throw(DimensionMismatch("channel count does not match storage"))
+    return nothing
+end
+
+"""Canonical constructor keywords, independent of sample storage and precision."""
+metadata(s::AbstractSeries) = s.meta
+"""Return parent storage and constructor keywords without copying samples."""
+flatten(s::AbstractSeries) = (parent(s), metadata(s))
+Base.parent(s::AbstractSeries) = s.data
+Base.size(s::AbstractSeries) = size(parent(s))
+Base.axes(s::AbstractSeries) = axes(parent(s))
+Base.IndexStyle(::Type{<:AbstractSeries}) = IndexCartesian()
+Base.IndexStyle(::Type{<:TimeSeries{T, A}}) where {T, A} = IndexStyle(A)
+Base.IndexStyle(::Type{<:FrequencySeries{T, A}}) where {T, A} = IndexStyle(A)
+Base.@propagate_inbounds Base.getindex(s::AbstractSeries, i::Int) = parent(s)[i]
+Base.@propagate_inbounds Base.getindex(s::AbstractSeries, i::Int, j::Int) = parent(s)[i, j]
+Base.@propagate_inbounds function Base.setindex!(s::AbstractSeries, v, i::Int)
+    parent(s)[i] = v
+    return s
+end
+Base.@propagate_inbounds function Base.setindex!(s::AbstractSeries, v, i::Int, j::Int)
+    parent(s)[i, j] = v
+    return s
+end
+Base.getindex(s::AbstractSeries, i::CartesianIndex) = parent(s)[i]
+Base.setindex!(s::AbstractSeries, v, i::CartesianIndex) = (setindex!(parent(s), v, i); s)
+Base.dataids(s::AbstractSeries) = Base.dataids(parent(s))
+Base.copy(s::AbstractSeries) = rebuild(s, copy(parent(s)), metadata(s))
+Base.similar(s::AbstractSeries, ::Type{T}) where {T} = rebuild(s, similar(parent(s), T), metadata(s))
+Base.similar(s::AbstractSeries, ::Type{T}, dims::Dims) where {T} = size(s) == dims ? rebuild(s, similar(parent(s), T, dims), metadata(s)) : similar(parent(s), T, dims)
+Base.similar(s::AbstractSeries, dims::Dims) = similar(s, eltype(s), dims)
+rebuild(::TimeSeries, a, m) = TimeSeries(a, m, Validated())
+rebuild(::FrequencySeries, a, m) = FrequencySeries(a, m, Validated())
+
+epoch(s::AbstractSeries) = metadata(s).epoch
+channels(s::AbstractSeries) = metadata(s).channels
+nsamples(s::AbstractSeries) = size(s, 1)
+sampling_interval(s::TimeSeries) = metadata(s).sampling_interval
+Base.step(s::TimeSeries) = sampling_interval(s)
+sampling_frequency(s::TimeSeries) = inv(sampling_interval(s))
+duration(s::TimeSeries) = nsamples(s) * sampling_interval(s)
+times(s::TimeSeries) = range(epoch(s); step = sampling_interval(s), length = nsamples(s))
+frequency_spacing(s::FrequencySeries) = metadata(s).frequency_spacing
+frequencies(s::FrequencySeries) = range(metadata(s).frequency_start; step = frequency_spacing(s), length = nsamples(s))
+coordinates(s::TimeSeries) = times(s)
+coordinates(s::FrequencySeries) = frequencies(s)

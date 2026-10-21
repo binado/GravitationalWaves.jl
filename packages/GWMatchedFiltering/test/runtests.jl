@@ -1,5 +1,5 @@
 using Test
-using GWTimeFrequencyDomains
+using GWSeries
 using GWMatchedFiltering
 using LinearAlgebra
 using Random

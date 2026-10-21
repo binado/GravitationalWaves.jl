@@ -5,13 +5,13 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 
 | Package | Purpose | License |
 |---------|---------|---------|
-| [AbstractWaveforms](packages/AbstractWaveforms) | Dependency-free waveform-generator interface shared by the waveform packages | MIT |
+| [AbstractWaveforms](packages/AbstractWaveforms) | Waveform-generator interface using GWSeries shared by the waveform packages | MIT |
 | [FrequencyDomainWaveforms](packages/FrequencyDomainWaveforms) | Native, differentiable TaylorF2, IMRPhenomD and IMRPhenomXAS waveforms | GPL-2.0-or-later |
 | [LALWaveforms](packages/LALWaveforms) | Direct calls to LALSimulation frequency-domain waveforms | GPL-2.0-or-later |
 | [GWParameterConversion](packages/GWParameterConversion) | Differentiable mass, spin, and frame conversions | GPL-2.0-or-later |
 | [GWDetectors](packages/GWDetectors) | Native, differentiable detector geometry, antenna patterns, timing, and FD projection | GPL-2.0-or-later |
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
-| [GWTimeFrequencyDomains](packages/GWTimeFrequencyDomains) | Detached sampling domains, explicit validation, and optional physical FFT plans | GPL-2.0-or-later |
+| [GWSeries](packages/GWSeries) | Sample/channel series, reconstructible metadata, and physical AbstractFFTs plans | MIT |
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
 | [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
 | [SurrogateWaveforms](packages/SurrogateWaveforms) | Differentiable NRSur7dq4 numerical-relativity surrogate (in progress) | MIT |
@@ -28,7 +28,7 @@ repo = "https://github.com/binado/GravitationalWaves.jl"
 Pkg.add([
     PackageSpec(url = repo, subdir = "packages/GWParameterConversion"),
     PackageSpec(url = repo, subdir = "packages/FrequencyDomainWaveforms"),
-    PackageSpec(url = repo, subdir = "packages/GWTimeFrequencyDomains"),
+    PackageSpec(url = repo, subdir = "packages/GWSeries"),
     PackageSpec(url = repo, subdir = "packages/GWDetectors"),
 ])
 ```
@@ -99,15 +99,14 @@ Loading both with `using` is unambiguous, and generic code can take any backend.
 [`GWDetectors`](packages/GWDetectors) composes with both waveform backends:
 
 ```julia
-using GWDetectors, GWTimeFrequencyDomains
+using GWDetectors, GWSeries
 
 f = 0.0:0.25:512.0
-fd = FrequencyDomain(;frequencies=f, epoch=1126259460.0, channels=(:H1,))
 sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
 detector = detectors.H1  # built-ins: H1, L1, V1, K1; use Detector(...) for custom geometry
 for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
     polarizations = hphc_fd(f, params, generator)
-    strain = project_fd(fd, polarizations, sky, detector)
+    strain = project_fd(polarizations, sky, detector; epoch=1126259460.0, channel=:H1)
 end
 ```
 
@@ -198,5 +197,5 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and every package except `AbstractWaveforms`, `GWDistributions` and `SurrogateWaveforms` use GPL-2.0-or-later.
-`AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.
+The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions` and `SurrogateWaveforms` use GPL-2.0-or-later.
+`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.

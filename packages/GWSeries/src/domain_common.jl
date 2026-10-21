@@ -1,7 +1,7 @@
-abstract type AbstractDomain end
+abstract type AbstractSeries{T} <: AbstractMatrix{T} end
 struct Validated end
 
-metadata(x::Real) = float(promote(x, 0.0)[1])
+metadata_value(x::Real) = float(promote(x, 0.0)[1])
 
 function channel_order(names)
     labels = Tuple(names)
@@ -12,19 +12,14 @@ function channel_order(names)
     return canonical
 end
 
-"""Segment epoch in seconds, independent of sample precision."""
-epoch(d::AbstractDomain) = d.epoch
-"""Ordered, unique Symbol channel names."""
-channels(d::AbstractDomain) = d.channels
-
 """Check numeric vector/matrix storage, one-based axes, sample count and channel count on the host."""
-function check_data(d::AbstractDomain, values::AbstractVecOrMat{<:Number})
+function check_data(d::AbstractSeries, values::AbstractVecOrMat{<:Number})
     Base.require_one_based_indexing(values)
     size(values, 1) == nsamples(d) || throw(DimensionMismatch("sample count does not match domain"))
     size(values, 2) == length(channels(d)) || throw(DimensionMismatch("channel count does not match domain"))
     return nothing
 end
-check_data(::AbstractDomain, values) = throw(ArgumentError("data must be a numeric vector or matrix, got $(typeof(values))"))
+check_data(::AbstractSeries, values) = throw(ArgumentError("data must be a numeric vector or matrix, got $(typeof(values))"))
 
 """Host compatibility check extended by packages owning prepared numerical objects."""
 function check_compatible end

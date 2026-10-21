@@ -160,7 +160,7 @@ end
                 gen = SurrogateWaveforms.PrecessingGenerator(sur; f_ref = ref["mks_f_ref"])
                 out = SurrogateWaveforms.hphc_td(gen, params; dt = ref["mks_dt"])
                 modes_si = SurrogateWaveforms.waveform_modes_td(gen, params; dt = ref["mks_dt"])
-                @test modes_si.t == out.t
+                @test all(isapprox.(modes_si.t, times(out); rtol = 0, atol = 8eps(maximum(abs, modes_si.t))))
                 @test modes_si.mode_indices == Tuple((l, m) for l in 2:gen.ell_max for m in (-l):l)
                 unseen = merge(params, (; inclination = 0.1, phi_ref = 0.8))
                 test_modes_td_contract(gen; params, viewing_params = unseen, dt = ref["mks_dt"])
@@ -173,11 +173,11 @@ end
                 @test minimum_frequency(gen) == gen.f_low
                 @test maximum_frequency(gen) === nothing
 
-                h = out.hplus .- im .* out.hcross
+                h = out[:, :plus] .- im .* out[:, :cross]
                 expected = ref["mks_h"]
                 @test length(h) == length(expected)
-                keep = out.t .<= sur.coorbital.t[end - 1] * SurrogateWaveforms.MSUN_IN_SECONDS * ref["mks_M"]
-                @test maximum(abs, out.t - ref["mks_t"]) < 1.0e-12
+                keep = collect(times(out)) .<= sur.coorbital.t[end - 1] * SurrogateWaveforms.MSUN_IN_SECONDS * ref["mks_M"]
+                @test maximum(abs, collect(times(out)) - ref["mks_t"]) < 1.0e-12
                 @test maximum(abs, h[keep] - expected[keep]) < 1.0e-11 * maximum(abs, expected)
             end
 
@@ -213,7 +213,7 @@ end
                         spin_1 = (p[3], p[4], p[5]), spin_2 = (p[6], 0.5, -0.3), inclination = p[7], phi_ref = p[8],
                     )
                     out = SurrogateWaveforms.hphc_td(gen, params; times = range(-0.4, 0.01; length = 40))
-                    return 1.0e21 * sum(out.hplus .* range(1, 2; length = 40) .+ 2 .* out.hcross)
+                    return 1.0e21 * sum(out[:, :plus] .* range(1, 2; length = 40) .+ 2 .* out[:, :cross])
                 end
                 p0 = [60.0, 2.2, 0.3, 0.2, 0.4, -0.1, 0.7, 0.3]
                 g = ForwardDiff.gradient(objective, p0)

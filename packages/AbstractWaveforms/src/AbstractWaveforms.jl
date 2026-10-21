@@ -4,10 +4,12 @@
 The interface shared by the waveform backends (`FrequencyDomainWaveforms`, `LALWaveforms`): the supertype
 [`AbstractWaveformGenerator`](@ref), the generic functions [`hphc_fd`](@ref),
 [`amplitude_phase_fd`](@ref) and [`validate_parameters`](@ref), and the accessors
-and capability queries every generator provides. Dependency-free, so generic code can depend
+and capability queries every generator provides. Uses the MIT GWSeries types, so generic code can depend
 on it alone.
 """
 module AbstractWaveforms
+
+using GWSeries: TimeSeries, FrequencySeries, times, channels
 
 export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
 export HigherModesWaveformGenerator, waveform_modes_fd, waveform_modes_td, hphc_td
@@ -67,7 +69,7 @@ must support this method under the same conditions as their `hphc_fd` implementa
 function amplitude_phase_fd end
 
 """
-    hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
+    hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> FrequencySeries
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz).
 
@@ -83,7 +85,7 @@ backend outputs without performing runtime validation.
 
 Grid requirements depend on the backend. The zero-start uniform-grid convention is checked
 by [`check_frequency_grid`](@ref); backends may also support ranges starting above zero.
-The returned arrays have `length(f)` entries and are zero outside
+The returned series has `length(f)` rows and channels `(:plus, :cross)` and is zero outside
 `minimum_frequency(generator) ≤ f ≤ maximum_frequency(generator)`, where a `nothing` maximum
 means the last grid point ([`frequency_bounds`](@ref)).
 
@@ -101,7 +103,7 @@ function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQu
     im = a.amplitude .* sin.(a.phase)
     plus = complex.(pfac .* re, pfac .* im)
     cross = complex.(cfac .* im, .-(cfac .* re))
-    return (; plus, cross)
+    return FrequencySeries(hcat(plus, cross); frequencies = f, epoch = 0.0, channels = (:plus, :cross))
 end
 
 """

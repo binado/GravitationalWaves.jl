@@ -7,6 +7,7 @@ using StaticArrays
 
 @testset "GWDetectors" begin
     include("test_geometry.jl")
+    include("test_sensitivity.jl")
     include("test_response.jl")
     include("test_projection.jl")
     include("test_reference.jl")

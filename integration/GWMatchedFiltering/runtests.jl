@@ -28,9 +28,9 @@ const PIPE_METRIC = FrequencyDomainMetric(PIPE_METRIC_domain, repeat(reshape([2.
 function pipeline_signal(x)
     params = (; mass_1 = x[1], mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = x[2])
     pol = hphc_fd(PIPE_F, params, PIPE_GENERATOR)
-    h1 = project_fd(pol, PIPE_SKY, detectors.H1; frequencies = frequencies(PIPE_H1_DOMAIN), epoch = epoch(PIPE_H1_DOMAIN))
-    l1 = project_fd(pol, PIPE_SKY, detectors.L1; frequencies = frequencies(PIPE_L1_DOMAIN), epoch = epoch(PIPE_L1_DOMAIN))
-    return hcat(h1, l1)
+    h1 = project_fd(pol, PIPE_SKY, detectors.H1; epoch = epoch(PIPE_H1_DOMAIN), channel = :H1)
+    l1 = project_fd(pol, PIPE_SKY, detectors.L1; epoch = epoch(PIPE_L1_DOMAIN), channel = :L1)
+    return hcat(parent(h1), parent(l1))
 end
 
 const PIPE_DATA = pipeline_signal([36.0, 1.3])
@@ -74,7 +74,7 @@ end
 end
 
 
-@testset "Detached domains at the inference boundary" begin
+@testset "Series metadata at the inference boundary" begin
     fd = PIPE_METRIC_domain
     a = pipeline_signal([35.8, 1.2]);b = PIPE_DATA
     check_data(fd, a)
@@ -106,7 +106,9 @@ include("test_windows.jl")
         signal = FrequencySeries(values .* array; meta...)
         return log_likelihood_ratio(parent(signal), array, PIPE_METRIC)
     end
-    sample = ones(size(data))
+    # Stay away from the likelihood maximum, where the exact gradient is zero
+    # and a relative-only comparison measures cancellation roundoff.
+    sample = fill(0.8, size(data))
     expected = ForwardDiff.gradient(boundary_loss, sample)
     for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
         @test DifferentiationInterface.gradient(boundary_loss, backend, sample) ≈ expected rtol = 1.0e-7

@@ -94,3 +94,4 @@ end
 end
 
 include("test_vectors.jl")
+include("test_windows.jl")

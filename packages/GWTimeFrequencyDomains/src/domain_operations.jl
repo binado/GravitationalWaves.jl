@@ -56,7 +56,7 @@ are in seconds for a `TimeDomain` and Hz for a `FrequencyDomain`. Throws
 `ArgumentError` for non-finite, off-grid, or out-of-extent boundaries and when
 `start` follows `stop`.
 """
-function crop(x::AbstractDomain, values::Samples; start::Real, stop::Real)
+function crop(x::AbstractDomain, values::AbstractVecOrMat{<:Number}; start::Real, stop::Real)
     check_data(x, values)
     lo, hi = boundary_index(x, start), boundary_index(x, stop)
     lo <= hi || throw(ArgumentError("crop start must precede stop"))
@@ -71,7 +71,7 @@ Zero pad by sample/bin counts; shift the epoch (time) or origin (frequency) when
 padding before. Counts must be nonnegative, and frequency padding cannot create
 negative frequencies.
 """
-function pad(x::AbstractDomain, values::Samples; before::Integer = 0, after::Integer = 0)
+function pad(x::AbstractDomain, values::AbstractVecOrMat{<:Number}; before::Integer = 0, after::Integer = 0)
     check_data(x, values)
     before >= 0 && after >= 0 || throw(ArgumentError("padding counts must be nonnegative"))
     n = Base.checked_add(Base.checked_add(nsamples(x), Int(before)), Int(after))

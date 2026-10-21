@@ -6,7 +6,7 @@ using GWTimeFrequencyDomains
     @test !(td isa AbstractArray)
     @test channels(td) == (:H1,)
     @test nsamples(td) == 8
-    @test sample_spacing(td) == 1 / 16
+    @test step(td) == 1 / 16
     @test sampling_frequency(td) == 16
     @test duration(td) == 0.5
     @test times(td) == range(epoch(td); step = 1 / 16, length = 8)
@@ -26,7 +26,7 @@ using GWTimeFrequencyDomains
     @test_throws ArgumentError TimeDomain(; epoch = Inf, nsamples = 8, sampling_frequency = 16, channels = (:H1,))
     big = TimeDomain(; epoch = big"1126259460.123456789", nsamples = 8, sampling_frequency = big"16", channels = (:H1,))
     @test epoch(big) isa BigFloat
-    @test sample_spacing(big) isa BigFloat
+    @test step(big) isa BigFloat
     fd = frequency_domain(td)
     @test nsamples(fd) == 5
     @test frequency_spacing(fd) == 2
@@ -143,5 +143,6 @@ Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
     p, values = pad(e, Float64[]; after = 2)
     @test nsamples(p) == 2 && values == [0, 0]
 end
+include("test_windows.jl")
 include("test_fourier.jl")
 include("test_quality.jl")

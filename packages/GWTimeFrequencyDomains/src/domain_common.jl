@@ -1,5 +1,4 @@
 abstract type AbstractDomain end
-const Samples = Union{AbstractVector{<:Number}, AbstractMatrix{<:Number}}
 struct Validated end
 
 metadata(x::Real) = float(promote(x, 0.0)[1])
@@ -19,7 +18,7 @@ epoch(d::AbstractDomain) = d.epoch
 channels(d::AbstractDomain) = d.channels
 
 """Check numeric vector/matrix storage, one-based axes, sample count and channel count on the host."""
-function check_data(d::AbstractDomain, values::Samples)
+function check_data(d::AbstractDomain, values::AbstractVecOrMat{<:Number})
     Base.require_one_based_indexing(values)
     size(values, 1) == nsamples(d) || throw(DimensionMismatch("sample count does not match domain"))
     size(values, 2) == length(channels(d)) || throw(DimensionMismatch("channel count does not match domain"))

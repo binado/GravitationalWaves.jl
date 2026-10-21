@@ -21,13 +21,13 @@ end
 """Stored time sample count."""
 nsamples(d::TimeDomain) = d.nsamples
 """Time spacing in seconds."""
-sample_spacing(d::TimeDomain) = d.spacing
+Base.step(d::TimeDomain) = d.spacing
 """Sampling frequency in Hz, derived from time spacing."""
-sampling_frequency(d::TimeDomain) = inv(sample_spacing(d))
+sampling_frequency(d::TimeDomain) = inv(step(d))
 """Half-open time segment duration N*dt."""
-duration(d::TimeDomain) = nsamples(d) * sample_spacing(d)
+duration(d::TimeDomain) = nsamples(d) * step(d)
 """Lazy absolute sample times."""
-times(d::TimeDomain) = range(epoch(d); step = sample_spacing(d), length = nsamples(d))
+times(d::TimeDomain) = range(epoch(d); step = step(d), length = nsamples(d))
 
 function check_fourier_domain(d::TimeDomain)
     nsamples(d) >= 2 && iseven(nsamples(d)) || throw(ArgumentError("forward FFT needs even N >= 2"))
@@ -42,4 +42,4 @@ function frequency_domain(d::TimeDomain)
 end
 
 coordinates(d::TimeDomain) = times(d)
-rebuild(d::TimeDomain, n, origin) = TimeDomain(origin, n, sample_spacing(d), channels(d), Validated())
+rebuild(d::TimeDomain, n, origin) = TimeDomain(origin, n, step(d), channels(d), Validated())

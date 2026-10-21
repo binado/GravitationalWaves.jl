@@ -25,8 +25,9 @@ of the arrays' element types. Epoch and spacing values are fields, not type para
 
 `epoch`, `channels`, and `nsamples` apply to both domains. The latter counts
 frequency bins for frequency domains. `times(td)` and `frequencies(fd)` are lazy
-ranges. `sample_spacing`, `sampling_frequency`, and `duration = N*dt` apply only to
-time domains; `frequency_spacing` applies to frequency domains.
+ranges. `Base.step(td)` gives the time sample spacing; `sampling_frequency` and
+`duration = N*dt` apply to time domains. `frequency_spacing` applies to frequency
+domains. Prepared windows also support `Base.step(window)`.
 
 `check_data(domain, array)` checks numeric vector/matrix storage, one-based axes,
 row count, and channel count. A one-channel domain accepts vectors and one-column
@@ -48,6 +49,53 @@ arrays cannot establish where they came from.
 and return `(new_domain, new_values)`. Padding before shifts time epoch or frequency
 origin; negative frequencies are rejected. Empty and singleton domains keep their
 origins and spacings. These operations are outside the compiled inference contract.
+
+## Fixed Planck taper
+
+`PlanckWindow(td; start_width, end_width)` prepares an object owning a real
+`weights` vector and the sample spacing. Both widths are required, in seconds;
+zero disables an edge. Widths must be finite, nonnegative, and sum to at most `(N-1)*dt`, the span
+between the first and last stored samples. Empty and singleton domains accept
+only zero widths. Epoch and channel metadata do not affect the weights.
+
+```julia
+using FFTW
+h = randn(nsamples(td))
+check_data(td, h)                     # host-side validation
+window = PlanckWindow(td; start_width=0.2, end_width=0.05) # prepare once
+check_compatible(td, window)          # host-side grid check
+windowed(h) = apply_window(window, h) # differentiable application in h
+hpadded_td, hpadded = pad(td, windowed(h); after=8192)
+h_fd = to_frequencydomain(hpadded_td, hpadded) # physical dt*rfft normalization
+```
+
+`apply_window` allocates without modifying its inputs and supports real or complex
+vectors, views, `(sample, channel)` matrices, and higher-dimensional numeric
+arrays whose axes broadcast with the weights. Weights act along the first
+dimension; `check_data` retains the domain API’s vector/matrix layout contract. `apply_window!(h, window)` modifies
+samples in place; `apply_window!(out, window, h)` writes to reusable destination
+storage and returns it, also allowing `out === h`. Destination storage determines
+the element type for the mutating methods and must represent the result.
+The allocating method uses ordinary element-type promotion: Float64 weights
+promote Float32 data to Float64. Window precision promotes spacing and widths to at least
+Float64 and preserves BigFloat inputs. `nsamples(window)` and
+`step(window)` expose its grid. `check_compatible(td, window)` checks
+count and spacing with the usual grid tolerance, independently of epoch or
+channels; use `check_data(td, h)` for vector/matrix domain layouts. Application
+kernels use ordinary broadcasting without repeating domain checks. Treat
+`window.weights` as read-only.
+
+The prepared object can be stored in a time-domain generator or a Fourier wrapper
+and reused across waveform draws on the same fixed grid. The generator applies
+it to each polarization or mode matrix before explicit padding and Fourier
+conversion. Generator-level FFT composition is separate from this window API.
+
+Widths describe continuous Planck transitions anchored at the stored endpoints,
+without rounding to sample counts. Positive widths shorter than `dt` are valid.
+Transitions may meet, so a sampled unit plateau need not exist. Construct windows
+outside differentiation; only application to data is in the AD contract. Padding
+and Fourier conversion above are explicit host operations; FFT differentiation
+is outside this contract.
 
 ## Physical Fourier conversion
 

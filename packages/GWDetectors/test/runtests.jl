@@ -1,5 +1,5 @@
 using Test
-using GWTimeFrequencyDomains
+using GWSeries
 using GWDetectors
 using ForwardDiff
 using LinearAlgebra
@@ -12,6 +12,6 @@ using StaticArrays
     include("test_projection.jl")
     include("test_reference.jl")
     include("test_ad.jl")
-    include("test_domains.jl")
+    include("test_series.jl")
     include("test_quality.jl")
 end

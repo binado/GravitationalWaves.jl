@@ -112,7 +112,7 @@ modes in the LAL source frame at the reference epoch; `init_orbphase` and `init_
 retain their existing frame interpretation. Modes exclude both `inclination` and `phi_ref`.
 The observer convention is `(theta, phi) = (inclination, π/2 - phi_ref)`.
 
-`hphc_td` uses shared harmonic assembly and retains its keywords and `(t, hplus, hcross)`
+`hphc_td` uses shared harmonic assembly and requires `dt` or a uniform `times` range and returns a two-channel TimeSeries instead of `(t, hplus, hcross)`
 result. `inertial_modes`, `mode_sum(modes, ell_max, inclination, phi_ref)`, and `sylm_m2`
 remain available. The generator reports precessing spin support and differentiable evaluation;
 its frequency accessors return `f_ref`, `f_low`, and `nothing` for the upper bound.
@@ -120,3 +120,13 @@ It does not provide FD modes or arbitrary mode-array selection.
 
 Run `julia --project=packages/SurrogateWaveforms benchmarks/SurrogateWaveforms/assembly.jl` to measure
 harmonic assembly separately from generation and compare the previous Wigner-D sum.
+
+For assembled strain use `times(h)`, `h[:, :plus]`, and `h[:, :cross]` from GWSeries.
+Lower-level `waveform_modes_td` and `inertial_modes` retain native irregular grids.
+
+Coordinate-first `hphc_td(times, params, generator)` returns an ordinary matrix with
+plus/cross columns and supports the same time coordinates as `waveform_modes_td`.
+`hphc_td(prototype::TimeSeries, params, generator)` returns a TimeSeries on the
+prototype's peak-relative time grid with channels `(:plus, :cross)`. The existing
+`hphc_td(generator, params; dt=...)` and `times=uniform_range` conveniences still
+return TimeSeries. Detector GPS arrival-time placement is separate from these calls.

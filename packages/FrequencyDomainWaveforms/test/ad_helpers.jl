@@ -22,7 +22,7 @@ function ad_loss(generator, template)
     return function (x)
         h = hphc_fd(AD_GRID, ad_params(x), generator)
         scale = 1.0e22
-        return scale^2 * (sum(abs2, h.plus) + sum(real, h.cross .* conj(template)))
+        return scale^2 * (sum(abs2, h[:, 1]) + sum(real, h[:, 2] .* conj(template)))
     end
 end
 
@@ -32,7 +32,7 @@ function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, I
         for G in generators
             @testset "$G" begin
                 generator = G(; minimum_frequency = 25.0)
-                template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), generator).cross
+                template = 1.0e22 .* hphc_fd(AD_GRID, ad_params(x_template), generator)[:, 2]
                 loss(x) = ad_loss(generator, template)(x)
                 fd = central_fdm(5, 1)
                 g_fd = grad(fd, loss, AD_X0)[1]
@@ -85,7 +85,7 @@ function test_waveform_gradients(backends; generators = (TaylorF2, IMRPhenomD, I
                                 tilt_1 = 0.0, tilt_2 = Float64(π),
                             )
                             h = hphc_fd(AD_GRID, p, generator)
-                            return 1.0e22 * (sum(real, h.plus) + sum(imag, h.cross))
+                            return 1.0e22 * (sum(real, h[:, 1]) + sum(imag, h[:, 2]))
                         end
                         for mass in (30.0, 60.0), spins in ((0.0, 0.0), (0.3, 0.3), (0.6, 0.2))
                             x = [mass, mass, spins...]

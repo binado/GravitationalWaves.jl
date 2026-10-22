@@ -15,17 +15,17 @@
     @testset "shape and masking" begin
         s = LALWaveformGenerator("IMRPhenomD"; minimum_frequency = 30.0, maximum_frequency = 500.0)
         h = hphc_fd(f, p, s)
-        @test h.plus isa Vector{ComplexF64} && h.cross isa Vector{ComplexF64}
-        @test length(h.plus) == length(h.cross) == length(f)
+        @test h[:, 1] isa Vector{ComplexF64} && h[:, 2] isa Vector{ComplexF64}
+        @test length(h[:, 1]) == length(h[:, 2]) == length(f)
         out = (f .< 30.0) .| (f .> 500.0)
-        @test all(iszero, h.plus[out]) && all(iszero, h.cross[out])
-        @test any(!iszero, h.plus[.!out])
+        @test all(iszero, h[:, 1][out]) && all(iszero, h[:, 2][out])
+        @test any(!iszero, h[:, 1][.!out])
     end
 
     @testset "default maximum frequency is the end of the grid" begin
         h = hphc_fd(f, p, LALWaveformGenerator(:IMRPhenomD))
         h2 = hphc_fd(f, p, LALWaveformGenerator(:IMRPhenomD; maximum_frequency = last(f)))
-        @test h.plus == h2.plus && h.cross == h2.cross
+        @test h[:, 1] == h2[:, 1] && h[:, 2] == h2[:, 2]
     end
 
     @testset "errors" begin
@@ -40,7 +40,7 @@
         @test_throws ArgumentError validate_parameters(f, merge(p, (spin = 1.0,)), s)
         @test_throws ArgumentError validate_parameters(range(1, 1024; step = 0.25), p, s)
         # A failure must not poison the next call.
-        @test any(!iszero, hphc_fd(f, p, s).plus)
+        @test any(!iszero, hphc_fd(f, p, s)[:, 1])
     end
 
     @testset "show" begin

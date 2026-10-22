@@ -1,7 +1,7 @@
 # GWDetectors
 
 Native Julia geometry, antenna factors, arrival delays, and frequency-domain projection
-for ground-based interferometers. Requires Julia 1.12, StaticArrays.jl, and GWTimeFrequencyDomains.
+for ground-based interferometers. Requires Julia 1.12, StaticArrays.jl, and GWSeries.
 The response uses the long-wavelength approximation at one reference time.
 
 ```julia
@@ -33,8 +33,9 @@ LAL's UTC-based approximation without a UT1 correction. At a positive leap secon
 `detectors` also includes triangular ET sites `E1`–`E3`, ET L sites
 `S1`, `S2`, `R1`, `R2`, and CE sites `C1`, `C2`. Their inline definitions are transcribed from the supplied
 [geometry catalog](data/geometry.toml), with nominal full arm
-lengths of 10 km, 15 km, and 40 km respectively. `S1`/`R1` are aligned;
-`S2`/`R2` are misaligned. `C1`/`C2` use the Hanford/Livingston sites.
+lengths of 10 km, 15 km, and 40 km respectively. `S1` and `S2` currently share
+one geometry; `R2` differs from `R1` in orientation and elevation.
+`C1`/`C2` use the Hanford/Livingston sites.
 The original four detectors retain their pinned LAL Cartesian constants.
 
 GWNoise bundles twelve text tables of one-sided PSDs
@@ -62,41 +63,29 @@ The supplied catalog comments retain their original project context.
 
 ## Composition with waveform generators
 
-Both waveform backends return the `(; plus, cross)` accepted by `project_fd`:
+Use a series prototype to generate FrequencySeries polarizations with channels `(:plus, :cross)`:
 
 ```julia
-using FrequencyDomainWaveforms, LALWaveforms, GWDetectors, GWTimeFrequencyDomains
-
-f = range(0, 512; step = 0.25)
-fd = FrequencyDomain(;frequencies=f, epoch=1126259460.0, channels=(:H1,))
-p = (; mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
-      theta_jn = 0.4, phase = 1.3)
-for generator in (IMRPhenomD(), LALWaveformGenerator("IMRPhenomD"))
-    polarizations = hphc_fd(f, p, generator)
-    check_data(fd, polarizations.plus)  # validate outside inference
-    check_data(fd, polarizations.cross)
-    strain = project_fd(fd, polarizations, sky, detector)
-end
+using FrequencyDomainWaveforms, GWDetectors, GWSeries
+f = 0.0:0.25:512.0
+p = (; mass_1=36.0, mass_2=29.0, luminosity_distance=500.0, theta_jn=0.4, phase=1.3)
+sky = (; ra=1.2, dec=-0.4, psi=0.7, geocent_time=1126259462.25)
+prototype = FrequencySeries(zeros(ComplexF64, length(f)); epoch=1126259460.0, frequency_spacing=step(f), channels=(:H1,))
+polarizations = hphc_fd(prototype, p, IMRPhenomD())
+strain = project_fd(polarizations, sky, detectors.H1; epoch=1126259460.0, channel=:H1)
 ```
 
-`project_fd(fd, polarizations, sky, detector)` allocates a complex vector on a
-uniform nonnegative frequency domain, including offset and empty grids. Its phase
-origin is `epoch(fd)`; the domain has one explicit output channel label. Both
-polarizations must be one-based vectors matching the frequency count. Validation
-is separate (`check_data` on each vector); numerical evaluation performs no
-metadata or sample-value checks and applies no additional frequency mask. The expression is
+The destination epoch is explicit. Output channels default to `(:strain,)`; supply
+`channel` for a detector label. The source epoch is peak-relative and is included
+in the projection phase, so FFT-converted TD waveforms retain their first-sample
+reference. Epoch subtraction precedes source-offset addition to retain GPS precision.
 
-```math
-(F_+ h_+ + F_\times h_\times)
-\exp\{-2\pi i f [(t_c-t_\mathrm{start})+\tau(t_c)]\}.
-```
-
-The epoch difference is evaluated before adding the geometric delay. Antenna
-factors use `reference_time` (defaults to `sky.geocent_time`), while the delay
-always uses `sky.geocent_time`. Supply `reference_time` explicitly to hold the
-response fixed across draws. Delay methods need only `ra`, `dec`, `geocent_time`.
-For fixed GMST, use `antenna_pattern(ra, dec, psi, gmst, detector)` and
-`time_delay_from_geocenter(ra, dec, gmst, detector)`.
+For unchecked compiled numerical work, pass raw polarization vectors as
+`project_fd((;plus=hp,cross=hc), sky, detector; frequencies=f, epoch=start_time,
+reference_time=sky.geocent_time)`. This returns an ordinary vector. The phase kernel
+broadcasts over integer frequency-bin indices and preserves the existing LAL/bilby
+operation order. `reference_time` sets antenna factors; arrival delays use
+`sky.geocent_time`. This is the fixed long-wavelength response.
 
 ## Custom geometry
 
@@ -136,21 +125,20 @@ boundaries and leap transitions. Scalar geometry uses StaticArrays; projection u
 broadcast so device arrays stay in compiled execution.
 
 ```julia
-using Reactant, Enzyme, GWTimeFrequencyDomains
+using Reactant, Enzyme, GWSeries
 Reactant.set_default_backend("cpu")
 
-const PROJECTION_DOMAIN = FrequencyDomain(;frequencies=0:20:40,epoch=1126259460.0,channels=(:H1,))
+const PROJECTION_FREQUENCIES = 0.0:20.0:40.0
+const PROJECTION_EPOCH = 1126259460.0
 function projected(angles, hp, hc)
     Reactant.@allowscalar begin
         source = (;ra=angles[1],dec=angles[2],psi=angles[3],geocent_time=angles[4])
-        project_fd(PROJECTION_DOMAIN,(;plus=hp,cross=hc),source,detectors.H1)
+        project_fd((;plus=hp,cross=hc),source,detectors.H1; frequencies=PROJECTION_FREQUENCIES, epoch=PROJECTION_EPOCH)
     end
 end
 angles = Reactant.to_rarray([sky.ra, sky.dec, sky.psi, sky.geocent_time])
 hp_host = ComplexF64[0,1,0.5im]
 hc_host = ComplexF64[0,0.3im,0.2]
-check_data(PROJECTION_DOMAIN,hp_host)
-check_data(PROJECTION_DOMAIN,hc_host)
 hp, hc = Reactant.to_rarray.((hp_host,hc_host))
 executable = Reactant.@compile projected(angles,hp,hc)
 strain = executable(angles,hp,hc)
@@ -183,10 +171,8 @@ fixtures warn locally and fail when `CI=true`.
 Finite-arm transfer functions, rotating time-domain response, extra polarizations,
 noise, calibration, and a network container remain future work.
 
-## Migration to 0.2
+## Series migration
 
-Construct `FrequencyDomain(;frequencies=f,epoch=start_time,channels=(:H1,))`
-once, validate polarization vectors, then call `project_fd(fd, polarizations,
-sky, detector)`. The raw frequency-vector overload and series-output overload have
-been removed. Irregular frequency grids and runtime-changing frequency grids are
-outside the initial domain-first compiled contract. Waveform APIs remain unchanged.
+Projection accepts polarization series and returns detector series. For repeated AD
+work, retain fixed frequency/epoch keywords and plain sample arrays. Metadata is
+configuration; runtime-changing grids and FFT differentiation are outside acceptance.

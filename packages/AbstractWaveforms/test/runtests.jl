@@ -1,3 +1,4 @@
+using GWSeries
 using Test
 using Aqua
 using JET
@@ -18,7 +19,7 @@ function AbstractWaveforms.hphc_fd(f::AbstractRange{Float64}, params::NamedTuple
     check_frequency_grid(f)
     f_min, f_max = frequency_bounds(g, f)
     h = [f_min <= fi <= f_max ? complex(1.0, fi) : 0.0im for fi in f]
-    return (; plus = h, cross = h)
+    return hcat(h, h)
 end
 
 function AbstractWaveforms.validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, ::Dummy)

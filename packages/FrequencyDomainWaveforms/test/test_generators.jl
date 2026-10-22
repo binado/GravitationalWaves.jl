@@ -37,15 +37,15 @@
         @test_throws ArgumentError validate_parameters(f, merge(base, (; eccentricity = 0.1)), s)
         @test validate_parameters(f, merge(base, (; a_1 = 0.5, tilt_1 = Float64(π))), s) === nothing
         # A spin of zero is aligned whatever its tilt.
-        @test hphc_fd(f, merge(base, (; a_1 = 0.0, tilt_1 = 0.7)), s).plus ==
-            hphc_fd(f, base, s).plus
+        @test hphc_fd(f, merge(base, (; a_1 = 0.0, tilt_1 = 0.7)), s)[:, 1] ==
+            hphc_fd(f, base, s)[:, 1]
         # Other mass parameterisations convert.
         q = base.mass_2 / base.mass_1
         mc = (base.mass_1 * base.mass_2)^(3 / 5) / (base.mass_1 + base.mass_2)^(1 / 5)
         alt = (;
             chirp_mass = mc, mass_ratio = q, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
         )
-        @test hphc_fd(f, alt, s).plus ≈ hphc_fd(f, base, s).plus rtol = 1.0e-12
+        @test hphc_fd(f, alt, s)[:, 1] ≈ hphc_fd(f, base, s)[:, 1] rtol = 1.0e-12
     end
 
     @testset "parameter values" begin
@@ -84,16 +84,16 @@
             below = f .< 30
             above = f .> 200
             inside = .!(below .| above)
-            @test all(iszero, h.plus[below]) && all(iszero, h.cross[below])
-            @test all(iszero, h.plus[above]) && all(iszero, h.cross[above])
-            @test all(!iszero, h.plus[inside][1:(end - 1)])
+            @test all(iszero, h[:, 1][below]) && all(iszero, h[:, 2][below])
+            @test all(iszero, h[:, 1][above]) && all(iszero, h[:, 2][above])
+            @test all(!iszero, h[:, 1][inside][1:(end - 1)])
             # `maximum_frequency = nothing` means the last frequency of the grid.
             h_default = hphc_fd(f, base, G(; minimum_frequency = 30))
             h_explicit = hphc_fd(
                 f, base, G(; minimum_frequency = 30, maximum_frequency = last(f))
             )
-            @test h_default.plus == h_explicit.plus
-            @test h_default.cross == h_explicit.cross
+            @test h_default[:, 1] == h_explicit[:, 1]
+            @test h_default[:, 2] == h_explicit[:, 2]
         end
     end
 
@@ -102,16 +102,16 @@
         for G in (IMRPhenomD, TaylorF2, IMRPhenomXAS)
             s = G()
             face = hphc_fd(f, merge(base, (; theta_jn = 0.0)), s)
-            @test face.cross ≈ -im .* face.plus
+            @test face[:, 2] ≈ -im .* face[:, 1]
             edge = hphc_fd(f, merge(base, (; theta_jn = π / 2)), s)
-            @test maximum(abs, edge.cross) < 1.0e-12 * maximum(abs, edge.plus)
-            @test edge.plus ≈ face.plus ./ 2
+            @test maximum(abs, edge[:, 2]) < 1.0e-12 * maximum(abs, edge[:, 1])
+            @test edge[:, 1] ≈ face[:, 1] ./ 2
         end
     end
 
     @testset "element type" begin
         s = TaylorF2()
-        @test eltype(hphc_fd(f, base, s).plus) === ComplexF64
-        @test eltype(hphc_fd(f, merge(base, (; mass_1 = 36)), s).plus) === ComplexF64
+        @test eltype(hphc_fd(f, base, s)[:, 1]) === ComplexF64
+        @test eltype(hphc_fd(f, merge(base, (; mass_1 = 36)), s)[:, 1]) === ComplexF64
     end
 end

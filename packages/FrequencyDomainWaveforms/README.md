@@ -23,7 +23,7 @@ params = (
     theta_jn = 0.4, phase = 1.3,
     a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = Float64(π),   # (anti-)aligned spins only
 )
-(; plus, cross) = hphc_fd(f, params, generator)
+h = hphc_fd(f, params, generator)  # ordinary matrix: plus/cross columns
 (; amplitude, phase) = amplitude_phase_fd(f, params, generator)
 ```
 
@@ -48,7 +48,7 @@ The element type of the output follows the parameters, so dual numbers pass thro
 ```julia
 using ForwardDiff
 
-loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = x[2])), generator).plus)
+loss(x) = sum(abs2, hphc_fd(f, merge(params, (; chirp_mass = x[1], mass_ratio = x[2])), generator)[:, 1])
 ForwardDiff.gradient(loss, [28.0, 0.8])
 ```
 

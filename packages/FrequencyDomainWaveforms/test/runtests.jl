@@ -1,3 +1,4 @@
+using GWSeries
 using Test
 using FrequencyDomainWaveforms
 

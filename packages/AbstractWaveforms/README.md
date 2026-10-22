@@ -2,15 +2,16 @@
 
 The interface shared by the gravitational-wave waveform backends in this repository,
 [`FrequencyDomainWaveforms`](../FrequencyDomainWaveforms) (pure Julia, differentiable) and [`LALWaveforms`](../LALWaveforms)
-(LALSimulation through `ccall`). It has no dependencies.
+(LALSimulation through `ccall`). It depends on the MIT GWSeries package.
 
 It defines `AbstractWaveformGenerator` and the generic function
 
 ```julia
-hphc_fd(f, params, generator) -> (; plus, cross)
+hphc_fd(f, params, generator) -> Matrix  # columns: plus, cross
+hphc_fd(prototype::FrequencySeries, params, generator) -> FrequencySeries
 ```
 
-where `f` is a uniform frequency grid starting at 0, `params` a `NamedTuple` with bilby's
+where `f` is a backend-supported uniform frequency grid (LAL requires a zero start), `params` a `NamedTuple` with bilby's
 parameter names, and `generator` a concrete generator such as `TaylorF2()`, `IMRPhenomD()` or
 `LALWaveformGenerator("IMRPhenomXPHM")`. Code written against this package works with any backend.
 
@@ -81,3 +82,20 @@ coefficients are computed once per call, independently of sample count.
 `viewing_params` supplies a second observer configuration to check mode independence.
 The small committed `test/harmonics.csv` oracle is regenerated with
 `uv run --project python/surrogates python python/surrogates/generate_harmonics.py`.
+
+Coordinate-based `hphc_fd(f, params, generator)` and `hphc_td(times, params, generator)`
+return ordinary matrices with plus/cross columns. Grid restrictions and out-of-support
+behavior belong to each backend; this interface does not promise arbitrary FD arrays.
+
+`hphc_fd(prototype::FrequencySeries, params, generator)` uses only its frequency grid,
+returning channels `(:plus, :cross)` with epoch zero. It ignores prototype values,
+channels, and epoch. Detector projection applies arrival-time placement separately.
+`hphc_td(prototype::TimeSeries, params, generator)` evaluates its peak-relative times
+and preserves its epoch and sampling interval, replacing channels with `(:plus, :cross)`.
+Do not pass absolute detector GPS times as peak-relative waveform coordinates.
+
+The convenience `hphc_td(generator, params; dt=...)` returns a model-duration TimeSeries.
+`hphc_td(generator, params; times=uniform_range)` also returns TimeSeries; use the
+coordinate-first method for backend-supported nonuniform times and an ordinary matrix.
+Use `h[:, :plus]` on series, `h[:, 1]` on ordinary matrices, and `flatten(h)` for series
+storage plus reconstructible metadata. Lower-level mode and amplitude/phase APIs are unchanged.

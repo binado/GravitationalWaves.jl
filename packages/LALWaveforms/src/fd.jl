@@ -1,5 +1,5 @@
 """
-    hphc_fd(f::AbstractRange{Float64}, params, generator::LALWaveformGenerator) -> (; plus, cross)
+    hphc_fd(f::AbstractRange{Float64}, params, generator::LALWaveformGenerator) -> Matrix
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz), following
 bilby's `lal_binary_black_hole`. `params` is a `NamedTuple` with bilby's names and
@@ -70,7 +70,7 @@ function hphc_fd(f::AbstractRange{Float64}, params, g::LALWaveformGenerator)
             time_shift!(plus, f, f_min, f_max, dt)
             time_shift!(cross, f, f_min, f_max, dt)
         end
-        return (; plus, cross)
+        return hcat(plus, cross)
     finally
         for h in (hp, hc)
             h[] == C_NULL || ccall(

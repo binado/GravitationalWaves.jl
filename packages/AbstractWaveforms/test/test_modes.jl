@@ -61,14 +61,23 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
     td = (; t, mode_indices = labels, modes)
     p = (; theta_jn = 0.9, azimuth = 0.37)
     g = SyntheticModes(td, nothing)
-    test_modes_td_contract(g; params = p)
+    test_modes_td_contract(g; params = p, dt = 1.0)
     g.calls[] = 0
-    out = hphc_td(g, p)
+    out = hphc_td(g, p; dt = 1.0)
     @test g.calls[] == 1
     direct = [sum(sylm_m2(l, m, p.theta_jn, p.azimuth) * modes[k, j] for (j, (l, m)) in enumerate(labels)) for k in 1:n]
-    @test out.t === t
-    @test out.hplus ≈ real.(direct)
-    @test out.hcross ≈ -imag.(direct)
+    @test collect(times(out)) == t
+    evaluated = hphc_td(t, p, g)
+    @test evaluated isa Matrix
+    @test evaluated == parent(out)
+    prototype = TimeSeries(zeros(n, 1); epoch = 0, sampling_interval = 1, channels = (:unused,))
+    sampled = hphc_td(prototype, p, g)
+    @test parent(sampled) == evaluated
+    @test channels(sampled) == (:plus, :cross)
+    @test times(sampled) == times(prototype)
+    @test parent(hphc_td(g, p; times = times(prototype))) == evaluated
+    @test out[:, 1] ≈ real.(direct)
+    @test out[:, 2] ≈ -imag.(direct)
     order = (3, 1, 4, 2)
     @test mode_sum(modes[:, collect(order)], labels[collect(order)] |> Tuple, 0.9, p.azimuth) ≈ direct
 
@@ -81,12 +90,12 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
     @test gfd.calls[] == 1
     reordered = (; mode_indices = Tuple(labels[collect(order)]), positive = positive[:, collect(order)], negative = negative[:, collect(order)])
     reordered_out = hphc_fd(f, p, SyntheticModes(td, reordered))
-    @test outfd.plus ≈ reordered_out.plus
-    @test outfd.cross ≈ reordered_out.cross
-    @test isreal(outfd.plus[1]) && isreal(outfd.cross[1])
+    @test outfd[:, 1] ≈ reordered_out[:, 1]
+    @test outfd[:, 2] ≈ reordered_out[:, 2]
+    @test isreal(outfd[:, 1][1]) && isreal(outfd[:, 2][1])
     @test positive[1, :] == negative[1, :]
-    @test outfd.plus ≈ dft(out.hplus, f) atol = 1.0e-13
-    @test outfd.cross ≈ dft(out.hcross, f) atol = 1.0e-13
+    @test outfd[:, 1] ≈ dft(out[:, 1], f) atol = 1.0e-13
+    @test outfd[:, 2] ≈ dft(out[:, 2], f) atol = 1.0e-13
 
     @testset "quadrupole reconstruction and masking" begin
         f = 0:0.5:100
@@ -96,10 +105,10 @@ dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(
             a = amplitude_phase_fd(f, p, DummyQuadrupole())
             h = a.amplitude .* cis.(a.phase)
             quadrupole = hphc_fd(f, p, DummyQuadrupole())
-            @test r.plus ≈ quadrupole.plus
-            @test r.cross ≈ quadrupole.cross atol = 1.0e-14 rtol = 1.0e-13
-            @test r.plus ≈ ((1 + cos(theta_jn)^2) / 2) .* h
-            @test r.cross ≈ (-im * cos(theta_jn)) .* h atol = 1.0e-14 rtol = 1.0e-13
+            @test r[:, 1] ≈ quadrupole[:, 1]
+            @test r[:, 2] ≈ quadrupole[:, 2] atol = 1.0e-14 rtol = 1.0e-13
+            @test r[:, 1] ≈ ((1 + cos(theta_jn)^2) / 2) .* h
+            @test r[:, 2] ≈ (-im * cos(theta_jn)) .* h atol = 1.0e-14 rtol = 1.0e-13
             test_modes_fd_contract(QuadrupoleModes(); params = p, f)
             quadrupole_modes = waveform_modes_fd(f, p, QuadrupoleModes())
             face = waveform_modes_fd(f, merge(p, (; theta_jn = 0.0)), QuadrupoleModes())

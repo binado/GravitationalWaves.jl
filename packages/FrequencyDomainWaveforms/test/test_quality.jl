@@ -32,6 +32,6 @@ end
         chirp_mass = 28.0, mass_ratio = 0.8, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
     )
     for generator in (TaylorF2(), IMRPhenomD(), IMRPhenomXAS())
-        @test (@inferred hphc_fd(f, params, generator)) isa NamedTuple
+        @test (@inferred hphc_fd(f, params, generator)) isa Matrix
     end
 end

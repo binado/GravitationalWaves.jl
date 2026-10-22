@@ -4,10 +4,12 @@
 The interface shared by the waveform backends (`FrequencyDomainWaveforms`, `LALWaveforms`): the supertype
 [`AbstractWaveformGenerator`](@ref), the generic functions [`hphc_fd`](@ref),
 [`amplitude_phase_fd`](@ref) and [`validate_parameters`](@ref), and the accessors
-and capability queries every generator provides. Dependency-free, so generic code can depend
+and capability queries every generator provides. Uses the MIT GWSeries types, so generic code can depend
 on it alone.
 """
 module AbstractWaveforms
+
+using GWSeries: TimeSeries, FrequencySeries, times, channels, frequencies, frequency_spacing, epoch, sampling_interval
 
 export AbstractWaveformGenerator, AlignedSpinQuadrupolarWaveformGenerator
 export HigherModesWaveformGenerator, waveform_modes_fd, waveform_modes_td, hphc_td
@@ -67,7 +69,7 @@ must support this method under the same conditions as their `hphc_fd` implementa
 function amplitude_phase_fd end
 
 """
-    hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> (; plus, cross)
+    hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, generator::AbstractWaveformGenerator) -> Matrix
 
 Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz).
 
@@ -83,7 +85,7 @@ backend outputs without performing runtime validation.
 
 Grid requirements depend on the backend. The zero-start uniform-grid convention is checked
 by [`check_frequency_grid`](@ref); backends may also support ranges starting above zero.
-The returned arrays have `length(f)` entries and are zero outside
+The returned matrix has `length(f)` rows and plus/cross columns and is zero outside
 `minimum_frequency(generator) ≤ f ≤ maximum_frequency(generator)`, where a `nothing` maximum
 means the last grid point ([`frequency_bounds`](@ref)).
 
@@ -93,6 +95,12 @@ once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
 """
 function hphc_fd end
 
+"""Generate peak-relative polarizations on a prototype's frequency grid; its epoch and channels are ignored."""
+function hphc_fd(prototype::FrequencySeries, params, g::AbstractWaveformGenerator)
+    data = hphc_fd(frequencies(prototype), params, g)
+    return FrequencySeries(data; epoch = 0.0, frequency_spacing = frequency_spacing(prototype), channels = (:plus, :cross))
+end
+
 function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQuadrupolarWaveformGenerator)
     a = amplitude_phase_fd(f, params, g)
     cfac = cos(params.theta_jn)
@@ -101,7 +109,7 @@ function hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::AlignedSpinQu
     im = a.amplitude .* sin.(a.phase)
     plus = complex.(pfac .* re, pfac .* im)
     cross = complex.(cfac .* im, .-(cfac .* re))
-    return (; plus, cross)
+    return hcat(plus, cross)
 end
 
 """

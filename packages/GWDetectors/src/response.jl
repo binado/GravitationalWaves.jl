@@ -87,28 +87,40 @@ function light_travel_time(d1::Detector, d2::Detector)
 end
 
 """
-    project_fd(domain::FrequencyDomain, polarizations, sky, detector;
-               reference_time=sky.geocent_time)
+    project_fd(polarizations, sky, detector; epoch, channel=:strain, reference_time=sky.geocent_time)
 
-Project raw polarization vectors onto a uniform frequency domain. The phase is
-relative to `epoch(domain)`. Antenna factors use `reference_time`, delays use
-`sky.geocent_time`. Requires a single-channel domain and matching polarization
-vectors; run `check_data(domain, polarization)` on each vector before inference.
-No metadata or sample-value validation occurs here. Broadcast over integer bin
-indices avoids constructing float ranges or materializing coordinates in AD.
+Project a FrequencySeries with (:plus, :cross) channels into one detector channel.
+The destination epoch is explicit; source waveform times are peak-relative.
+Raw polarization vectors use a NamedTuple and an additional `frequencies` range
+keyword, returning a vector without metadata checks for compiled numerical work.
 """
 function project_fd(
-        domain::FrequencyDomain, polarizations, sky, d::Detector;
-        reference_time = sky.geocent_time,
+        polarizations::NamedTuple, sky, d::Detector;
+        frequencies::AbstractRange, epoch::Real, reference_time = sky.geocent_time,
     )
-    return _project_fd(first(frequencies(domain)), frequency_spacing(domain), nsamples(domain), epoch(domain), polarizations, sky, d, reference_time)
+    return _project_fd(first(frequencies), step(frequencies), length(frequencies), epoch, polarizations, sky, d, reference_time)
 end
-function _project_fd(f0, df, n, start_time, polarizations, sky, d, reference_time)
+
+"""Project peak-relative polarization series to a detector series at an explicit destination epoch."""
+function project_fd(
+        polarizations::FrequencySeries, sky, d::Detector;
+        epoch::Real, channel = :strain, reference_time = sky.geocent_time,
+    )
+    channels(polarizations) == (:plus, :cross) || throw(ArgumentError("polarizations must have channels (:plus, :cross)"))
+    # The source FFT is relative to its first sample, which may precede the peak.
+    # Add the source offset after subtracting GPS epochs to retain timing precision.
+    source = (; plus = view(parent(polarizations), :, 1), cross = view(parent(polarizations), :, 2))
+    f = frequencies(polarizations)
+    a = _project_fd(first(f), step(f), length(f), epoch, source, sky, d, reference_time, GWSeries.epoch(polarizations))
+    return FrequencySeries(a; epoch, frequency_spacing = step(f), channels = (channel,), time_samples = GWSeries.time_samples(polarizations))
+end
+function _project_fd(f0, df, n, start_time, polarizations, sky, d, reference_time, source_epoch = 0.0)
     hp, hc = polarizations.plus, polarizations.cross
     gmst = greenwich_mean_sidereal_time(reference_time)
     factors = antenna_pattern(sky.ra, sky.dec, sky.psi, gmst, d)
     delay = time_delay_from_geocenter(sky, d)
     dt = (sky.geocent_time - start_time) + delay
+    dt += source_epoch
     phase_scale = ((-2 * Float64(π)) * dt) * im
     indices = Base.OneTo(n)
     # One scalar broadcast function prevents Base's range arithmetic shortcuts

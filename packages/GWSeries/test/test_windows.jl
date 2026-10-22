@@ -1,6 +1,6 @@
 @testset "Planck windows" begin
     domain(n; fs = 8, epoch = 0, channels = (:H1,)) =
-        TimeDomain(; epoch, nsamples = n, sampling_frequency = fs, channels)
+        TimeSeries(zeros(n, length(channels)); epoch, sampling_frequency = fs, channels)
     weights(td; kwargs...) = PlanckWindow(td; kwargs...).weights
     td = domain(17)
     window = PlanckWindow(td; start_width = 0.5, end_width = 0.5)
@@ -89,7 +89,7 @@
             result = apply_window(window, h)
             @test size(result) == size(h)
             @test h == original
-            out = similar(h)
+            out = copy(h)
             @test apply_window!(out, window, h) === out
             @test out == result
             @test h == original

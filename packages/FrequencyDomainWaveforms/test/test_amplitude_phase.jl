@@ -42,8 +42,8 @@ end
         @test b.phase == a.phase[164:end]
         h = hphc_fd(full, params, g)
         cropped_h = hphc_fd(cropped, params, g)
-        @test cropped_h.plus == h.plus[164:end]
-        @test cropped_h.cross == h.cross[164:end]
+        @test cropped_h[:, 1] == h[:, 1][164:end]
+        @test cropped_h[:, 2] == h[:, 2][164:end]
 
         # Offset by a fraction of the spacing: these frequencies are not integer bins of Δf.
         # TaylorF2's phase carries LAL's `-1/Δf` time shift, so it needs the same step as `fine`.

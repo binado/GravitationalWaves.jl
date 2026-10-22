@@ -8,7 +8,7 @@ using ForwardDiff: ForwardDiff
 using SurrogateWaveforms
 using Mooncake: Mooncake
 
-include("test_pycall.jl")
+
 
 const G = SurrogateWaveforms
 
@@ -171,3 +171,5 @@ end
         end
     end
 end
+
+include("test_snr.jl")

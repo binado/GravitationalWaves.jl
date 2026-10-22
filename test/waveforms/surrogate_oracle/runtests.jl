@@ -1,17 +1,15 @@
+using GWSeries
+include("../cases.jl")
+include("../oracle_checks.jl")
 using Test
 import SurrogateWaveforms
 import SurrogatePyCallWaveforms
 import AbstractWaveforms
 
 @testset "SurrogateWaveforms against PyCall oracle" begin
-    params = (
-        total_mass = 60.0, luminosity_distance = 500.0, mass_ratio = 2.0,
-        spin_1 = (0.2, -0.1, 0.3), spin_2 = (-0.1, 0.2, -0.2),
-        inclination = 0.7, phi_ref = 0.3,
-        init_orbphase = 0.2, init_quat = (cos(0.1), sin(0.1), 0.0, 0.0),
-    )
-    for (model, ell_max) in ((:NRSur7dq4, 4), (:NRSur7dq4v2, 5))
-        @testset "$model" begin
+    for (model, ell_max) in ((:NRSur7dq4, 4), (:NRSur7dq4v2, 5)), id in WaveformCases.SURROGATE_IDS
+        params = WaveformCases.surrogate_parameters(WaveformCases.CASES[id])
+        @testset "$model / $id" begin
             surrogate = SurrogateWaveforms.load_surrogate(model)
             native = SurrogateWaveforms.PrecessingGenerator(surrogate; ell_max, f_ref = 25.0)
             oracle = SurrogatePyCallWaveforms.load_generator(SurrogateWaveforms.data_path(model); model, ell_max, f_ref = 25.0)
@@ -24,18 +22,22 @@ import AbstractWaveforms
                     @test actual.mode_indices == expected.mode_indices == labels
                     @test size(actual.modes) == size(expected.modes)
                     @test all(isfinite, actual.modes)
+                    @test all(isfinite, expected.modes)
                     # Upstream's C++ spline mis-evaluates isolated points in the last
                     # coorbital interval. Use the same exclusion as the fixture tests.
                     tscale = params.total_mass * SurrogateWaveforms.MSUN_IN_SECONDS
                     keep = expected.t .<= surrogate.coorbital.t[end - 1] * tscale
                     @test any(keep)
-                    @test maximum(abs, actual.modes[keep, :] - expected.modes[keep, :]) < 1.0e-11 * maximum(abs, expected.modes)
+                    check_oracle(actual.modes[keep, :], expected.modes[keep, :]; rtol = 1.0e-11)
                     isempty(grid) && continue
                     expected_hp = AbstractWaveforms.hphc_td(oracle, params; grid...)
                     actual_hp = AbstractWaveforms.hphc_td(native, params; grid...)
                     @test collect(times(actual_hp)) ≈ collect(times(expected_hp))
-                    @test maximum(abs, actual_hp[:, :plus][keep] - expected_hp[:, :plus][keep]) < 1.0e-11 * maximum(abs, expected_hp[:, :plus])
-                    @test maximum(abs, actual_hp[:, :cross][keep] - expected_hp[:, :cross][keep]) < 1.0e-11 * maximum(abs, expected_hp[:, :cross])
+                    @test all(isfinite, actual_hp) && all(isfinite, expected_hp)
+                    @test channels(actual_hp) == channels(expected_hp) == (:plus, :cross)
+                    for channel in (:plus, :cross)
+                        check_oracle(actual_hp[:, channel][keep], expected_hp[:, channel][keep]; rtol = 1.0e-11)
+                    end
                 end
             end
         end

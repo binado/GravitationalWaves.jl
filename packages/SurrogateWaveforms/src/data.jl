@@ -40,7 +40,7 @@ function data_path(model::Symbol; download::Bool = true)
     if !isfile(path)
         download || error("$(info.file) is not cached; call data_path($(repr(model))) with download = true")
         tmp = path * ".part"
-        Downloads.download("$ZENODO_RECORD/$(info.file)", tmp)
+        download_resumable("$ZENODO_RECORD/$(info.file)", tmp)
         checksum = bytes2hex(open(sha256, tmp))
         if checksum != info.sha256
             rm(tmp)
@@ -49,6 +49,27 @@ function data_path(model::Symbol; download::Bool = true)
         mv(tmp, path)
     end
     return path
+end
+
+# libcurl's CURLOPT_RESUME_FROM_LARGE (CURLOPTTYPE_OFF_T + 116); Downloads.Curl does not export it.
+const CURLOPT_RESUME_FROM_LARGE = 30116
+
+# Fetch `url` into `tmp`, continuing from whatever a previous attempt left there. A server
+# that ignores Range makes libcurl error out; the caller's checksum catches any corruption.
+function download_resumable(url, tmp; attempts = 5)
+    for attempt in 1:attempts
+        offset = isfile(tmp) ? filesize(tmp) : 0
+        downloader = Downloads.Downloader()
+        downloader.easy_hook = (easy, _) -> offset > 0 && Downloads.Curl.setopt(easy, CURLOPT_RESUME_FROM_LARGE, offset)
+        try
+            open(io -> Downloads.download(url, io; downloader), tmp, "a")
+            return tmp
+        catch err
+            attempt == attempts && rethrow()
+            @warn "download interrupted; resuming" url offset exception = err
+        end
+    end
+    return tmp
 end
 
 function read_datapiece(group, settings::FitSettings)

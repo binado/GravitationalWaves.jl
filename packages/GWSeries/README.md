@@ -143,3 +143,15 @@ even/odd ambiguity of the inverse: lengths `N` and `N + 1` can share a bin count
 elsewhere, such as a waveform, has `time_samples(h) === nothing` and needs the length
 passed explicitly. Changing the number of bins while holding Δf fixed changes the time
 sampling implied by a chosen inverse length.
+
+### Differentiating the forward Fourier transform
+
+The allocating `to_frequencydomain(::TimeSeries)` / `rfft(::TimeSeries)` path
+supports sample derivatives with ForwardDiff, or Mooncake together with
+ChainRulesCore. Load an FFT backend (for example FFTW) separately. Metadata,
+window construction, and transform configuration remain fixed. ForwardDiff
+transforms the primal and tangent arrays with the same FFT; the Mooncake extension
+reuses AbstractFFTs' ChainRules pullback, including one-sided endpoint weights.
+Mooncake's bridge currently supports dense Float32/Float64 sample matrices with
+matching spacing precision. Inverse transforms and mutable prepared-plan AD are
+not covered by this contract. See `just test-integration-series` for validation.

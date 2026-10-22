@@ -45,13 +45,17 @@ function inverse_metadata(s::FrequencySeries, n)
     return (; epoch = epoch(s), sampling_interval = inv(n * frequency_spacing(s)), channels = channels(s))
 end
 
+# Array boundary for optional AD extensions. Metadata stays outside the primitive.
+function physical_rfft(a::AbstractMatrix{<:Real}, dt::Real)
+    require_backend(a, false)
+    return AbstractFFTs.rfft(a, 1) .* dt
+end
+
 """Physical dt*rfft along rows; the loaded AbstractFFTs backend owns execution."""
 function AbstractFFTs.rfft(s::TimeSeries{<:Real}, dims = 1)
     transform_dims(dims)
     check_fourier_domain(s)
-    require_backend(parent(s), false)
-    a = AbstractFFTs.rfft(parent(s), 1)
-    a .*= sampling_interval(s)
+    a = physical_rfft(parent(s), sampling_interval(s))
     return FrequencySeries(a, fourier_metadata(s), Validated())
 end
 AbstractFFTs.rfft(s::TimeSeries, dims = 1) = throw(ArgumentError("wrapped forward transforms require real samples"))

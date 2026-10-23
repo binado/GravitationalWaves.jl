@@ -68,10 +68,12 @@ end
     @test matched_filter_snr(h, d, Wb, step(f)) ≈ matched_filter_snr(h, d, blocks) rtol = 1.0e-13
     # Views take the same kernels as arrays; the broadcast fallback agrees with them.
     @test complex_inner_product(view(h, :, :), view(d, :, :), Wb, step(f)) ≈ complex_inner_product(h, d, Wb, step(f))
-    @test GWMatchedFiltering.whitened_contraction(h, d, @view(Wb[:, :, :])) ≈ GWMatchedFiltering.whitened_contraction(h, d, Wb)
     @test GWMatchedFiltering.whitened_contraction(h, d, Wd) ≈ sum(conj.(h) .* Wd .^ 2 .* d)
-    @test @allocated(complex_inner_product(h, d, Wd, 0.25)) == 0
-    @test @allocated(complex_inner_product(h, d, Wb, 0.25)) == 0
+    # Oracle: explicit dense whitening per bin, then an ordinary dot.
+    oracle = sum(dot(Wb[:, :, k] * h[k, :], Wb[:, :, k] * d[k, :]) for k in 1:nf)
+    @test GWMatchedFiltering.whitened_contraction(h, d, Wb) ≈ oracle
+    @test GWMatchedFiltering.filter_structure(Wd) isa GWMatchedFiltering.DiagonalFilter
+    @test GWMatchedFiltering.filter_structure(Wb) isa GWMatchedFiltering.BlockFilter
 end
 
 @testset "whiten" begin

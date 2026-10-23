@@ -6,88 +6,23 @@
 # `(nf,)` vector for one channel) or `(nc, nc, nf)` lower triangular (blocks).
 # Bins where `W` is zero are inactive. Kernels check no shapes or values.
 
-# Diagonal weights for a single-channel vector accept `(nf,)` or `(nf, 1)` storage.
-diagonal_weight(W::AbstractVector, k) = @inbounds W[k]
-diagonal_weight(W::AbstractMatrix, k) = @inbounds W[k, 1]
+# How a whitening array `W` is read. Extend `filter_structure` to opt in a new storage form.
+abstract type FilterStructure end
+"""Independent channels: one real weight per bin and channel, `W = 1/√S`."""
+struct DiagonalFilter <: FilterStructure end
+"""Correlated channels: a lower-triangular `nc × nc` factor per bin, bins independent."""
+struct BlockFilter <: FilterStructure end
 
-# Reactant's traced arrays also subtype DenseArray/StridedArray. Restrict the
-# native specializations to host storage (and its views), so device arrays keep
-# frequency-wise broadcast/reduction rather than unrolling scalar loops.
-const HostMatrix = Union{Matrix, SubArray{<:Any, 2, <:Matrix}}
-# A vector is one channel. Keep it one-dimensional: reshaping constant input
-# buffers inside a differentiated call introduces mixed-activity array headers.
-const HostVector = Union{Vector, SubArray{<:Any, 1, <:Union{Vector, Matrix}}}
+filter_structure(::AbstractVector{<:Real}) = DiagonalFilter()
+filter_structure(::AbstractMatrix{<:Real}) = DiagonalFilter()
+filter_structure(::AbstractArray{<:Number, 3}) = BlockFilter()
 
-# Σₖ conj(a) W² b over independent channels.
-whitened_contraction(a, b, W::AbstractMatrix) = sum(conj.(a) .* abs2.(W) .* b)
-function whitened_contraction(a::HostMatrix, b::HostMatrix, W::HostMatrix)
-    result = zero(promote_type(eltype(a), eltype(b), eltype(W)))
-    @inbounds for channel in axes(a, 2), k in axes(a, 1)
-        w = W[k, channel]
-        result += conj(a[k, channel]) * (w * w) * b[k, channel]
-    end
-    return result
-end
-
-function whitened_contraction(a::AbstractVector, b::AbstractVector, W::AbstractMatrix)
-    return sum(conj.(a) .* abs2.(view(W, :, 1)) .* b)
-end
-function whitened_contraction(a::AbstractVector, b::AbstractVector, W::AbstractVector)
-    return sum(conj.(a) .* abs2.(W) .* b)
-end
-function whitened_contraction(a::HostVector, b::HostVector, W::Union{HostVector, HostMatrix})
-    result = zero(promote_type(eltype(a), eltype(b), eltype(W)))
-    @inbounds for k in eachindex(a, b)
-        w = diagonal_weight(W, k)
-        result += conj(a[k]) * (w * w) * b[k]
-    end
-    return result
-end
-
-# Σₖ (W aₖ)† (W bₖ) for `(nc, nc, nf)` blocks.
-const HostArray3 = Union{Array{<:Any, 3}, SubArray{<:Any, 3, <:Array}}
-
-function whitened_contraction(a::HostMatrix, b::HostMatrix, W::HostArray3)
-    result = zero(promote_type(eltype(a), eltype(b), eltype(W)))
-    @inbounds for k in axes(a, 1), i in axes(W, 1)
-        wa = zero(result)
-        wb = zero(result)
-        for j in axes(W, 2)
-            wa += W[i, j, k] * a[k, j]
-            wb += W[i, j, k] * b[k, j]
-        end
-        result += conj(wa) * wb
-    end
-    return result
-end
-
-# A channel-sized host loop, with array operations over frequencies. This
-# avoids mutation and supports compilation/differentiation with a fixed `W`.
-function whitened_contraction(a::AbstractMatrix, b::AbstractMatrix, W::AbstractArray{<:Any, 3})
-    result = nothing
-    for channel in axes(W, 1)
-        weights = permutedims(W[channel, :, :], (2, 1))
-        white_a = sum(weights .* a; dims = 2)
-        white_b = sum(weights .* b; dims = 2)
-        term = sum(conj.(white_a) .* white_b)
-        result = isnothing(result) ? term : result + term
-    end
-    return result
-end
-
-# One channel stored in `(1, 1, nf)` blocks.
-function whitened_contraction(a::AbstractVector, b::AbstractVector, W::AbstractArray{<:Any, 3})
-    weights = view(W, 1, 1, :)
-    return sum(conj.(weights .* a) .* (weights .* b))
-end
-function whitened_contraction(a::HostVector, b::HostVector, W::HostArray3)
-    result = zero(promote_type(eltype(a), eltype(b), eltype(W)))
-    @inbounds for k in eachindex(a, b)
-        w = W[1, 1, k]
-        result += conj(w * a[k]) * (w * b[k])
-    end
-    return result
-end
+# Σ (W aₖ)† (W bₖ). The diagonal case is a plain multi-array reduction (shapes
+# match, or one side is a single-channel vector against an `(nf, 1)` array); blocks
+# whiten both inputs with the Cholesky-derived factor and take an ordinary `dot`.
+whitened_contraction(a, b, W) = whitened_contraction(filter_structure(W), a, b, W)
+whitened_contraction(::DiagonalFilter, a, b, W) = mapreduce((x, w, y) -> conj(x) * (w * w) * y, +, a, W, b)
+whitened_contraction(::BlockFilter, a, b, W) = dot(whiten(a, W), whiten(b, W))
 
 """
     complex_inner_product(a, b, W, df)
@@ -98,14 +33,7 @@ independent channels, `(channel, channel, frequency)` for correlated ones. The
 first argument is conjugated. Bins where `W` is zero drop out. Arrays are
 prevalidated; no shape or value checks run.
 """
-complex_inner_product(a::AbstractMatrix, b::AbstractMatrix, W::AbstractArray, df) =
-    (4 * df) * whitened_contraction(a, b, W)
-complex_inner_product(a::AbstractVector, b::AbstractVector, W::AbstractArray, df) =
-    (4 * df) * whitened_contraction(a, b, W)
-complex_inner_product(a::AbstractVector, b::AbstractMatrix, W::AbstractArray, df) =
-    complex_inner_product(a, view(b, :, 1), W, df)
-complex_inner_product(a::AbstractMatrix, b::AbstractVector, W::AbstractArray, df) =
-    complex_inner_product(view(a, :, 1), b, W, df)
+complex_inner_product(a, b, W, df) = (4 * df) * whitened_contraction(a, b, W)
 
 """Real noise-weighted inner product, the real part of [`complex_inner_product`](@ref)."""
 noise_weighted_inner_product(a, b, W, df) = real(complex_inner_product(a, b, W, df))
@@ -149,23 +77,14 @@ end
     whiten!(out, d, W)
 
 Apply the whitening factor per frequency bin: `W[k, c] * d[k, c]` for diagonal `W`,
-`W[:, :, k] * d[k, :]` for blocks. `out` must not alias `d` for blocks.
+`W[:, :, k] * d[k, :]` for blocks. Written as array expressions, so it composes with
+automatic differentiation; `out` may not alias `d`.
 """
-whiten(d::AbstractVecOrMat, W::AbstractVecOrMat) = diagonal_weights(W, d) .* d
-diagonal_weights(W::AbstractVector, ::AbstractVector) = W
-diagonal_weights(W::AbstractMatrix, ::AbstractMatrix) = W
-diagonal_weights(W::AbstractMatrix, ::AbstractVector) = view(W, :, 1)
-function whiten(d::AbstractMatrix, W::AbstractArray{<:Any, 3})
-    return whiten!(similar(d, promote_type(eltype(d), eltype(W))), d, W)
+whiten(d, W) = whiten(filter_structure(W), d, W)
+whiten!(out, d, W) = copyto!(out, whiten(d, W))
+whiten(::DiagonalFilter, d, W) = reshape(W, size(d)) .* d
+# `Wp[k, i, j] * d[k, 1, j]` summed over `j`.
+function whiten(::BlockFilter, d::AbstractMatrix, W)
+    return dropdims(sum(permutedims(W, (3, 1, 2)) .* reshape(d, size(d, 1), 1, :); dims = 3); dims = 3)
 end
-whiten!(out::AbstractVecOrMat, d::AbstractVecOrMat, W::AbstractVecOrMat) = (out .= whiten(d, W))
-function whiten!(out::AbstractMatrix, d::AbstractMatrix, W::AbstractArray{<:Any, 3})
-    @inbounds for k in axes(d, 1), i in axes(W, 1)
-        acc = zero(eltype(out))
-        for j in axes(W, 2)
-            acc += W[i, j, k] * d[k, j]
-        end
-        out[k, i] = acc
-    end
-    return out
-end
+whiten(::BlockFilter, d::AbstractVector, W) = view(W, 1, 1, :) .* d

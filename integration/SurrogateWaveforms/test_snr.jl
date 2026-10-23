@@ -1,7 +1,11 @@
 using AbstractWaveforms: hphc_td
+using ADTypes: AutoForwardDiff, AutoMooncake
+using AbstractWaveformsTests
 using FFTW, ChainRulesCore
-include("../../test/waveforms/cases.jl")
-include("../../test/waveforms/ad_checks.jl")
+include("../common/snr.jl")
+
+const SNR_IDS = ("bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned", "bbh_precessing")
+const SNR_BACKENDS = (AutoForwardDiff(), AutoMooncake(; config = nothing))
 
 # Fixed configuration is global, not captured: Mooncake would otherwise try to
 # copy the TwicePrecision range metadata.
@@ -20,11 +24,10 @@ const SNR_META = (; epoch = first(SNR_TIMES), sampling_interval = step(SNR_TIMES
         # f_ref=0 fixes the reference to the first dynamics node, avoiding a
         # parameter-dependent frequency-to-reference-time search.
         generator = SurrogateWaveforms.PrecessingGenerator(sur; f_ref = 0.0)
-        for id in WaveformCases.SURROGATE_IDS
+        for (id, p) in applicable_cases(generator; ids = SNR_IDS)
             @testset "$model / $id" begin
-                p = WaveformCases.CASES[id]
-                x, scales = WaveformCases.scaled_coordinates(p; precessing = true)
-                adapter = WaveformCases.surrogate_adapter(scales)
+                x, scales = scaled_coordinates(p; precessing = true)
+                adapter = surrogate_adapter(scales)
                 function strain(z)
                     h = hphc_td(SNR_TIMES, adapter(z), generator)
                     samples = vcat(apply_window(SNR_WINDOW, h), SNR_PADDING)
@@ -34,11 +37,10 @@ const SNR_META = (; epoch = first(SNR_TIMES), sampling_interval = step(SNR_TIMES
                 for name in PSD_NAMES
                     @testset "$name" begin
                         metric = snr_metric(f, name; nsamples = n)
-                        loss(z) = sqrt(optimal_snr_squared(strain(z), metric))
-                        check_snr_ad(loss, x; rtol = 1.0e-6, finite_difference = id == "bbh_precessing")
+                        test_snr_gradients(strain, metric, x; backends = SNR_BACKENDS, rtol = 1.0e-6, finite_difference = id == "bbh_precessing")
                     end
                 end
-                id == "bbh_precessing" && check_phase_ad(strain, x)
+                id == "bbh_precessing" && test_phase_gradients(strain, x; backends = SNR_BACKENDS, rtol = 1.0e-6)
             end
         end
     end

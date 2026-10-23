@@ -14,8 +14,8 @@ class SelectionTests(unittest.TestCase):
             "GWDistributions": ["GWDistributions"],
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
-            "GWMatchedFiltering": ["GWMatchedFiltering", "AbstractWaveformsTests"],
-            "AbstractWaveformsTests": ["AbstractWaveformsTests"],
+            "GWMatchedFiltering": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "AbstractWaveformsTests": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "SurrogateWaveforms": ["SurrogateWaveforms"],
             "FrequencyDomainWaveforms": ["FrequencyDomainWaveforms"],
             "LALWaveforms": ["LALWaveforms", "FrequencyDomainWaveforms"],
@@ -92,10 +92,6 @@ class SelectionTests(unittest.TestCase):
             ),
             ["LALWaveforms", "FrequencyDomainWaveforms", "GWDistributions"],
         )
-
-    def test_shared_waveform_fixtures(self):
-        self.assertEqual(select_packages(["test/waveforms/parameters.csv"]),
-                         ["FrequencyDomainWaveforms", "SurrogateWaveforms"])
 
     def test_local_only_paths_select_nothing(self):
         for path in ("packages/SurrogatePyCallWaveforms/src/SurrogatePyCallWaveforms.jl",

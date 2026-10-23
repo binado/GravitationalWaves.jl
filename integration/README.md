@@ -1,41 +1,33 @@
-# Waveform numerical acceptance
+# Heavy waveform acceptance suites
 
-`parameters.csv` is shared by public-output oracle comparisons and the heavy
-optimal-SNR AD suites. It is data only: `cases.jl` validates the fixed header,
-unique IDs, finite values, ordered positive detector-frame masses, spin magnitudes,
-and positive distances. Masses are solar masses, distances Mpc, angles radians,
-and spins dimensionless Cartesian components in the LAL source frame at the
-reference epoch. Inclination is measured from the orbital angular momentum.
-The reference phase is passed to each backend's documented phase convention;
-these suites compare each implementation to its own oracle, not different models.
+These suites are too heavy for CI and run locally from the repository root. They use the
+generic checks of [AbstractWaveformsTests](../packages/AbstractWaveformsTests): reference-generator
+comparisons by mismatch (`test_reference`) and self-calibrating gradient checks
+(`test_gradients`, `test_snr_gradients`, `test_phase_gradients`, `test_waveform_jacobian`), with
+`FiniteDifferences` as the oracle and every call going through DifferentiationInterface.
 
-FD adapters require zero transverse spins and use magnitude/tilt for the LAL
-interface. Surrogates use total mass, q=m1/m2 (the inverse of bilby's mass ratio),
-Cartesian spins, and observer azimuth pi/2-phi_ref. Generator settings and explicit
-applicability lists live in Julia. The common equal/unequal/zero/aligned/antialigned
-BBHs enter both suites; the precessing row is surrogate-only. FD extremes retain
-separate model-appropriate oracle coverage. No precessing row is projected onto
-an aligned model.
+The shared physical parameters are `packages/AbstractWaveformsTests/data/parameters.csv`
+(solar masses, Mpc, radians, dimensionless Cartesian spins in the LAL source frame at the
+reference epoch; inclination is measured from the orbital angular momentum). FD generators use
+magnitude/tilt spins (zero transverse spin required); surrogates use total mass, q = m1/m2 (the
+inverse of bilby's mass ratio), Cartesian spins and observer azimuth pi/2 - phi_ref. Each suite
+lists the case IDs a model covers; no precessing row is projected onto an aligned model.
 
 ## Entry points
 
-- `Pkg.test()` for FrequencyDomainWaveforms compares both unwindowed polarizations
-  with LAL, including existing PN options, cutoffs and grid variants.
-- `just test-reference-surrogates` compares both surrogate models with the pinned
-  gwsurrogate 1.2.0 PyCall reference generator in its own environment, without Mooncake.
-  It runs locally only.
-- `just test-integration-waveforms` and `just test-integration-surrogates` run DI
-  ForwardDiff/Mooncake optimal-SNR tests locally.
+- `just test-reference-waveforms`: `FrequencyDomainWaveforms` against `LALWaveforms`
+  (`FrequencyDomainWaveforms/test_reference.jl`; needs `LALWAVEFORMS_LIBDIR`). Unwindowed
+  polarizations must agree to mismatch 1e-14 and pointwise to 1e-10 relative to the peak, with
+  identical zero support.
+- `just test-reference-surrogates`: both surrogate models against upstream gwsurrogate through
+  `SurrogatePyCallWaveforms` (`SurrogateWaveforms/gwsurrogate_reference`; needs the pinned Python
+  environment). Modes agree to 1e-11 relative to the peak; the sole exclusion is the known
+  upstream last-interval spline defect (times after the penultimate coorbital knot).
+- `just test-integration-waveforms` and `just test-integration-surrogates`: optimal-SNR gradient
+  suites with ForwardDiff and Mooncake, plus forward-mode waveform Jacobians for the FD models.
 - `just test-integration-series` validates production physical Fourier AD against
   an explicit DFT, including DC, interior bins, odd/even final bins, multiple
   channels, both real and imaginary cotangents, and prepared-gradient reuse.
-
-All oracle comparisons precede windowing. FD peak-relative tolerance is 1e-10;
-surrogate tolerance is 1e-11. Identically zero oracle outputs require exact zero.
-The sole surrogate exclusion is the known upstream last-interval spline defect:
-only times after the penultimate coorbital knot are omitted from numerical
-agreement; shapes and finiteness still cover every sample. Correct interpolation
-is checked independently against DataInterpolations and the four-knot regression.
 
 ## SNR convention
 
@@ -60,7 +52,7 @@ Configuration, windows, padding buffers, model data, grids, and PSD metrics are
 prepared outside differentiation. Only waveform parameters are differentiated.
 Mass/distance coordinates are scaled by their fixture values, spins/angles by one.
 FD tilt signs are fixed at preparation, so the local signed-spin coordinate is
-smooth at zero. Gradients are compared componentwise after division by base SNR,
+smooth at zero. The shared PSD setup is `common/snr.jl`. Gradients are compared componentwise after division by base SNR,
 with rtol 1e-8 (FD) / 1e-6 (TD) and atol 1e-8. Values use rtol 1e-10. Finite-difference
 spot checks use smooth aligned FD and generic-precession TD cases; boundary and
 zero-spin cases compare backend conventions without asserting differentiability

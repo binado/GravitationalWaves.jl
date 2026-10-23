@@ -18,7 +18,7 @@ Julia packages live in `packages/`:
 - `AbstractWaveforms`: MIT interface depending on GWSeries, owning `AbstractWaveformGenerator`, the generic `hphc_fd(f, params, generator)`, the accessors (`approximant`, `reference_frequency`, `minimum_frequency`, `maximum_frequency`), capability queries (`spin_support`, `supports_mode_array`, `is_differentiable`), and the shared helpers `check_frequency_grid`/`frequency_bounds`. `test/contract.jl` defines `test_generator_contract`, which both waveform packages `include` from their tests.
 - `LALWaveforms`: direct `ccall` bindings to LALSimulation FD waveforms, matching bilby's parameter names, units, conversions, and floating-point behavior.
 - `GWParameterConversion`: dependency-free, AD-friendly mass, spin, and frame conversions ported from bilby.
-- `FrequencyDomainWaveforms`: pure-Julia, AD-friendly TaylorF2, IMRPhenomD and IMRPhenomXAS, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`, `IMRPhenomXAS`); tests use LAL as the oracle.
+- `FrequencyDomainWaveforms`: pure-Julia, AD-friendly TaylorF2, IMRPhenomD and IMRPhenomXAS, with the same API as `LALWaveforms` (generator types `TaylorF2`, `IMRPhenomD`, `IMRPhenomXAS`); `LALWaveforms` is the reference generator in the local-only `just test-reference-waveforms` (`integration/FrequencyDomainWaveforms/test_reference.jl`), so its `Pkg.test()` needs no LAL libraries.
 - `GWDetectors`: StaticArrays-based, differentiable interferometer geometry, LAL-convention antenna factors, native GPS-to-GMST, arrival delays, and series-based broadcasted FD projection over uniform integer-indexed frequency bins. Heavy CPU Reactant/Enzyme/Mooncake acceptance lives in `integration/GWDetectors`.
 - `SurrogateWaveforms`: MIT, differentiable port of the NRSur7dq4 family from `gwsurrogate` (time-domain). Currently kernels (natural cubic spline, closed-form Wigner-D l <= 5, guarded norms; `SphericalFunctions.jl`/`DataInterpolations.jl` are test oracles) the coorbital waveform surrogate (`load_coorbital`, `coorbital_modes`) and the dynamics surrogate (`load_dynamics`, `dynamics`: RK4 start-up + variable-step AB4 on an `SVector{11}` state, mirroring `gwsurrogate`'s node bookkeeping; `gwsurrogate`'s C++ spline mis-evaluates isolated points in the last interval of a 4-knot window, which this port does not copy); the full pipeline (`load_surrogate`, `inertial_modes`: dynamics interpolated to the coorbital grid, coorbital modes, closed-form Wigner-D rotation `h_inertial[ℓ,m′] = Σ_m D^ℓ_{m′m}(q) h[ℓ,m]`, spline resampling; `mode_sum` with `₋₂Y_ℓm = √((2ℓ+1)/4π) d^ℓ_{m,2}(θ) e^{imφ}`, evaluated at `(inclination, π/2 − phi_ref)`) and the SI generator (`PrecessingGenerator`, `hphc_td`). ForwardDiff and Mooncake pass `integration/SurrogateWaveforms` (`just test-integration-surrogates`); see the package README for the AD rules found while porting (no branches inside recurrences, `element_type` for mixed tuples). It is time-domain only and implements the shared MIT AbstractWaveforms interface. Coordinate-first hphc calls return ordinary plus/cross matrices; series prototypes return series (FD uses epoch zero). TD dt/times keyword conveniences use uniform TimeSeries output; lower-level modes retain native irregular grids. Model data (Zenodo 10.5281/zenodo.22257361, CC-BY-4.0) is downloaded to a Scratch cache on first use (or read from `GWSURROGATES_DATA_DIR`) and kept in flat integer-indexed vectors, not `Dict`s or closures. Fixtures come from `python/generate_surrogates.py` (own uv project `python/surrogates`, `gwsurrogate==1.2.0`) into `reference/surrogates/`; tests need both the data and the fixtures (CI generates them).
 - `SurrogatePyCallWaveforms`: MIT PyCall adapter around upstream `gwsurrogate` implementing the AbstractWaveforms time-domain mode contract; the reference generator for the native surrogates. Outside the root workspace and the CI matrix (PyCall needs a configured Python); its tests and `just test-reference-surrogates` (`integration/SurrogateWaveforms/gwsurrogate_reference`) run locally.
@@ -49,11 +49,13 @@ julia --project=packages/LALWaveforms -e 'using Pkg; Pkg.test()'     # full suit
 julia --project=packages/GWDistributions -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWParameterConversion -e 'using Pkg; Pkg.test()'
 julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
-julia --project=packages/FrequencyDomainWaveforms -e 'using Pkg; Pkg.test()'   # needs LALWAVEFORMS_LIBDIR for the LAL comparison
+julia --project=packages/FrequencyDomainWaveforms -e 'using Pkg; Pkg.test()'
 runic --inplace .                              # format (Runic; CI enforces it)
 just test-integration                         # heavy AD integration suites, local only
 just test-integration-conversion              # Reactant CPU + Enzyme, no LAL/Python needed
 just test-integration-waveforms               # ForwardDiff + Mooncake
+just test-reference-waveforms                 # FrequencyDomainWaveforms vs LALWaveforms (needs LALWAVEFORMS_LIBDIR)
+just test-reference-surrogates                # SurrogateWaveforms vs gwsurrogate through PyCall (needs Python)
 just test-integration-detectors               # detector AD + Reactant CPU
 just test-integration-inference               # metric AD + waveform/projection/likelihood
 just benchmark-inference                      # compare frequency/channel storage layouts
@@ -102,7 +104,7 @@ Conventional Commits; work on a non-`main` branch and open PRs.
 
 PR CI tests affected packages on Julia 1.12, including downstream test dependencies:
 `GWParameterConversion` changes also test both waveform packages, `LALWaveforms`
-changes also test `FrequencyDomainWaveforms`, and `AbstractWaveforms` changes test both waveform packages and `SurrogateWaveforms`. Python tooling changes test all three conversion/waveform
+changes also test `FrequencyDomainWaveforms`, and `AbstractWaveforms` changes test both waveform packages, `SurrogateWaveforms` and `AbstractWaveformsTests`. `AbstractWaveformsTests` and `GWMatchedFiltering` changes test every package that uses the shared contract checks (`AbstractWaveforms`, both waveform backends, `SurrogateWaveforms`). Python tooling changes test all three conversion/waveform
 packages, `GWDetectors`, and `GWMatchedFiltering`. Detector changes select `GWDetectors`. Inference changes select `GWMatchedFiltering`. CI configuration, root Julia environment files, and unfamiliar paths test all
 packages. Only changes confined to root `README.md`, `AGENTS.md`, `CLAUDE.md`, and
 `LICENSE` skip package tests; package-local documentation still selects its package.
@@ -114,7 +116,7 @@ and default test targets. Run `just test-integration` locally before submitting 
 to numerical kernels or the AD integrations; individual package recipes are listed above.
 CI does not run these integration suites or install Enzyme, Reactant, or Mooncake.
 
-Pushes to `main` and manual CI runs test all ten packages on Julia 1.12 and latest stable.
+Pushes to `main` and manual CI runs test all eleven packages on Julia 1.12 and latest stable.
 For a full pre-merge run, use `gh workflow run CI.yml --ref <branch>`.
 Selection and status checks can be tested locally with
 `python3 -m unittest discover -s .github/ci -v`.

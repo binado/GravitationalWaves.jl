@@ -1,4 +1,7 @@
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+AbstractWaveformsTests = "7a0139d6-47ed-4875-916e-ca5fc9bad9e0"
+LALWaveforms = "46d55bfd-a6ec-4788-a7e2-8ddbff47c71c"
 GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 GWNoise = "364a1f13-170e-48c9-a1df-e80dad50e028"
 GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
@@ -12,6 +15,8 @@ Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
+AbstractWaveformsTests = {path = "../../packages/AbstractWaveformsTests"}
+LALWaveforms = {path = "../../packages/LALWaveforms"}
 GWMatchedFiltering = {path = "../../packages/GWMatchedFiltering"}
 GWNoise = {path = "../../packages/GWNoise"}
 GWSeries = {path = "../../packages/GWSeries"}
@@ -20,6 +25,9 @@ GWParameterConversion = {path = "../../packages/GWParameterConversion"}
 FrequencyDomainWaveforms = {path = "../../packages/FrequencyDomainWaveforms"}
 
 [compat]
+ADTypes = "1"
+AbstractWaveformsTests = "0.1"
+LALWaveforms = "0.3"
 GWMatchedFiltering = "0.2"
 GWNoise = "0.2"
 GWSeries = "0.1"

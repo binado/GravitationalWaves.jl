@@ -40,11 +40,15 @@ fixtures:
     @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-series test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates test-reference-surrogates
+test-integration: test-integration-series test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates test-reference-waveforms test-reference-surrogates
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWParameterConversion -e 'using Pkg; Pkg.instantiate(); include("integration/GWParameterConversion/runtests.jl")'
+
+# FrequencyDomainWaveforms against LALWaveforms as the reference generator; local only, needs LALWAVEFORMS_LIBDIR.
+test-reference-waveforms:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/FrequencyDomainWaveforms -e 'using Pkg; Pkg.instantiate(); include("integration/FrequencyDomainWaveforms/test_reference.jl")'
 
 # ForwardDiff and Mooncake waveform gradients against finite differences.
 test-integration-waveforms:

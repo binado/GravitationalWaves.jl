@@ -5,7 +5,7 @@ using LinearAlgebra
 using NPZ
 using Random
 using AbstractWaveforms
-include("../../AbstractWaveforms/test/contract.jl")
+using AbstractWaveformsTests
 
 @testset "waveform assembly kernels" begin
     @testset "quat_multiply" begin

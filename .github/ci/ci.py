@@ -26,9 +26,9 @@ AFFECTED = {
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
-    "GWMatchedFiltering": {"GWMatchedFiltering", "AbstractWaveformsTests"},
+    "GWMatchedFiltering": {"GWMatchedFiltering", "AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
     "SurrogateWaveforms": {"SurrogateWaveforms"},
-    "AbstractWaveformsTests": {"AbstractWaveformsTests"},
+    "AbstractWaveformsTests": {"AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
 }
 LOCAL_ONLY_PREFIXES = ("packages/SurrogatePyCallWaveforms/", "integration/SurrogateWaveforms/gwsurrogate_reference/")
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
@@ -49,8 +49,6 @@ def select_packages(paths):
         elif path.startswith(LOCAL_ONLY_PREFIXES):
             # PyCall needs a configured Python; these run locally (`just test-reference-surrogates`).
             continue
-        elif path.startswith("test/waveforms/"):
-            selected.update({"FrequencyDomainWaveforms", "SurrogateWaveforms"})
         elif path.startswith("python/surrogates/") or path == "python/generate_surrogates.py":
             selected.update(AFFECTED["SurrogateWaveforms"])
         elif path.startswith("python/"):

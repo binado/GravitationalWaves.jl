@@ -26,7 +26,7 @@ AFFECTED = {
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
-    "GWMatchedFiltering": {"GWMatchedFiltering", "AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
+    "GWMatchedFiltering": {"GWMatchedFiltering", "GWNoise", "AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
     "SurrogateWaveforms": {"SurrogateWaveforms"},
     "AbstractWaveformsTests": {"AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
 }

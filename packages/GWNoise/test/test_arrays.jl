@@ -94,3 +94,41 @@ using LinearAlgebra
         @test_throws DimensionMismatch sample_noise!(zeros(ComplexF64, 2, 2), Sb, df)
     end
 end
+
+@testset "Noise and matched-filtering normalization contract" begin
+    using GWMatchedFiltering: whiten, complex_inner_product, noise_weighted_inner_product, optimal_snr_squared
+    rng = Xoshiro(11)
+    df = 0.25
+    draws = 20_000
+    # Whitening drawn noise gives E[(W n)(W n)†] = I/(2df) per active bin, independent of the PSD.
+    Sd = [0.0 0.0; 2.0 8.0; 4.5 0.5]
+    Wd = whitening_factor(Sd)
+    S0 = ComplexF64[2 0.3 + 0.4im; 0.3 - 0.4im 1]
+    Sb = zeros(ComplexF64, 2, 2, 3)
+    Sb[:, :, 2] = S0
+    Sb[:, :, 3] = 2S0
+    Wb = whitening_factor(Sb)
+    for (S, W, nactive) in ((Sd, Wd, 4), (Sb, Wb, 4))
+        energy = 0.0
+        for _ in 1:draws
+            n = sample_noise(rng, S, df)
+            white = whiten(n, W)
+            @test size(white) == size(n)
+            energy += sum(abs2, white)
+            # Euclidean sum of whitened components reproduces the 4df-weighted product.
+        end
+        # Each active (bin, channel) component carries E|z|² = 1/(2df).
+        @test energy / draws ≈ nactive / (2df) rtol = 0.01
+    end
+    # ⟨n, n⟩ = 4df Σ |W n|² has mean 2 per active complex component (chi-squared, 2 dof).
+    for (S, W, nactive) in ((Sd, Wd, 4), (Sb, Wb, 4))
+        mean_snr2 = sum(optimal_snr_squared(sample_noise(rng, S, df), W, df) for _ in 1:draws) / draws
+        @test mean_snr2 ≈ 2nactive rtol = 0.01
+    end
+    # The matched-filter statistic ⟨h, n⟩/√⟨h, h⟩ has E|ρ|² = 2 (unit variance in Re and Im).
+    h = ones(ComplexF64, 3, 2)
+    norm = sqrt(optimal_snr_squared(h, Wb, df))
+    rho = [complex_inner_product(h, sample_noise(rng, Sb, df), Wb, df) / norm for _ in 1:draws]
+    @test sum(abs2, rho) / draws ≈ 2 rtol = 0.03
+    @test abs(sum(rho) / draws) < 0.05
+end

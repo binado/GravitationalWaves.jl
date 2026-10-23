@@ -8,9 +8,13 @@ DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+[sources]
+GWMatchedFiltering = {path = "../GWMatchedFiltering"}
+
 [compat]
 Aqua = "0.8"
 DelimitedFiles = "1"
+GWMatchedFiltering = "0.3"
 LinearAlgebra = "1"
 JET = "0.11, 0.12"
 Random = "1"
@@ -18,9 +22,10 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "JET", "Test"]
+test = ["GWMatchedFiltering", "Aqua", "JET", "Test"]

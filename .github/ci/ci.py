@@ -15,18 +15,20 @@ PACKAGES = (
     "GWNoise",
     "GWMatchedFiltering",
     "SurrogateWaveforms",
+    "AbstractWaveformsTests",
 )
 AFFECTED = {
-    "GWSeries": {"GWSeries", "GWNoise", "GWDetectors", "GWMatchedFiltering", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
-    "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
+    "GWSeries": {"GWSeries", "GWNoise", "GWDetectors", "GWMatchedFiltering", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
     "LALWaveforms": {"LALWaveforms", "FrequencyDomainWaveforms"},
     "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "FrequencyDomainWaveforms"},
     "FrequencyDomainWaveforms": {"FrequencyDomainWaveforms"},
     "GWDistributions": {"GWDistributions"},
     "GWDetectors": {"GWDetectors"},
     "GWNoise": {"GWNoise"},
-    "GWMatchedFiltering": {"GWMatchedFiltering"},
+    "GWMatchedFiltering": {"GWMatchedFiltering", "AbstractWaveformsTests"},
     "SurrogateWaveforms": {"SurrogateWaveforms"},
+    "AbstractWaveformsTests": {"AbstractWaveformsTests"},
 }
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 

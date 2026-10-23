@@ -10,7 +10,7 @@ resolve:
 
 # Run Pkg.test() for every workspace member.
 test:
-    for pkg in packages/AbstractWaveforms packages/LALWaveforms packages/GWParameterConversion packages/FrequencyDomainWaveforms packages/GWDistributions packages/GWDetectors packages/GWSeries packages/GWNoise packages/GWMatchedFiltering packages/SurrogateWaveforms; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
+    for pkg in packages/AbstractWaveforms packages/LALWaveforms packages/GWParameterConversion packages/FrequencyDomainWaveforms packages/GWDistributions packages/GWDetectors packages/GWSeries packages/GWNoise packages/GWMatchedFiltering packages/SurrogateWaveforms packages/AbstractWaveformsTests; do {{ julia }} --startup-file=no --project=$pkg -e 'using Pkg; Pkg.test()'; done
 
 # Run Pkg.test() for a single workspace member, e.g. `just test-pkg LALWaveforms`.
 test-pkg pkg:

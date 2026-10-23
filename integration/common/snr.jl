@@ -11,7 +11,7 @@ project_strain(h) = 0.7 .* h[:, 1] .+ 0.3 .* h[:, 2]
 # last bin are zero.
 # Returns the `(nf, 1)` whitening factor; the caller passes `step(f)` alongside it.
 function snr_whitening(f, name)
-    curve = read_psd(psd_path(name); interpolation = :loglog)
+    curve = TabulatedPSD(psd_path(name), ' '; interpolation = :loglog)
     low = max(20.0, first(curve.frequencies))
     high = min(512.0, last(curve.frequencies), last(f))
     return whitening_factor(reshape(band_psd(curve, f; fmin = low, fmax = high), :, 1))

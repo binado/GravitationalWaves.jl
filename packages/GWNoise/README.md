@@ -6,7 +6,7 @@ PSD estimation and continuous streaming are outside the current scope.
 ```julia
 using GWNoise, Random
 
-curve = read_psd("H1_psd.txt")  # or read_asd("H1_asd.txt")
+curve = TabulatedPSD("H1_psd.txt", ' ')  # use kind=:asd for ASD input
 f = range(0.0; step = 0.25, length = 4097)          # one-sided grid from DC
 S = reshape(band_psd(curve, f; fmin = 20.0, fmax = 1024.0), :, 1)  # (nf, nc)
 W = whitening_factor(S)                              # for GWMatchedFiltering
@@ -14,13 +14,16 @@ n = sample_noise(Xoshiro(42), S, step(f))            # (nf, nc) ComplexF64 draw
 ```
 
 Files have two columns: frequency in Hz and PSD in strain²/Hz (or ASD in strain/√Hz).
-Whitespace or comma delimiters, blank lines and `#` comments are supported. Readers
-accept a path or `IO`. There is no inferred header, unit conversion or network access.
-`TabulatedPSD(f, values; kind=:psd)` also accepts in-memory tables. Tables and draws
+Pass the delimiter explicitly (for example, `','`, `' '` or `'\t'`); it is forwarded
+directly to `DelimitedFiles.readdlm`. Blank lines and `#` comments are supported.
+The file constructor accepts a path or `IO`. There is no inferred delimiter, header,
+unit conversion or network access. `TabulatedPSD(f, values; kind=:psd)` accepts
+frequency/density vectors, and `TabulatedPSD(table; kind=:psd)` accepts a two-column
+matrix. Use `kind=:asd` for ASD values. Tables and draws
 use `Float64`/`ComplexF64`.
 
 The default interpolation is linear in PSD and frequency. Use
-`read_psd(path; interpolation=:loglog)` for linear interpolation of log PSD against
+`TabulatedPSD(path, ' '; interpolation=:loglog)` for linear interpolation of log PSD against
 log frequency; this requires positive frequencies and densities. ASD is squared
 before interpolation. `asd(f, curve)` evaluates the square root of the resulting PSD.
 Use `psd.(frequencies, curve)` or `asd.(frequencies, curve)` for collections of
@@ -82,18 +85,18 @@ a symbol or string and returns a local table path.
 
 ```julia
 using GWNoise
-curve = read_psd(psd_path(:AplusDesign))
+curve = TabulatedPSD(psd_path(:AplusDesign), ' ')
 value = psd(100.0, curve)
 ```
 
 The supplied files are retained verbatim in `data/noise_curves`; columns are
 frequency in Hz and one-sided PSD in strain²/Hz. No additional provenance or
 licensing information was supplied with the tables. Interpolation and coverage
-follow `read_psd` and `psd`, including errors outside the tabulated band by default.
+follow `TabulatedPSD` and `psd`, including errors outside the tabulated band by default.
 
 GWDetectors provides independent geometry and default sensitivity mappings:
 
 ```julia
 using GWDetectors
-curve = read_psd(psd_path(sensitivities.H1))
+curve = TabulatedPSD(psd_path(sensitivities.H1), ' ')
 ```

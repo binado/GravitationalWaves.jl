@@ -44,10 +44,10 @@ in strain²/Hz, with frequency in Hz. Load them explicitly with GWNoise:
 ```julia
 using GWDetectors, GWNoise
 
-curve = read_psd(psd_path(sensitivities.H1))
+curve = TabulatedPSD(psd_path(sensitivities.H1), ' ')
 value = psd(100.0, curve)
 curve_names = available_psds()  # all designs, including alternatives
-alternative = read_psd(psd_path(:ET_COBA_20km); interpolation = :loglog)
+alternative = TabulatedPSD(psd_path(:ET_COBA_20km), ' '; interpolation = :loglog)
 ```
 
 `psd_path` accepts symbols or strings. Detector defaults in `sensitivities` come from the supplied

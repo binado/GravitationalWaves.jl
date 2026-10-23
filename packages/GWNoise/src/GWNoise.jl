@@ -6,7 +6,7 @@ using LinearAlgebra: Hermitian, I, PosDefException, cholesky, ishermitian
 using Random: AbstractRNG, default_rng, randn
 
 export available_psds, psd_path
-export TabulatedPSD, read_psd, read_asd, psd, asd
+export TabulatedPSD, psd, asd
 export band_psd, whitening_factor, sample_noise, sample_noise!
 
 include("psd.jl")

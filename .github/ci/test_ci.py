@@ -14,7 +14,7 @@ class SelectionTests(unittest.TestCase):
             "GWDistributions": ["GWDistributions"],
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
-            "GWMatchedFiltering": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "GWMatchedFiltering": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "AbstractWaveformsTests": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "SurrogateWaveforms": ["SurrogateWaveforms"],
             "FrequencyDomainWaveforms": ["FrequencyDomainWaveforms"],

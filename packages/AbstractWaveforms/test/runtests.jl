@@ -4,8 +4,8 @@ using Aqua
 using JET
 using AbstractWaveforms
 using AbstractWaveforms: check_frequency_grid, frequency_bounds
-
-include("contract.jl")
+using AbstractWaveforms: AlignedSpinQuadrupolarWaveformGenerator, amplitude_phase_fd
+using AbstractWaveformsTests
 
 struct Dummy <: AbstractWaveformGenerator
     maximum::Union{Nothing, Float64}

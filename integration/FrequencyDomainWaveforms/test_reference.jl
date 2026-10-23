@@ -1,8 +1,12 @@
+using Test
+using FrequencyDomainWaveforms
 using LALWaveforms: LALWaveformGenerator
+using AbstractWaveformsTests
+using AbstractWaveforms: hphc_fd, approximant, reference_frequency, minimum_frequency, maximum_frequency
 
-# The LAL-backed `LALWaveformGenerator` is the oracle. It needs the LAL shared libraries
-# (`LALWAVEFORMS_LIBDIR` or a saved preference); without them the comparison is skipped, or
-# fails on CI.
+# The LAL-backed `LALWaveformGenerator` is the reference generator. It needs the LAL shared libraries
+# (`LALWAVEFORMS_LIBDIR` or a saved preference); without them the comparison is skipped. Local only:
+# run it with `just test-reference-waveforms`.
 lal_available() = try
     hphc_fd(
         range(0, 64; step = 1.0),
@@ -27,15 +31,17 @@ end
 
 generator(name; kw...) = getproperty(FrequencyDomainWaveforms, Symbol(name))(; kw...)
 
-# Largest deviation relative to the largest LAL sample.
-relative_error(h, h_lal) = maximum(abs, h .- h_lal) / maximum(abs, h_lal)
-
-include("../../../test/waveforms/cases.jl")
-include("../../../test/waveforms/oracle_checks.jl")
-const BBH = WaveformCases.fd_parameters(WaveformCases.CASES["bbh_unequal"])
-const BNS = WaveformCases.fd_parameters(WaveformCases.CASES["bns"])
+const CASES_BY_ID = default_cases()
+const BBH = fd_parameters(CASES_BY_ID["bbh_unequal"])
+const BNS = fd_parameters(CASES_BY_ID["bns"])
 const ALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = 0.0)
 const ANTIALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = Float64(π), tilt_2 = 0.0)
+const IDS = (
+    "bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned",
+    "bbh_high_spin", "bbh_high_ratio", "bbh_light", "bns", "bns_aligned", "nsbh",
+)
+# Unwindowed polarizations agree to about 1e-12 relative to the largest sample; mismatch is quadratic in that.
+const MAX_MISMATCH = 1.0e-14
 
 # (name, approximant, parameters, generator keywords, rtol)
 const CASES = [
@@ -92,49 +98,34 @@ const CASES = [
 
 @testset "comparison with LAL" begin
     if !lal_available()
-        msg = "LAL is not configured (set LALWAVEFORMS_LIBDIR); skipping the comparison with LALWaveforms"
-        get(ENV, "CI", "") == "true" ? error(msg) : @warn msg
+        @warn "LAL is not configured (set LALWAVEFORMS_LIBDIR); skipping the comparison with LALWaveforms"
     else
-        @test_throws ArgumentError WaveformCases.fd_parameters(WaveformCases.CASES["bbh_precessing"])
-        for name in ("TaylorF2", "IMRPhenomD", "IMRPhenomXAS"), id in (
-                    WaveformCases.COMMON_IDS..., "bbh_high_spin", "bbh_high_ratio", "bbh_light", "bns", "bns_aligned", "nsbh",
-                )
-            @testset "$name / $id" begin
-                grid = range(0.0, 1024.0; step = 0.25)
-                g = generator(name; maximum_frequency = 1024.0)
-                params = WaveformCases.fd_parameters(WaveformCases.CASES[id])
-                actual = hphc_fd(grid, params, g)
-                expected = hphc_fd(grid, params, lal_twin(g))
-                @test size(actual) == (length(grid), 2)
-                for channel in 1:2
-                    check_oracle(actual[:, channel], expected[:, channel]; rtol = 1.0e-10)
-                    @test iszero.(actual[:, channel]) == iszero.(expected[:, channel])
-                end
-            end
+        grid = range(0.0, 1024.0; step = 0.25)
+        for name in ("TaylorF2", "IMRPhenomD", "IMRPhenomXAS")
+            g = generator(name; maximum_frequency = 1024.0)
+            test_reference(
+                g, lal_twin(g), applicable_cases(g, lal_twin(g); ids = IDS); grid, max_mismatch = MAX_MISMATCH,
+                rtol = 1.0e-10, exact_support = true,
+            )
         end
-        for grid in (range(0, 1024; step = 0.25),), (name, approximant, params, kw, rtol) in CASES
-            @testset "$name" begin
+
+        @testset "options" begin
+            for (name, approximant, params, kw, rtol) in CASES
                 g = generator(approximant; kw...)
-                h = hphc_fd(grid, params, g)
-                h_lal = hphc_fd(grid, params, lal_twin(g))
-                err_plus = relative_error(h[:, 1], h_lal[:, 1])
-                err_cross = relative_error(h[:, 2], h_lal[:, 2])
-                @info "$name: relative error" plus = err_plus cross = err_cross
-                @test err_plus <= rtol
-                @test err_cross <= rtol
-                # The support must coincide exactly.
-                @test iszero.(h[:, 1]) == iszero.(h_lal[:, 1])
+                test_reference(
+                    g, lal_twin(g), [(name, params)]; grid, parameters = identity, max_mismatch = MAX_MISMATCH,
+                    rtol, exact_support = true,
+                )
             end
         end
 
         @testset "other grids" begin
             for approximant in ("IMRPhenomD", "TaylorF2", "IMRPhenomXAS"), df in (0.125, 1.0 / 3.0, 1.0)
-                grid = range(0, 512; step = df)
-                params = merge(BBH, ALIGNED)
                 g = generator(approximant)
-                h = hphc_fd(grid, params, g)
-                h_lal = hphc_fd(grid, params, lal_twin(g))
-                @test relative_error(h[:, 1], h_lal[:, 1]) <= 1.0e-10
+                test_reference(
+                    g, lal_twin(g), [("df = $df", merge(BBH, ALIGNED))]; grid = range(0, 512; step = df),
+                    parameters = identity, max_mismatch = MAX_MISMATCH, rtol = 1.0e-10,
+                )
             end
         end
     end

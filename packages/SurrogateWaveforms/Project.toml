@@ -11,14 +11,19 @@ SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+[sources]
+AbstractWaveforms = {path = "../AbstractWaveforms"}
+
 [compat]
-GWSeries = "0.1"
 AbstractWaveforms = "0.3"
+AbstractWaveformsTests = "0.1"
 Aqua = "0.8"
 DataInterpolations = "10"
 Downloads = "1"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
+GWMatchedFiltering = "0.2"
+GWSeries = "0.1"
 HDF5 = "0.17"
 JET = "0.11, 0.12"
 LinearAlgebra = "1"
@@ -33,10 +38,12 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+AbstractWaveformsTests = "7a0139d6-47ed-4875-916e-ca5fc9bad9e0"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -47,8 +54,4 @@ SphericalFunctions = "af6d55de-b1f7-4743-b797-0829a72cf84e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "DataInterpolations", "FiniteDifferences", "ForwardDiff", "GWSeries", "JET", "LinearAlgebra", "NPZ", "Quaternionic", "Random", "SphericalFunctions", "Test"]
-
-[sources]
-GWSeries = {path = "../GWSeries"}
-AbstractWaveforms = {path = "../AbstractWaveforms"}
+test = ["AbstractWaveformsTests", "Aqua", "DataInterpolations", "FiniteDifferences", "ForwardDiff", "GWMatchedFiltering", "GWSeries", "JET", "LinearAlgebra", "NPZ", "Quaternionic", "Random", "SphericalFunctions", "Test"]

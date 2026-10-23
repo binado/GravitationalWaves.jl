@@ -53,9 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries' && matrix.package != 'AbstractWaveformsTests'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries' && matrix.package != 'AbstractWaveformsTests' && matrix.package != 'FrequencyDomainWaveforms'
       - name: Set up Python reference environment
-        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries' && matrix.package != 'AbstractWaveformsTests' && matrix.package != 'SurrogateWaveforms'
+        if: matrix.package != 'GWDistributions' && matrix.package != 'AbstractWaveforms' && matrix.package != 'GWNoise' && matrix.package != 'GWSeries' && matrix.package != 'AbstractWaveformsTests' && matrix.package != 'FrequencyDomainWaveforms' && matrix.package != 'SurrogateWaveforms'
         run: uv sync --project python --locked
       - name: Generate bilby reference fixtures
         if: matrix.package == 'LALWaveforms' || matrix.package == 'GWParameterConversion'
@@ -78,7 +78,7 @@ jobs:
           uv run --project python/surrogates python python/generate_surrogates.py --data-dir "$RUNNER_TEMP/surrogate-data" --download
           echo "GWSURROGATES_DATA_DIR=$RUNNER_TEMP/surrogate-data" >> "$GITHUB_ENV"
       - name: Locate LAL libraries
-        if: matrix.package == 'LALWaveforms' || matrix.package == 'FrequencyDomainWaveforms'
+        if: matrix.package == 'LALWaveforms'
         run: echo "LALWAVEFORMS_LIBDIR=$(uv run --project python python python/libdir.py)" >> $GITHUB_ENV
       - uses: julia-actions/setup-julia@v2
         with:

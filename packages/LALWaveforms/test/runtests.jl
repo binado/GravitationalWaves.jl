@@ -2,7 +2,7 @@ using GWSeries
 using Test
 using LALWaveforms
 
-include("../../AbstractWaveforms/test/contract.jl")
+using AbstractWaveformsTests
 
 @testset "LALWaveforms" begin
     include("test_library.jl")

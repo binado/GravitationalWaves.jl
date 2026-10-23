@@ -10,16 +10,20 @@ GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
 GWSeries = {path = "../GWSeries"}
 
 [compat]
-GWSeries = "0.1"
+AbstractWaveformsTests = "0.1"
 Aqua = "0.8"
+GWMatchedFiltering = "0.2"
+GWSeries = "0.1"
 JET = "0.11, 0.12"
 Test = "1"
 julia = "1.12"
 
 [extras]
+AbstractWaveformsTests = "7a0139d6-47ed-4875-916e-ca5fc9bad9e0"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "JET", "Test"]
+test = ["AbstractWaveformsTests", "Aqua", "GWMatchedFiltering", "JET", "Test"]

@@ -201,7 +201,7 @@ runic --inplace .
 ## Licenses
 
 The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering`, `SurrogateWaveforms`, `AbstractWaveformsTests` and `SurrogatePyCallWaveforms` use GPL-2.0-or-later.
-`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)) `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) `AbstractWaveformsTests` ([LICENSE](packages/AbstractWaveformsTests/LICENSE)) and `SurrogatePyCallWaveforms` ([LICENSE](packages/SurrogatePyCallWaveforms/LICENSE)) are MIT.
+`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)), `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)), `AbstractWaveformsTests` ([LICENSE](packages/AbstractWaveformsTests/LICENSE)) and `SurrogatePyCallWaveforms` ([LICENSE](packages/SurrogatePyCallWaveforms/LICENSE)) are MIT.
 
-Waveform numerical acceptance uses a shared physical parameter CSV, public-output
-oracles, and optimal-SNR backend comparisons; see [the suite guide](test/waveforms/README.md).
+Waveform numerical acceptance uses a shared physical parameter CSV, reference-generator
+comparisons, and optimal-SNR backend comparisons; see [the suite guide](integration/README.md).

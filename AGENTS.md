@@ -29,7 +29,7 @@ Waveform scope remains FD only, uniform `AbstractRange` grids, detector-frame ma
 Native FrequencyDomainWaveforms models (TaylorF2, Phenom) evaluate supplied frequencies directly and allow
 nonzero grid starts; LALWaveforms retains zero-start grids. TaylorF2's phase keeps LAL's `-1/Δf`
 time shift, so it depends on the grid step. Grid validation runs on the host.
-The waveform backends, conversion, detector, noise, and matched-filtering packages use GPL-2.0-or-later; `GWSeries`, `AbstractWaveforms`, `GWDistributions` and `SurrogateWaveforms` are MIT.
+The waveform backends, conversion, detector, and noise packages use GPL-2.0-or-later; `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering` and `SurrogateWaveforms` are MIT.
 Paths in the architecture section below are relative to `packages/LALWaveforms/` unless noted.
 
 ## Commands

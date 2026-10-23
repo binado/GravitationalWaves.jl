@@ -1,7 +1,7 @@
 """
     FixedObjective(f)
 
-Wrap a callable whose captures are fixed configuration (grids, generators, metrics), never aliases of
+Wrap a callable whose captures are fixed configuration (grids, generators, whitening factors), never aliases of
 the differentiated input. The Mooncake extension marks it non-differentiable.
 """
 struct FixedObjective{F}
@@ -58,14 +58,14 @@ function test_gradients(
 end
 
 """
-    test_snr_gradients(strain, metric, x; kwargs...)
+    test_snr_gradients(strain, W, df, x; kwargs...)
 
 [`test_gradients`](@ref) for the optimal SNR of `strain(x)` (a `(frequency, channel)` array) in
-`metric`. The last three coordinates must be distance, inclination and phase with distance scaled to one,
+the whitening factor `W` with frequency spacing `df`. The last three coordinates must be distance, inclination and phase with distance scaled to one,
 so the distance derivative of `rho` is exactly `-rho` and prepared gradients are reused at a nearby distance.
 """
-function test_snr_gradients(strain, metric, x::AbstractVector; kwargs...)
-    loss = FixedObjective(z -> sqrt(optimal_snr_squared(strain(z), metric)))
+function test_snr_gradients(strain, W, df, x::AbstractVector; kwargs...)
+    loss = FixedObjective(z -> sqrt(optimal_snr_squared(strain(z), W, df)))
     g = test_gradients(loss, x; reuse_index = length(x) - 2, kwargs...)
     @test g[end - 2] / loss(x) ≈ -1 rtol = get(kwargs, :rtol, 1.0e-6)
     return g

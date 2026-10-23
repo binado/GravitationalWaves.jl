@@ -5,6 +5,7 @@ using LinearAlgebra
 using Random
 using ForwardDiff
 
+include("whitening_helpers.jl")
 include("test_metric.jl")
 include("test_statistics.jl")
 include("test_whitened.jl")

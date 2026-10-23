@@ -113,24 +113,24 @@ const F = 0.0:0.5:1024.0
     end
 
     @testset "mismatch" begin
-        metric = flat_metric(F; minimum_frequency = 20.0)
+        W = flat_whitening(F; minimum_frequency = 20.0)
         h(τ, φ) = hcat([shifted(f, τ, φ) for f in F], [0.5 * shifted(f, τ, φ) for f in F])
         a = h(0.0, 0.0)
-        @test mismatch(a, a, metric; maximize = :none) < 1.0e-12
-        @test mismatch(a, 3 .* a, metric; maximize = :none) < 1.0e-12
-        @test mismatch(a, h(0.0, 0.7), metric; maximize = :none) > 0.1
-        @test mismatch(a, h(0.0, 0.7), metric; maximize = :phase) < 1.0e-12
-        @test mismatch(a, h(0.003, 0.0), metric; maximize = :phase) > 1.0e-2
-        @test mismatch(a, h(0.003, 0.7), metric; maximize = :time_phase) < 1.0e-9
-        @test mismatch(a, h(-0.0123, -2.0), metric; maximize = :time_phase) < 1.0e-9
+        @test mismatch(a, a, W, F; maximize = :none) < 1.0e-12
+        @test mismatch(a, 3 .* a, W, F; maximize = :none) < 1.0e-12
+        @test mismatch(a, h(0.0, 0.7), W, F; maximize = :none) > 0.1
+        @test mismatch(a, h(0.0, 0.7), W, F; maximize = :phase) < 1.0e-12
+        @test mismatch(a, h(0.003, 0.0), W, F; maximize = :phase) > 1.0e-2
+        @test mismatch(a, h(0.003, 0.7), W, F; maximize = :time_phase) < 1.0e-9
+        @test mismatch(a, h(-0.0123, -2.0), W, F; maximize = :time_phase) < 1.0e-9
         # A different shape is not absorbed by any shift.
         other = hcat([exp(-((f - 150.0) / 30.0)^2 / 2) + 0im for f in F], zeros(ComplexF64, length(F)))
-        @test mismatch(a, other, metric) > 1.0e-2
-        @test_throws DimensionMismatch mismatch(a, a[1:(end - 1), :], metric)
-        @test_throws ArgumentError mismatch(a, a, metric; maximize = :nonsense)
-        @test_throws DomainError mismatch(a, zero(a), metric)
+        @test mismatch(a, other, W, F) > 1.0e-2
+        @test_throws DimensionMismatch mismatch(a, a[1:(end - 1), :], W, F)
+        @test_throws ArgumentError mismatch(a, a, W, F; maximize = :nonsense)
+        @test_throws DomainError mismatch(a, zero(a), W, F)
         series = FrequencySeries(a; epoch = 0.0, frequency_spacing = step(F), channels = (:plus, :cross))
-        @test mismatch(series, series, metric) < 1.0e-12
+        @test mismatch(series, series, W) < 1.0e-12
     end
 
     @testset "test_reference" begin
@@ -141,10 +141,10 @@ const F = 0.0:0.5:1024.0
             max_mismatch = 1.0e-12, rtol = 1.0e-12, exact_support = true,
         )
         @test_throws ArgumentError test_reference(Shifted(0.0, 0.0), Shifted(0.0, 0.0), []; grid = F, max_mismatch = 1.0)
-        # Extension point: a user-supplied metric function receives the frequency grid.
+        # Extension point: a user-supplied whitening function receives the frequency grid.
         test_reference(
             Shifted(0.001, 0.0), Shifted(0.0, 0.0), case; grid = F, parameters = identity,
-            metric = f -> flat_metric(f; minimum_frequency = 50.0, maximum_frequency = 200.0), max_mismatch = 1.0e-9,
+            whitening = f -> flat_whitening(f; minimum_frequency = 50.0, maximum_frequency = 200.0), max_mismatch = 1.0e-9,
         )
         # Time domain: the same pulse shifted by whole samples agrees after the physical rfft.
         t = range(-0.5, 0.5; step = 1 / 2048)
@@ -156,7 +156,7 @@ const F = 0.0:0.5:1024.0
             evaluate = AbstractWaveformsTests.evaluate_polarizations
             wide, f = evaluate(Pulse(0.0, 0.03), (;), t, :td, identity)
             narrow, _ = evaluate(Pulse(0.0, 0.02), (;), t, :td, identity)
-            @test mismatch(wide, narrow, flat_metric(f)) > 1.0e-3
+            @test mismatch(wide, narrow, flat_whitening(f), f) > 1.0e-3
         end
     end
 
@@ -172,9 +172,9 @@ const F = 0.0:0.5:1024.0
         strain(z) = reshape(
             [(z[1] / z[3]) * (1 + 0.3 * z[4]) * exp(-((f - 100) / 30)^2 / 2) * cis(z[2] * f / 100 + z[5]) for f in fgrid], :, 1,
         )
-        metric = flat_metric(fgrid; channels = (:strain,), minimum_frequency = 20.0)
+        W = flat_whitening(fgrid; nchannels = 1, minimum_frequency = 20.0)
         y = [2.0, 0.1, 1.0, 0.4, 0.3]
-        test_snr_gradients(strain, metric, y; backends, rtol = 1.0e-8)
+        test_snr_gradients(strain, W, step(fgrid), y; backends, rtol = 1.0e-8)
         test_phase_gradients(strain, y; backends, rtol = 1.0e-8)
     end
 

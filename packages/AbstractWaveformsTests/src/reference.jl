@@ -33,17 +33,17 @@ function default_band(f, gs...)
     return low, high
 end
 
-resolve_metric(metric::FrequencyDomainMetric, f, gs) = metric
-resolve_metric(metric, f, gs) = metric(f)
-function resolve_metric(::Nothing, f, gs)
+resolve_whitening(W::AbstractArray, f, nchannels, gs) = W
+resolve_whitening(whitening, f, nchannels, gs) = whitening(f)
+function resolve_whitening(::Nothing, f, nchannels, gs)
     low, high = default_band(f, gs...)
-    return flat_metric(f; minimum_frequency = low, maximum_frequency = high)
+    return flat_whitening(f; nchannels, minimum_frequency = low, maximum_frequency = high)
 end
 
 """
     test_reference(target, reference, cases = applicable_cases(target, reference); grid, max_mismatch,
         parameters = fd_parameters, target_domain = :fd, reference_domain = target_domain,
-        prepare = identity, metric = nothing, maximize = :time_phase, max_shift = 0.05,
+        prepare = identity, whitening = nothing, maximize = :time_phase, max_shift = 0.05,
         rtol = nothing, exact_support = false)
 
 Compare a `target` generator with a trusted `reference` generator (for example `LALWaveforms` or the
@@ -52,8 +52,8 @@ PyCall `gwsurrogate` adapter) on every case, requiring `mismatch <= max_mismatch
 `cases` are `(id, case)` pairs and `parameters` maps a case to the generators' parameter `NamedTuple`.
 `grid` is the frequency grid for FD generators, or the time grid (a uniform range) for TD generators;
 a `:td` side goes through `prepare` and the physical rfft, and both sides must end on the same
-frequency grid. `metric` is `nothing` (flat PSD over the generators' common band), a
-`FrequencyDomainMetric`, or a function of the frequency grid returning one.
+frequency grid. `whitening` is `nothing` (flat PSD over the generators' common band), a
+whitening-factor array `W` on that grid, or a function of the frequency grid returning one.
 
 When `rtol` is set, each polarization must additionally agree pointwise to `rtol` relative to the
 reference peak; `exact_support` also requires identical zero patterns. This keeps strong tests for
@@ -62,7 +62,7 @@ ports meant to reproduce the reference bit-for-bit-ish, since mismatch is quadra
 function test_reference(
         target, reference, cases = applicable_cases(target, reference);
         grid, max_mismatch, parameters = fd_parameters, target_domain::Symbol = :fd,
-        reference_domain::Symbol = target_domain, prepare = identity, metric = nothing,
+        reference_domain::Symbol = target_domain, prepare = identity, whitening = nothing,
         maximize::Symbol = :time_phase, max_shift = 0.05, rtol = nothing, exact_support::Bool = false,
     )
     isempty(cases) && throw(ArgumentError("no cases are supported by both generators"))
@@ -75,8 +75,8 @@ function test_reference(
                 @test size(h_target) == size(h_reference)
                 @test all(isfinite, h_target) && all(isfinite, h_reference)
                 @test collect(f_target) ≈ collect(f_reference)
-                m = resolve_metric(metric, f_target, (target, reference))
-                @test mismatch(h_target, h_reference, m; maximize, max_shift) <= max_mismatch
+                W = resolve_whitening(whitening, f_target, size(h_target, 2), (target, reference))
+                @test mismatch(h_target, h_reference, W, f_target; maximize, max_shift) <= max_mismatch
                 if rtol !== nothing
                     for channel in axes(h_target, 2)
                         check_pointwise(h_target[:, channel], h_reference[:, channel]; rtol, exact_support)

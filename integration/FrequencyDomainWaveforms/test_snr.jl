@@ -19,8 +19,8 @@ const SNR_BACKENDS = (AutoForwardDiff(), AutoMooncake(; config = nothing))
                 strain(z) = project_strain(hphc_fd(SNR_GRID, adapter(z), generator))
                 for name in PSD_NAMES
                     @testset "$name" begin
-                        metric = snr_metric(f, name)
-                        test_snr_gradients(strain, metric, x; backends = SNR_BACKENDS, rtol = 1.0e-8, finite_difference = id == "bbh_aligned")
+                        W = snr_whitening(f, name)
+                        test_snr_gradients(strain, W, step(f), x; backends = SNR_BACKENDS, rtol = 1.0e-8, finite_difference = id == "bbh_aligned")
                     end
                 end
                 id == "bbh_aligned" && test_phase_gradients(strain, x; backends = SNR_BACKENDS, rtol = 1.0e-6)

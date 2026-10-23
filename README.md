@@ -15,6 +15,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
 | [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | MIT |
 | [SurrogateWaveforms](packages/SurrogateWaveforms) | Differentiable NRSur7dq4 numerical-relativity surrogate (in progress) | MIT |
+| [AbstractWaveformsTests](packages/AbstractWaveformsTests) | Shared contract, reference-generator and gradient test suites for AbstractWaveforms backends | MIT |
 
 ## Installation
 
@@ -198,8 +199,8 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering` and `SurrogateWaveforms` use GPL-2.0-or-later.
-`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.
+The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering`, `SurrogateWaveforms` and `AbstractWaveformsTests` use GPL-2.0-or-later.
+`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)) `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) and `AbstractWaveformsTests` ([LICENSE](packages/AbstractWaveformsTests/LICENSE)) are MIT.
 
 Waveform numerical acceptance uses a shared physical parameter CSV, public-output
 oracles, and optimal-SNR backend comparisons; see [the suite guide](test/waveforms/README.md).

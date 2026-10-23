@@ -10,15 +10,16 @@ CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "FrequencyDomain
 class SelectionTests(unittest.TestCase):
     def test_package_dependencies(self):
         cases = {
-            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms"],
+            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "GWDistributions": ["GWDistributions"],
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],
-            "GWMatchedFiltering": ["GWMatchedFiltering"],
+            "GWMatchedFiltering": ["GWMatchedFiltering", "AbstractWaveformsTests"],
+            "AbstractWaveformsTests": ["AbstractWaveformsTests"],
             "SurrogateWaveforms": ["SurrogateWaveforms"],
             "FrequencyDomainWaveforms": ["FrequencyDomainWaveforms"],
             "LALWaveforms": ["LALWaveforms", "FrequencyDomainWaveforms"],
-            "AbstractWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"],
+            "AbstractWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "GWParameterConversion": CONVERSION_AFFECTED,
         }
         for package, expected in cases.items():

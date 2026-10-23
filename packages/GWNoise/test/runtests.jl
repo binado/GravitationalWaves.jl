@@ -106,6 +106,7 @@ using GWNoise
 
     include("test_bundled.jl")
     include("test_series.jl")
+    include("test_arrays.jl")
     include("test_quality.jl")
 end
 

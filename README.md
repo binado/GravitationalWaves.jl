@@ -120,10 +120,10 @@ ForwardDiff and Mooncake. See its
 nonorthogonal arms, and leap-table coverage.
 
 For noise-weighted comparisons of projected strains, see
-[GWMatchedFiltering](packages/GWMatchedFiltering/README.md). It accepts ordered multi-detector
+[GWMatchedFiltering](packages/GWMatchedFiltering/README.md). It works on plain ordered multi-detector
 Fourier arrays and either independent PSDs or full Hermitian cross-spectral
-matrices. Metric preparation is separate from repeated inner products, SNRs,
-and fixed-PSD Gaussian likelihood ratios. Layout measurements have a standalone
+matrices. Whitening-factor preparation (`GWNoise.whitening_factor`) is separate from repeated
+inner products, SNRs, and fixed-PSD Gaussian likelihood ratios. Layout measurements have a standalone
 [benchmark harness](benchmarks/GWMatchedFiltering).
 
 ## Pointing the package at LAL

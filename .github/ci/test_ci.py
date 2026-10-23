@@ -10,7 +10,7 @@ CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "FrequencyDomain
 class SelectionTests(unittest.TestCase):
     def test_package_dependencies(self):
         cases = {
-            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "GWDistributions": ["GWDistributions"],
             "GWDetectors": ["GWDetectors"],
             "GWNoise": ["GWNoise"],

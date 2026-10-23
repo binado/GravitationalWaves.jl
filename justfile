@@ -40,7 +40,7 @@ fixtures:
     @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates
+test-integration: test-integration-series test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -66,3 +66,13 @@ test-integration-surrogates:
 benchmark-inference:
     {{ julia }} --startup-file=no --project=benchmarks/GWMatchedFiltering -e 'using Pkg; Pkg.instantiate()'
     {{ julia }} --startup-file=no --threads=1 --project=benchmarks/GWMatchedFiltering benchmarks/GWMatchedFiltering/layouts.jl
+
+# Physical Fourier AD against explicit DFTs (ForwardDiff and Mooncake).
+test-integration-series:
+    {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSeries -e 'using Pkg; Pkg.instantiate(); include("integration/GWSeries/runtests.jl")'
+
+# Direct public-output comparisons against the pinned Python surrogate oracle.
+test-oracle-surrogates:
+    uv sync --project python/surrogates --locked
+    PYTHON=$(uv run --project python/surrogates python -c 'import sys; print(sys.executable)') {{ julia }} --project=test/waveforms/surrogate_oracle -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
+    {{ julia }} --check-bounds=yes --project=test/waveforms/surrogate_oracle test/waveforms/surrogate_oracle/runtests.jl

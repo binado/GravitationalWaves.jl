@@ -42,3 +42,5 @@ test_waveform_gradients(
         @test tangents[2][1] ≈ ForwardDiff.derivative(FrequencyDomainWaveforms.xas_isco, a) rtol = 1.0e-10
     end
 end
+
+include("test_snr.jl")

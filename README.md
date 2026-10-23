@@ -200,3 +200,6 @@ runic --inplace .
 
 The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions` and `SurrogateWaveforms` use GPL-2.0-or-later.
 `GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.
+
+Waveform numerical acceptance uses a shared physical parameter CSV, public-output
+oracles, and optimal-SNR backend comparisons; see [the suite guide](test/waveforms/README.md).

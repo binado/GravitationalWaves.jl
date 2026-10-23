@@ -1,4 +1,6 @@
 [deps]
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
+GWNoise = "364a1f13-170e-48c9-a1df-e80dad50e028"
 GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
 AbstractWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
@@ -10,12 +12,16 @@ Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
+GWMatchedFiltering = {path = "../../packages/GWMatchedFiltering"}
+GWNoise = {path = "../../packages/GWNoise"}
 GWSeries = {path = "../../packages/GWSeries"}
 AbstractWaveforms = {path = "../../packages/AbstractWaveforms"}
 GWParameterConversion = {path = "../../packages/GWParameterConversion"}
 FrequencyDomainWaveforms = {path = "../../packages/FrequencyDomainWaveforms"}
 
 [compat]
+GWMatchedFiltering = "0.2"
+GWNoise = "0.2"
 GWSeries = "0.1"
 AbstractWaveforms = "0.3"
 DifferentiationInterface = "0.7"

@@ -92,6 +92,13 @@ class SelectionTests(unittest.TestCase):
             ["LALWaveforms", "FrequencyDomainWaveforms", "GWDistributions"],
         )
 
+    def test_shared_waveform_fixtures(self):
+        self.assertEqual(select_packages(["test/waveforms/parameters.csv"]),
+                         ["FrequencyDomainWaveforms", "SurrogateWaveforms"])
+        for path in ("test/waveforms/surrogate_oracle/runtests.jl",
+                     "integration/SurrogatePyCallWaveforms/Project.toml"):
+            self.assertEqual(select_packages([path]), ["SurrogateWaveforms"])
+
     def test_cross_package_rename(self):
         # paths-filter supplies both the deleted old path and added new path.
         self.assertEqual(
@@ -145,7 +152,15 @@ class StatusTests(unittest.TestCase):
             },
             "test": {"result": test},
             "format": {"result": formatting},
+            "surrogate-oracle": {"result": "success" if isinstance(packages, list) and "SurrogateWaveforms" in packages else "skipped"},
         }
+
+    def test_oracle_failure_blocks_status(self):
+        for result in ("failure", "cancelled", "skipped"):
+            needs = self.needs(["SurrogateWaveforms"])
+            needs["surrogate-oracle"]["result"] = result
+            with self.assertRaises(ValueError):
+                check_status(needs)
 
     def test_success(self):
         check_status(self.needs(list(PACKAGES)))

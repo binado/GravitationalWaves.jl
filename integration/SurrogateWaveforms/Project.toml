@@ -1,29 +1,36 @@
 [deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
+GWNoise = "364a1f13-170e-48c9-a1df-e80dad50e028"
 GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
 AbstractWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 SurrogateWaveforms = "1e29a2e4-8621-4e56-af62-04cc6fe99f1b"
-SurrogatePyCallWaveforms = "b7d1b15a-c8df-4d2a-83d4-0e856d6d4e31"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
+GWMatchedFiltering = {path = "../../packages/GWMatchedFiltering"}
+GWNoise = {path = "../../packages/GWNoise"}
 GWSeries = {path = "../../packages/GWSeries"}
 AbstractWaveforms = {path = "../../packages/AbstractWaveforms"}
 SurrogateWaveforms = {path = "../../packages/SurrogateWaveforms"}
-SurrogatePyCallWaveforms = {path = "../SurrogatePyCallWaveforms"}
 
 [compat]
+ChainRulesCore = "1"
+FFTW = "1"
+GWMatchedFiltering = "0.2"
+GWNoise = "0.2"
 GWSeries = "0.1"
 AbstractWaveforms = "0.3"
 DifferentiationInterface = "0.7"
 FiniteDifferences = "0.12"
 ForwardDiff = "1"
 SurrogateWaveforms = "0.1"
-SurrogatePyCallWaveforms = "0.1"
 Mooncake = "0.5"
 StaticArrays = "1"
 Test = "1"

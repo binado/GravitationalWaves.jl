@@ -30,14 +30,12 @@ generator(name; kw...) = getproperty(FrequencyDomainWaveforms, Symbol(name))(; k
 # Largest deviation relative to the largest LAL sample.
 relative_error(h, h_lal) = maximum(abs, h .- h_lal) / maximum(abs, h_lal)
 
-const BBH = (
-    mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
-)
+include("../../../test/waveforms/cases.jl")
+include("../../../test/waveforms/oracle_checks.jl")
+const BBH = WaveformCases.fd_parameters(WaveformCases.CASES["bbh_unequal"])
+const BNS = WaveformCases.fd_parameters(WaveformCases.CASES["bns"])
 const ALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = 0.0)
 const ANTIALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = Float64(π), tilt_2 = 0.0)
-const BNS = (
-    mass_1 = 1.4, mass_2 = 1.35, luminosity_distance = 100.0, theta_jn = 0.9, phase = 0.2,
-)
 
 # (name, approximant, parameters, generator keywords, rtol)
 const CASES = [
@@ -97,6 +95,23 @@ const CASES = [
         msg = "LAL is not configured (set LALWAVEFORMS_LIBDIR); skipping the comparison with LALWaveforms"
         get(ENV, "CI", "") == "true" ? error(msg) : @warn msg
     else
+        @test_throws ArgumentError WaveformCases.fd_parameters(WaveformCases.CASES["bbh_precessing"])
+        for name in ("TaylorF2", "IMRPhenomD", "IMRPhenomXAS"), id in (
+                    WaveformCases.COMMON_IDS..., "bbh_high_spin", "bbh_high_ratio", "bbh_light", "bns", "bns_aligned", "nsbh",
+                )
+            @testset "$name / $id" begin
+                grid = range(0.0, 1024.0; step = 0.25)
+                g = generator(name; maximum_frequency = 1024.0)
+                params = WaveformCases.fd_parameters(WaveformCases.CASES[id])
+                actual = hphc_fd(grid, params, g)
+                expected = hphc_fd(grid, params, lal_twin(g))
+                @test size(actual) == (length(grid), 2)
+                for channel in 1:2
+                    check_oracle(actual[:, channel], expected[:, channel]; rtol = 1.0e-10)
+                    @test iszero.(actual[:, channel]) == iszero.(expected[:, channel])
+                end
+            end
+        end
         for grid in (range(0, 1024; step = 0.25),), (name, approximant, params, kw, rtol) in CASES
             @testset "$name" begin
                 g = generator(approximant; kw...)

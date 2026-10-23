@@ -18,7 +18,7 @@ packages and depend on this one. MIT licensed.
 - **Gradients**: `test_gradients`, `test_snr_gradients`, `test_phase_gradients` and
   `test_waveform_jacobian` need no reference generator. They compare the given AD backends with each
   other and with `FiniteDifferences`, always through DifferentiationInterface. Load Mooncake to enable
-  the extension that marks `FixedObjective` and `FrequencyDomainMetric` non-differentiable.
+  the extension that marks `FixedObjective` non-differentiable.
 
 ## Cases
 

@@ -1,23 +1,26 @@
 """
-    flat_metric(f; channels = (:plus, :cross), minimum_frequency = first(f), maximum_frequency = last(f), nsamples = nothing)
+    flat_whitening(f; nchannels = 2, minimum_frequency = first(f), maximum_frequency = last(f), nsamples = nothing)
 
-Unit-PSD `FrequencyDomainMetric` on the uniform grid `f`, so inner products are plain sums.
+Unit-PSD whitening factor `W` on the uniform grid `f`, so inner products are plain sums: ones with
+shape `(length(f), nchannels)` inside the inclusive band and zero outside. DC is always zero; with `nsamples`
+(the original transform length) an even length also zeroes the Nyquist bin.
 """
-function flat_metric(
-        f::AbstractRange; channels = (:plus, :cross),
+function flat_whitening(
+        f::AbstractRange; nchannels::Integer = 2,
         minimum_frequency = first(f), maximum_frequency = last(f), nsamples = nothing,
     )
-    return FrequencyDomainMetric(
-        ones(length(f), length(channels)); frequencies = f, channels,
-        minimum_frequency, maximum_frequency, nsamples,
-    )
+    W = [(minimum_frequency <= x <= maximum_frequency && x > 0) ? 1.0 : 0.0 for x in f, _ in 1:nchannels]
+    nsamples !== nothing && iseven(nsamples) && (W[end, :] .= 0)
+    return W
 end
 
 """
-    mismatch(a, b, metric; maximize = :time_phase, max_shift = 0.05)
+    mismatch(a, b, W, f; maximize = :time_phase, max_shift = 0.05)
 
 `1 - overlap` of two `(frequency, channel)` polarization arrays (or `FrequencySeries`) on the
-grid of `metric`, with the noise-weighted inner product of GWMatchedFiltering.
+uniform grid `f`, with the noise-weighted inner product of GWMatchedFiltering for the whitening
+factor `W` (see `GWNoise.whitening_factor`; `flat_whitening` gives a unit one). Inactive bins
+(`W == 0`) drop out. For `FrequencySeries` arguments, `W` alone is given and `f` comes from `a`.
 
 `maximize` selects what is optimized over a common shift of all channels:
 - `:none`: the real part of the overlap; any time or phase offset counts as mismatch.
@@ -27,30 +30,31 @@ grid of `metric`, with the noise-weighted inner product of GWMatchedFiltering.
 
 The result is clamped at zero, since rounding can push the overlap slightly above one.
 """
-function mismatch(a::AbstractMatrix, b::AbstractMatrix, metric::FrequencyDomainMetric; maximize::Symbol = :time_phase, max_shift = 0.05)
+function mismatch(a::AbstractMatrix, b::AbstractMatrix, W::AbstractArray, f::AbstractRange; maximize::Symbol = :time_phase, max_shift = 0.05)
     maximize in (:none, :phase, :time_phase) || throw(ArgumentError("maximize must be :none, :phase or :time_phase"))
     size(a) == size(b) || throw(DimensionMismatch("waveforms differ in shape: $(size(a)) vs $(size(b))"))
-    norm_a = optimal_snr_squared(a, metric)
-    norm_b = optimal_snr_squared(b, metric)
+    df = step(f)
+    norm_a = optimal_snr_squared(a, W, df)
+    norm_b = optimal_snr_squared(b, W, df)
     (isfinite(norm_a) && norm_a > 0 && isfinite(norm_b) && norm_b > 0) ||
-        throw(DomainError((norm_a, norm_b), "mismatch needs finite nonzero waveform norms in the metric band"))
+        throw(DomainError((norm_a, norm_b), "mismatch needs finite nonzero waveform norms in the whitened band"))
     scale = sqrt(norm_a * norm_b)
     if maximize === :none
-        overlap = real(complex_inner_product(a, b, metric)) / scale
+        overlap = real(complex_inner_product(a, b, W, df)) / scale
     elseif maximize === :phase
-        overlap = abs(complex_inner_product(a, b, metric)) / scale
+        overlap = abs(complex_inner_product(a, b, W, df)) / scale
     else
-        overlap = maximum_shifted_overlap(a, b, metric, scale, max_shift)
+        overlap = maximum_shifted_overlap(a, b, W, f, scale, max_shift)
     end
     return max(zero(overlap), 1 - overlap)
 end
-mismatch(a::FrequencySeries, b::FrequencySeries, metric::FrequencyDomainMetric; kwargs...) =
-    mismatch(parent(a), parent(b), metric; kwargs...)
+mismatch(a::FrequencySeries, b::FrequencySeries, W::AbstractArray; kwargs...) =
+    mismatch(parent(a), parent(b), W, frequencies(a); kwargs...)
 
-# The metric's grid is a stored field; there is no accessor for it.
-function maximum_shifted_overlap(a, b, metric, scale, max_shift)
-    f = collect(float.(metric.frequencies))
-    at(τ) = abs(complex_inner_product(a, b .* cis.((-2π * τ) .* f), metric)) / scale
+function maximum_shifted_overlap(a, b, W, grid, scale, max_shift)
+    f = collect(float.(grid))
+    df = step(grid)
+    at(τ) = abs(complex_inner_product(a, b .* cis.((-2π * τ) .* f), W, df)) / scale
     step_τ = 1 / (8 * maximum(f))
     taus = (-max_shift):step_τ:max_shift
     values = map(at, taus)

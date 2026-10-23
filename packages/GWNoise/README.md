@@ -4,20 +4,13 @@ Read one-sided PSD/ASD tables and draw stationary Gaussian strain noise in Julia
 PSD estimation and continuous streaming are outside the current scope.
 
 ```julia
-using GWNoise, GWSeries, Random, FFTW
+using GWNoise, Random
 
 curve = read_psd("H1_psd.txt")  # or read_asd("H1_asd.txt")
-S = psd.(range(20, 1024; step = 0.25), curve)
-
-td = TimeSeries(zeros(8192); epoch=1126259460.0, sampling_frequency=2048, channels=(:H1,))
-model = GaussianNoise(
-    curve, td;
-    minimum_frequency = 20.0, maximum_frequency = 1024.0,
-)
-rng = Xoshiro(42)
-f = frequencies(model)
-n_fd = noise_fd(rng, model)
-n_td = noise_td(rng, model)  # a new, independent draw
+f = range(0.0; step = 0.25, length = 4097)          # one-sided grid from DC
+S = reshape(band_psd(curve, f; fmin = 20.0, fmax = 1024.0), :, 1)  # (nf, nc)
+W = whitening_factor(S)                              # for GWMatchedFiltering
+n = sample_noise(Xoshiro(42), S, step(f))            # (nf, nc) ComplexF64 draw
 ```
 
 Files have two columns: frequency in Hz and PSD in strain²/Hz (or ASD in strain/√Hz).
@@ -35,29 +28,31 @@ frequencies; each curve broadcasts as a scalar.
 Evaluation outside file coverage throws; `psd(f, curve; outside=:zero)` explicitly
 requests zero fill. Frequencies must be strictly increasing; densities nonnegative.
 
-`GaussianNoise` prepares the uniform FFT grid and effective PSD once. Its default
-band is the file coverage intersected with `[0, sampling_frequency/2]`; explicit
-bands must be covered by the file. Draw scales are computed per bin when sampling.
-Other bins, DC, and even-length Nyquist are zero.
-Odd-length final bins are sampled normally. `psd(model)` returns the effective PSD
-including these zeros. No automatic taper or smoothing changes the target.
+## Plain-array conventions
 
-For `N = nsamples` and `fs = sampling_frequency`, duration is `N/fs`, frequency
-spacing is `fs/N`, and the FD vector has `N÷2+1` elements. Interior real and imaginary
-parts independently have variance `PSD/(4Δf)`. The physical Fourier convention is:
+Everything works on ordinary arrays; no series types are involved.
 
-```julia
-n_td = to_timedomain(n_fd; nsamples=nsamples(td))
-```
+- Data are `(nf, nc)` complex one-sided arrays from DC, in `rfft(x) * dt` units.
+- `S` is the one-sided PSD in strain²/Hz: `(nf, nc)` real for independent channels, or
+  `(nc, nc, nf)` Hermitian for correlated channels. Zeros mark inactive bins; arrays always
+  have the full length `nf` and bands are zeros, never slices.
+- Coefficients of a draw satisfy `E[n n†] = S / (2Δf)`, so interior real and imaginary
+  parts independently have variance `S/(4Δf)`.
+- `band_psd(curve, f; fmin, fmax)` evaluates a `TabulatedPSD` on a frequency range and
+  zeroes everything outside `[fmin, fmax]`, plus DC and the last bin (it assumes an
+  even-length transform, so for an odd-length one it also drops a real bin).
+- `whitening_factor(S)` returns `W = L⁻¹` with `L L† = S`: `1/√S` for `(nf, nc)` input
+  (zero where `S` is zero) or the inverse lower Cholesky factor per bin for `(nc, nc, nf)`
+  input. Blocks are validated once (finite, Hermitian, positive definite) and invalid
+  ones throw `ArgumentError`.
+- `sample_noise([rng], S, df)` and `sample_noise!([rng], out, S, df)` draw
+  coefficients with that covariance. Random numbers are drawn for every bin, active or not,
+  so a stream stays aligned across bands. DC and Nyquist are not checked; they should be
+  zero in `S` by convention.
 
-Each draw is a finite periodic FFT segment. Concatenating independent segments does
-not produce a continuous stream. Use the transform above for matching FD and TD
-realizations; successive sampler calls draw independent noise. Omit the RNG to use
-`Random.default_rng()`. RNGs are never reseeded by this package.
-
-`noise_fd!([rng], out, model)` fills an existing complex vector. `noise_td`
-allocates its output and FFT temporaries; neither FFT plans nor mutable scratch
-buffers are cached in the model.
+Each draw is a finite periodic FFT segment; concatenating independent segments does not
+produce a continuous stream. RNGs are never reseeded by this package. Transforming to the
+time domain is left to the caller (for instance with GWSeries and an FFT backend).
 
 Run tests with `julia --project=packages/GWNoise -e 'using Pkg; Pkg.test()'` from
 the monorepo root. No Python or LAL installation is needed.

@@ -1,9 +1,8 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
 GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [sources]
-GWSeries = {path = "../../packages/GWSeries"}
 GWMatchedFiltering = {path = "../../packages/GWMatchedFiltering"}

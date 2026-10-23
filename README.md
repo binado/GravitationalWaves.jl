@@ -115,15 +115,15 @@ end
 
 It uses a long-wavelength response evaluated at one reference time and supports
 uniform frequency domains. The package uses StaticArrays.jl and supports
-ForwardDiff, Enzyme, Mooncake, and Reactant CPU compilation. See its
+ForwardDiff and Mooncake. See its
 [README](packages/GWDetectors/README.md) for timing conventions, custom tilted or
-nonorthogonal arms, compiled Reactant examples, and leap-table coverage.
+nonorthogonal arms, and leap-table coverage.
 
 For noise-weighted comparisons of projected strains, see
-[GWMatchedFiltering](packages/GWMatchedFiltering/README.md). It accepts ordered multi-detector
+[GWMatchedFiltering](packages/GWMatchedFiltering/README.md). It works on plain ordered multi-detector
 Fourier arrays and either independent PSDs or full Hermitian cross-spectral
-matrices. Metric preparation is separate from repeated inner products, SNRs,
-and fixed-PSD Gaussian likelihood ratios. Layout measurements have a standalone
+matrices. Whitening-factor preparation (`GWNoise.whitening_factor`) is separate from repeated
+inner products, SNRs, and fixed-PSD Gaussian likelihood ratios. Layout measurements have a standalone
 [benchmark harness](benchmarks/GWMatchedFiltering).
 
 ## Pointing the package at LAL
@@ -153,20 +153,19 @@ julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 
 The waveform tests require the reference setup below for full coverage.
 
-The default suites include ForwardDiff checks. Heavy Reactant/Enzyme conversion tests,
-ForwardDiff/Mooncake waveform tests and Enzyme/Mooncake detector tests run separately, locally, rather than in CI:
+The default suites include ForwardDiff checks. Heavy ForwardDiff/Mooncake waveform, detector and inference
+tests run separately, locally, rather than in CI:
 
 ```sh
 just test-integration              # all suites; installs their dependencies on first use
-just test-integration-conversion   # Reactant CPU compilation and Enzyme gradients
 just test-integration-waveforms    # ForwardDiff and Mooncake waveform gradients
-just test-integration-detectors    # detector gradients and Reactant CPU acceptance
+just test-integration-detectors    # detector gradients (ForwardDiff and Mooncake)
 ```
 
 These recipes require Julia 1.12 or newer and `just`, and need no LAL or Python setup.
 Set `JULIA='julia +1.12'` to select a Julia version. Their standalone environments live
 under `integration/`, outside the root workspace; ordinary `Pkg.test()` does not
-install or precompile Enzyme, Reactant, or Mooncake. Run the affected integration
+install or precompile Mooncake. Enzyme and Reactant support is deferred. Run the affected integration
 suite before submitting changes to the numerical kernels or AD integration tests.
 
 The reference tests compare against bilby output generated locally (not committed):

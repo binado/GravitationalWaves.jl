@@ -18,7 +18,7 @@ PACKAGES = (
     "AbstractWaveformsTests",
 )
 AFFECTED = {
-    "GWSeries": {"GWSeries", "GWNoise", "GWDetectors", "GWMatchedFiltering", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "GWSeries": {"GWSeries", "GWDetectors", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
     "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
     "LALWaveforms": {"LALWaveforms", "FrequencyDomainWaveforms"},
     "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "FrequencyDomainWaveforms"},

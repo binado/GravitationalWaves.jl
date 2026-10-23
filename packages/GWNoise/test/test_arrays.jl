@@ -8,8 +8,6 @@ using LinearAlgebra
         @test S == [10.5 <= x <= 30 ? 2.0 : 0.0 for x in f]
         full = band_psd(curve, f)
         @test full[1] == 0 && full[end] == 0 && all(==(2.0), full[2:(end - 1)])
-        model = GaussianNoise(curve, time_prototype(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)); minimum_frequency = 10.5, maximum_frequency = 30)
-        @test band_psd(curve, frequencies(model); fmin = 10.5, fmax = 30) == psd(model)
         @test_throws ArgumentError band_psd(curve, f; fmax = 65)
         @test_throws ArgumentError band_psd(curve, f; fmin = 40, fmax = 10)
     end
@@ -45,17 +43,19 @@ using LinearAlgebra
         @test whitening_factor(reshape(S[:, 2], 1, 1, :)) ≈ reshape(whitening_factor(S[:, 2:2]), 1, 1, :)
     end
 
-    @testset "sample_noise reproduces the GaussianNoise sampler" begin
+    @testset "sample_noise and sample_noise!" begin
         curve = TabulatedPSD([0, 64], [1, 129])
-        model = GaussianNoise(curve, time_prototype(; epoch = 0.0, nsamples = 128, sampling_frequency = 128, channels = (:H1,)))
-        df = Float64(frequency_spacing(model))
-        old = parent(noise_fd(Xoshiro(5), model))
-        new = sample_noise(Xoshiro(5), reshape(psd(model), :, 1), df)
-        @test new == old
-        out = similar(new)
-        @test sample_noise!(Xoshiro(5), out, reshape(psd(model), :, 1), df) === out && out == old
-        @test size(sample_noise(reshape(psd(model), :, 1), df)) == size(old)
-        @test_throws DimensionMismatch sample_noise!(zeros(ComplexF64, 3, 1), reshape(psd(model), :, 1), df)
+        S = reshape(band_psd(curve, range(0.0; step = 1.0, length = 65)), :, 1)
+        df = 1.0
+        draw = sample_noise(Xoshiro(5), S, df)
+        @test size(draw) == size(S) && eltype(draw) == ComplexF64
+        @test draw == sample_noise(Xoshiro(5), S, df)
+        @test draw != sample_noise(Xoshiro(6), S, df)
+        @test all(iszero, draw[[1, end], :])
+        out = similar(draw)
+        @test sample_noise!(Xoshiro(5), out, S, df) === out && out == draw
+        @test size(sample_noise(S, df)) == size(S)
+        @test_throws DimensionMismatch sample_noise!(zeros(ComplexF64, 3, 1), S, df)
         @test_throws ArgumentError sample_noise(Xoshiro(1), [1.0 2.0], 0.0)
     end
 

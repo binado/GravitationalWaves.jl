@@ -36,8 +36,8 @@ const SNR_META = (; epoch = first(SNR_TIMES), sampling_interval = step(SNR_TIMES
                 end
                 for name in PSD_NAMES
                     @testset "$name" begin
-                        metric = snr_metric(f, name; nsamples = n)
-                        test_snr_gradients(strain, metric, x; backends = SNR_BACKENDS, rtol = 1.0e-6, finite_difference = id == "bbh_precessing")
+                        W = snr_whitening(f, name)
+                        test_snr_gradients(strain, W, step(f), x; backends = SNR_BACKENDS, rtol = 1.0e-6, finite_difference = id == "bbh_precessing")
                     end
                 end
                 id == "bbh_precessing" && test_phase_gradients(strain, x; backends = SNR_BACKENDS, rtol = 1.0e-6)

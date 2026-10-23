@@ -104,8 +104,7 @@ vectors. Unit-norm validation allows absolute error `1e-6` to preserve KAGRA's
 published precision. Cartesian directions are never renormalized. Arm lengths
 are full lengths, stored as metadata; they do not enter the long-wavelength
 response tensor `(xarm ⊗ xarm - yarm ⊗ yarm)/2`. Input types are promoted without
-forcing Float64. Geometry is real-valued; `Detector{T<:Number}` also accommodates
-Reactant scalar tracing. Cartesian vectors and arm lengths are stored as
+forcing Float64. Geometry is real-valued; `Detector{T<:Number}` is not limited to `Float64`. Cartesian vectors and arm lengths are stored as
 `SVector`s; `detector_tensor` returns an `SMatrix`, indexed as `D[i, j]`.
 
 The antenna response uses `A = R' * D * R`, where `R` rotates the polarization
@@ -113,41 +112,17 @@ basis into Earth-fixed coordinates, including the polarization angle `psi`.
 The factors are `Fplus = A[1, 1] - A[2, 2]` and
 `Fcross = A[1, 2] + A[2, 1]`, in LAL's convention.
 
-## Differentiation and Reactant CPU
+## Differentiation
 
-ForwardDiff, Enzyme, Mooncake, and compiled Enzyme through Reactant are tested.
+ForwardDiff and Mooncake are tested (`just test-integration-detectors`). Enzyme and Reactant
+compilation were tested earlier and are deferred; see the repository history.
 Response, timing, and projection functions assume the argument domains documented
 in their docstrings and do not validate values. Projection assumes prevalidated polarization vectors and a fixed domain. Geometry constructors accept `check=false` to
-bypass numerical geometry validation inside compiled calls with prevalidated
+bypass numerical geometry validation inside differentiated calls with prevalidated
 inputs; vector sizes and numeric element types are still checked. GPS derivatives
 are tested away from integer-second rounding
 boundaries and leap transitions. Scalar geometry uses StaticArrays; projection uses
-broadcast so device arrays stay in compiled execution.
-
-```julia
-using Reactant, Enzyme, GWSeries
-Reactant.set_default_backend("cpu")
-
-const PROJECTION_FREQUENCIES = 0.0:20.0:40.0
-const PROJECTION_EPOCH = 1126259460.0
-function projected(angles, hp, hc)
-    Reactant.@allowscalar begin
-        source = (;ra=angles[1],dec=angles[2],psi=angles[3],geocent_time=angles[4])
-        project_fd((;plus=hp,cross=hc),source,detectors.H1; frequencies=PROJECTION_FREQUENCIES, epoch=PROJECTION_EPOCH)
-    end
-end
-angles = Reactant.to_rarray([sky.ra, sky.dec, sky.psi, sky.geocent_time])
-hp_host = ComplexF64[0,1,0.5im]
-hc_host = ComplexF64[0,0.3im,0.2]
-hp, hc = Reactant.to_rarray.((hp_host,hc_host))
-executable = Reactant.@compile projected(angles,hp,hc)
-strain = executable(angles,hp,hc)
-```
-
-`just test-integration-detectors` exercises reused CPU executables with changing
-sky, GPS, Cartesian/geodetic geometry, and polarization arrays at fixed frequency domains, including
-phase-sensitive compiled gradients. GPU compilation and compilation of waveform
-generators are outside this package's acceptance scope.
+broadcast over the frequency array.
 
 ## References and license
 

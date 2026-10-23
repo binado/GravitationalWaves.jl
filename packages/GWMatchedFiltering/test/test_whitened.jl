@@ -42,32 +42,22 @@
     @test complex_inner_product(reshape(h, :, 1), reshape(d, :, 1), Wone, df) ≈ 12
 end
 
-@testset "Plain arrays agree with the metric API" begin
+@testset "Whitened contraction" begin
     rng = Xoshiro(7)
-    f = 0.0:0.25:2.0
-    nf = length(f)
+    nf = 9
     h = randn(rng, ComplexF64, nf, 2)
     d = randn(rng, ComplexF64, nf, 2)
-    psd = 1 .+ rand(rng, nf, 2)
-    metric_domain = frequency_prototype(; frequencies = f, epoch = 0.0, channels = (:A, :B))
-    diagonal = FrequencyDomainMetric(metric_domain, psd; minimum_frequency = f[2], maximum_frequency = f[end - 1])
-    Wd = whitening_diagonal(psd)
-    Wd[[1, nf], :] .= 0
-    @test complex_inner_product(h, d, Wd, step(f)) ≈ complex_inner_product(h, d, diagonal) rtol = 1.0e-13
-
-    S0 = ComplexF64[2 0.3 + 0.4im; 0.3 - 0.4im 1]
-    S = repeat(reshape(S0, 1, 2, 2), nf, 1, 1)
-    blocks = FrequencyDomainMetric(metric_domain, S; minimum_frequency = f[2], maximum_frequency = f[end - 1])
-    Wb = whitening_blocks(permutedims(S, (2, 3, 1)))
-    Wb[:, :, [1, nf]] .= 0
-    @test complex_inner_product(h, d, Wb, step(f)) ≈ complex_inner_product(h, d, blocks) rtol = 1.0e-13
-    @test matched_filter_snr(h, d, Wb, step(f)) ≈ matched_filter_snr(h, d, blocks) rtol = 1.0e-13
-    # Views take the same kernels as arrays; the broadcast fallback agrees with them.
-    @test complex_inner_product(view(h, :, :), view(d, :, :), Wb, step(f)) ≈ complex_inner_product(h, d, Wb, step(f))
+    Wd = whitening_diagonal(1 .+ rand(rng, nf, 2))
     @test GWMatchedFiltering.whitened_contraction(h, d, Wd) ≈ sum(conj.(h) .* Wd .^ 2 .* d)
+    S0 = ComplexF64[2 0.3 + 0.4im; 0.3 - 0.4im 1]
+    Wb = whitening_blocks(repeat(S0, 1, 1, nf))
+    Wb[:, :, [1, nf]] .= 0
     # Oracle: explicit dense whitening per bin, then an ordinary dot.
     oracle = sum(dot(Wb[:, :, k] * h[k, :], Wb[:, :, k] * d[k, :]) for k in 1:nf)
     @test GWMatchedFiltering.whitened_contraction(h, d, Wb) ≈ oracle
+    # Views take the same kernels as arrays.
+    @test complex_inner_product(view(h, :, :), view(d, :, :), Wb, 0.25) ≈ complex_inner_product(h, d, Wb, 0.25)
+    @test optimal_snr_squared(h .* 1.0e-22, Wd, 0.25) ≈ 1.0e-44 * optimal_snr_squared(h, Wd, 0.25)
     @test GWMatchedFiltering.filter_structure(Wd) isa GWMatchedFiltering.DiagonalFilter
     @test GWMatchedFiltering.filter_structure(Wb) isa GWMatchedFiltering.BlockFilter
 end

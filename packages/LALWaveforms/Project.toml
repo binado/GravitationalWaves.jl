@@ -17,7 +17,7 @@ GWParameterConversion = {path = "../GWParameterConversion"}
 AbstractWaveforms = "0.3"
 AbstractWaveformsTests = "0.1"
 Aqua = "0.8"
-GWMatchedFiltering = "0.2"
+GWMatchedFiltering = "0.3"
 GWParameterConversion = "0.1"
 GWSeries = "0.1"
 JET = "0.11, 0.12"

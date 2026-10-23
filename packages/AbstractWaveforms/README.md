@@ -16,7 +16,7 @@ parameter names, and `generator` a concrete generator such as `TaylorF2()`, `IMR
 `LALWaveformGenerator("IMRPhenomXPHM")`. Code written against this package works with any backend.
 
 and `validate_parameters(f, params, generator)`, which throws `ArgumentError` on invalid input and
-returns `nothing` otherwise. Backends that compilers can trace (`FrequencyDomainWaveforms` with Reactant) do not
+returns `nothing` otherwise. Backends that skip runtime checks for speed (`FrequencyDomainWaveforms`) do not
 check parameter values in `hphc_fd`; callers run `validate_parameters` once on the host instead.
 The fallback accepts everything, so generic code can always call it.
 

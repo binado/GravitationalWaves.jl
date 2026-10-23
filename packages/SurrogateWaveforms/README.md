@@ -46,7 +46,7 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 ForwardDiff and Mooncake both differentiate the kernels,
 the coorbital surrogate, the dynamics integration and the full strain for both models, and agree
 with finite differences (`just test-integration-surrogates`, a local suite in
-`integration/SurrogateWaveforms`; CI does not run it). Reactant is out of scope.
+`integration/SurrogateWaveforms`; CI does not run it). Enzyme and Reactant are out of scope.
 
 Cost of the gradient of a scalar functional of `hphc_td` (`ell_max = 4`, about 2600 samples at
 2048 Hz, 8 parameters: mass, mass ratio, six spin/orientation parameters), Apple M-series CPU,

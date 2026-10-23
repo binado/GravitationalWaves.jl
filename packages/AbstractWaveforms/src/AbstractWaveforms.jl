@@ -78,8 +78,8 @@ Frequency-domain plus and cross polarisations on the uniform grid `f` (Hz).
 `luminosity_distance` (Mpc), `theta_jn`, `phase`; optional (default 0) `a_1`, `a_2`, `tilt_1`,
 `tilt_2`, `phi_12`, `phi_jl`, `eccentricity`.
 
-Whether `hphc_fd` checks the parameter values is up to the backend. Backends that can be traced
-by compilers (Reactant) trust them and leave the checks to [`validate_parameters`](@ref), which
+Whether `hphc_fd` checks the parameter values is up to the backend. Backends that avoid runtime
+checks trust them and leave the checks to [`validate_parameters`](@ref), which
 callers run once on the host. The shared polarization assemblers assume valid inputs and
 backend outputs without performing runtime validation.
 

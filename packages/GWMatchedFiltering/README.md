@@ -46,10 +46,9 @@ and `optimal_snr(h,metric)`. The inner product conjugates its first argument and
 uses `4Δf` normalization supplied by the prepared metric.
 
 Native matrices/vectors and their views retain allocation-free contraction
-kernels; traced arrays retain broadcast/reduction kernels. Heavy AD acceptance
-lives in `integration/GWMatchedFiltering`. Construct metrics outside differentiation;
-only strain parameters are active. Single-channel raw vector kernels avoid
-reshaping mixed-activity array headers inside Enzyme calls.
+kernels. Heavy AD acceptance (ForwardDiff and Mooncake) lives in
+`integration/GWMatchedFiltering`. Construct metrics outside differentiation;
+only strain parameters are active. Enzyme and Reactant are deferred.
 
 For band-only work, keep `bins = frequency_bins(h; fmin=20, fmax=512)` and prepare
 `FrequencyDomainMetric(psd_values[bins, :]; frequencies=frequencies(h)[bins], channels=channels(h))`.

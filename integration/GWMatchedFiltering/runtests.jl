@@ -11,11 +11,8 @@ using LinearAlgebra
 using Random
 using ForwardDiff
 using DifferentiationInterface
-using Enzyme: Enzyme
 using Mooncake: Mooncake
-using Reactant
 
-Reactant.set_default_backend("cpu")
 include("../../packages/GWMatchedFiltering/test/whitening_helpers.jl")
 include("../../packages/GWMatchedFiltering/test/ad_helpers.jl")
 
@@ -47,19 +44,8 @@ pipeline_loss(x) = log_likelihood_ratio(pipeline_signal(x), PIPE_DATA, PIPE_W, P
         @info "Checking GWMatchedFiltering derivatives" objective = string(loss)
         flush(stderr)
         expected = ForwardDiff.gradient(loss, sample)
-        @testset "Enzyme and Mooncake" begin
-            for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
-                @test DifferentiationInterface.gradient(loss, backend, sample) ≈ expected rtol = 1.0e-7 atol = 1.0e-8
-            end
-        end
-        @testset "Reactant CPU values and gradients" begin
-            objective(x) = Reactant.@allowscalar loss(x)
-            tracked = Reactant.to_rarray(sample)
-            executable = Reactant.@compile objective(tracked)
-            gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, objective, tracked)
-            @test Reactant.to_number(executable(tracked)) ≈ loss(sample) rtol = 1.0e-8
-            actual = Array(only(gradient(Enzyme.Reverse, objective, tracked)))
-            @test actual ≈ expected rtol = 1.0e-7 atol = 1.0e-8
+        @testset "Mooncake" begin
+            @test DifferentiationInterface.gradient(loss, AutoMooncake(; config = nothing), sample) ≈ expected rtol = 1.0e-7 atol = 1.0e-8
         end
     end
 end
@@ -90,15 +76,7 @@ end
     loss(values) = log_likelihood_ratio(values .* a, b, PIPE_W, PIPE_DF)
     sample = ones(size(a))
     expected = ForwardDiff.gradient(loss, sample)
-    for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
-        @test DifferentiationInterface.gradient(loss, backend, sample) ≈ expected rtol = 1.0e-7
-    end
-    objective(values) = Reactant.@allowscalar loss(values)
-    tracked = Reactant.to_rarray(sample)
-    executable = Reactant.@compile objective(tracked)
-    gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, objective, tracked)
-    @test Reactant.to_number(executable(tracked)) ≈ loss(sample) rtol = 1.0e-8
-    @test Array(only(gradient(Enzyme.Reverse, objective, tracked))) ≈ expected rtol = 1.0e-7
+    @test DifferentiationInterface.gradient(loss, AutoMooncake(; config = nothing), sample) ≈ expected rtol = 1.0e-7
 end
 
 include("test_vectors.jl")
@@ -115,13 +93,5 @@ include("test_windows.jl")
     # and a relative-only comparison measures cancellation roundoff.
     sample = fill(0.8, size(data))
     expected = ForwardDiff.gradient(boundary_loss, sample)
-    for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
-        @test DifferentiationInterface.gradient(boundary_loss, backend, sample) ≈ expected rtol = 1.0e-7
-    end
-    objective(values) = Reactant.@allowscalar boundary_loss(values)
-    tracked = Reactant.to_rarray(sample)
-    executable = Reactant.@compile objective(tracked)
-    gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, objective, tracked)
-    @test Reactant.to_number(executable(tracked)) ≈ boundary_loss(sample) rtol = 1.0e-8
-    @test Array(only(gradient(Enzyme.Reverse, objective, tracked))) ≈ expected rtol = 1.0e-7
+    @test DifferentiationInterface.gradient(boundary_loss, AutoMooncake(; config = nothing), sample) ≈ expected rtol = 1.0e-7
 end

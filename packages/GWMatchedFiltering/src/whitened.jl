@@ -27,8 +27,9 @@ filter_structure(::AbstractArray{<:Number, 3}) = BlockFilter()
 # thread, `benchmarks/GWMatchedFiltering/layouts.jl`) it is about 4x slower for diagonal `W` and 6-16x
 # slower for blocks (1024 bins: 1.7 -> 6.4 us diagonal, 5.5 -> 35 us blocks; 131072 bins: 0.24 -> 0.84 ms
 # and 0.85 -> 14 ms). Add host fast paths (scalar loops over `Matrix`/`Array{T,3}` and views, a
-# channel-sized loop for blocks) that Enzyme and Reactant accept, keeping this method as the generic
-# fallback. Verify with `just benchmark-inference` and `just test-integration-inference`.
+# channel-sized loop for blocks), selected only when `a`, `b` and `W` are all host arrays, keeping this method
+# as the generic fallback. Verify with `just benchmark-inference` and `just test-integration-inference`.
+# Enzyme and Reactant integration is deferred; if revisited, this file has the known Enzyme pitfalls.
 whitened_contraction(a, b, W) = sum(conj.(whiten(a, W)) .* whiten(b, W))
 
 """

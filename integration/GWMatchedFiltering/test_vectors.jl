@@ -20,13 +20,5 @@ end
     check_template(VECTOR_DATA, VECTOR_W, VECTOR_DF)
     sample = [0.8, 0.2]
     expected = ForwardDiff.gradient(vector_loss, sample)
-    for backend in (AutoEnzyme(; function_annotation = Enzyme.Const), AutoMooncake(; config = nothing))
-        @test DifferentiationInterface.gradient(vector_loss, backend, sample) ≈ expected rtol = 1.0e-7 atol = 1.0e-8
-    end
-    objective(x) = Reactant.@allowscalar vector_loss(x)
-    tracked = Reactant.to_rarray(sample)
-    executable = Reactant.@compile objective(tracked)
-    gradient = Reactant.@compile Enzyme.gradient(Enzyme.Reverse, objective, tracked)
-    @test Reactant.to_number(executable(tracked)) ≈ vector_loss(sample) rtol = 1.0e-8
-    @test Array(only(gradient(Enzyme.Reverse, objective, tracked))) ≈ expected rtol = 1.0e-7 atol = 1.0e-8
+    @test DifferentiationInterface.gradient(vector_loss, AutoMooncake(; config = nothing), sample) ≈ expected rtol = 1.0e-7 atol = 1.0e-8
 end

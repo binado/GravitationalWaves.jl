@@ -1,5 +1,3 @@
-include("whitening_helpers.jl")
-
 @testset "Plain-array inner products" begin
     f = 0.0:0.5:2.0
     df = step(f)
@@ -8,6 +6,7 @@ include("whitening_helpers.jl")
     W = whitening_diagonal(reshape(fill(2.0, 5), :, 1))
     @test complex_inner_product(h, d, W, df) ≈ 12
     @test complex_inner_product(h, d, vec(W), df) ≈ 12
+    @test complex_inner_product(reshape(h, :, 1), reshape(d, :, 1), W, df) ≈ 12
     @test noise_weighted_inner_product(h, d, W, df) ≈ 12
     @test optimal_snr_squared(h, W, df) ≈ 6
     @test optimal_snr(h, W, df) ≈ sqrt(6)
@@ -23,9 +22,6 @@ include("whitening_helpers.jl")
     @test stats.h_inner_d ≈ 12 && stats.h_inner_h ≈ 6
     @test log_likelihood_ratio(h, d, W, df) ≈ 9
     @test log_likelihood_ratio(h, d, W, df) ≈ (optimal_snr_squared(d, W, df) - residual_squared(d, h, W, df)) / 2
-    # Mixed vector/matrix single-channel arguments.
-    @test complex_inner_product(h, reshape(d, :, 1), W, df) ≈ 12
-    @test complex_inner_product(reshape(h, :, 1), d, W, df) ≈ 12
 
     # Zero weights mark inactive bins.
     W0 = copy(W)

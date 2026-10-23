@@ -17,12 +17,11 @@ filter_structure(::AbstractVector{<:Real}) = DiagonalFilter()
 filter_structure(::AbstractMatrix{<:Real}) = DiagonalFilter()
 filter_structure(::AbstractArray{<:Number, 3}) = BlockFilter()
 
-# Σ (W aₖ)† (W bₖ). The diagonal case is a plain multi-array reduction (shapes
-# match, or one side is a single-channel vector against an `(nf, 1)` array); blocks
-# whiten both inputs with the Cholesky-derived factor and take an ordinary `dot`.
-whitened_contraction(a, b, W) = whitened_contraction(filter_structure(W), a, b, W)
-whitened_contraction(::DiagonalFilter, a, b, W) = mapreduce((x, w, y) -> conj(x) * (w * w) * y, +, a, W, b)
-whitened_contraction(::BlockFilter, a, b, W) = dot(whiten(a, W), whiten(b, W))
+# Σ (W aₖ)† (W bₖ): whiten both inputs, then reduce. `whiten` is the only operation that depends on the
+# structure of `W`. The reduction is a broadcast sum rather than `mapreduce` over several arrays or
+# `LinearAlgebra.dot`: `mapreduce` over mixed-activity arrays and BLAS `zdotc` both fail under Enzyme.
+# `a` and `b` must have the same shape (a vector is not broadcast against an `(nf, 1)` matrix).
+whitened_contraction(a, b, W) = sum(conj.(whiten(a, W)) .* whiten(b, W))
 
 """
     complex_inner_product(a, b, W, df)
@@ -82,9 +81,24 @@ automatic differentiation; `out` may not alias `d`.
 """
 whiten(d, W) = whiten(filter_structure(W), d, W)
 whiten!(out, d, W) = copyto!(out, whiten(d, W))
-whiten(::DiagonalFilter, d, W) = reshape(W, size(d)) .* d
-# `Wp[k, i, j] * d[k, 1, j]` summed over `j`.
+# No `reshape` here: reshaped views of constant input trip Enzyme's activity analysis.
+whiten(::DiagonalFilter, d::AbstractMatrix, W::AbstractMatrix) = W .* d
+whiten(::DiagonalFilter, d::AbstractVector, W::AbstractVector) = W .* d
+whiten(::DiagonalFilter, d::AbstractVector, W::AbstractMatrix) = view(W, :, 1) .* d
+# Column `i` is `Σⱼ W[i, j, :] .* d[:, j]`. Slices and plain loops, with no closure or generator capturing
+# the constant `W` together with active data and no `reshape`: those trip Enzyme's activity analysis.
+function whiten_column(W, d, i)
+    column = W[i, 1, :] .* d[:, 1]
+    for j in 2:size(W, 2)
+        column = column .+ W[i, j, :] .* d[:, j]
+    end
+    return column
+end
 function whiten(::BlockFilter, d::AbstractMatrix, W)
-    return dropdims(sum(permutedims(W, (3, 1, 2)) .* reshape(d, size(d, 1), 1, :); dims = 3); dims = 3)
+    out = similar(d, promote_type(eltype(d), eltype(W)))
+    for i in axes(W, 1)
+        out[:, i] = whiten_column(W, d, i)
+    end
+    return out
 end
 whiten(::BlockFilter, d::AbstractVector, W) = view(W, 1, 1, :) .* d

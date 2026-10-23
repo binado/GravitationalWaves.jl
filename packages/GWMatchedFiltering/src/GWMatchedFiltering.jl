@@ -5,7 +5,7 @@ import GWSeries
 using GWSeries: FrequencySeries, check_same_grid, check_same_frequency_grid, frequencies, channels
 import GWSeries: check_compatible, frequency_spacing
 
-using LinearAlgebra: Hermitian, I, cholesky, dot, ishermitian
+using LinearAlgebra: Hermitian, I, cholesky, ishermitian
 using StaticArrays: SMatrix, SVector
 
 export AbstractMetric, DiagonalMetric, BlockDiagonalMetric

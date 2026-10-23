@@ -3,7 +3,7 @@
     @test length(unique(available_psds())) == 12
     for name in available_psds()
         @test psd_path(String(name)) == psd_path(name)
-        curve = read_psd(psd_path(name))
+        curve = TabulatedPSD(psd_path(name), ' ')
         @test all(>(0), curve.values)
         i = length(curve.frequencies) ÷ 2
         @test psd(curve.frequencies[i], curve) ≈ curve.values[i]

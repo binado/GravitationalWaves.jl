@@ -7,7 +7,7 @@ normalization; the noise enters through a whitening factor `W` and the frequency
 ```julia
 using GWMatchedFiltering, GWNoise
 f = 0:0.25:1024
-S = band_psd(read_psd(psd_path(:AplusDesign)), f; fmin = 20, fmax = 512)
+S = band_psd(TabulatedPSD(psd_path(:AplusDesign), ' '), f; fmin = 20, fmax = 512)
 W = whitening_factor(reshape(S, :, 1))
 h = ones(ComplexF64, length(f), 1)
 data = copy(h)

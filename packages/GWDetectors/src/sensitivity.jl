@@ -2,7 +2,7 @@
     sensitivities
 
 Named tuple mapping detector names to their default bundled GWNoise curve names.
-Load, for example, `GWNoise.read_psd(GWNoise.psd_path(sensitivities.H1))`.
+Load, for example, `GWNoise.TabulatedPSD(GWNoise.psd_path(sensitivities.H1), ' ')`.
 These sensitivity choices are independent of the detector geometry.
 """
 const sensitivities = let

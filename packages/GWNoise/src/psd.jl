@@ -1,11 +1,17 @@
 """
     TabulatedPSD(frequencies, values; kind=:psd, interpolation=:linear)
+    TabulatedPSD(table::AbstractMatrix; kind=:psd, interpolation=:linear)
+    TabulatedPSD(path_or_io, delim::AbstractChar; kind=:psd, interpolation=:linear)
 
 A one-sided strain PSD table, with frequencies in Hz and densities in strain²/Hz.
 Use `kind=:asd` for strain/√Hz input; it is squared before interpolation.
 `:linear` interpolates PSD against frequency; `:loglog` interpolates log PSD
 against log frequency and requires positive table entries. Inputs are copied
 to `Float64` vectors. The frequency table may be nonuniform.
+
+Matrices and files must have exactly two columns: frequency and density.
+File delimiters are passed directly to `DelimitedFiles.readdlm`; blank lines
+and `#` comments are supported. No delimiter, header or unit conversion is inferred.
 """
 struct TabulatedPSD
     frequencies::Vector{Float64}
@@ -34,46 +40,17 @@ end
 
 Base.broadcastable(curve::TabulatedPSD) = Ref(curve)
 
-"""
-    read_psd(path_or_io; interpolation=:linear)
-
-Read a two-column frequency/PSD table. Whitespace and comma delimiters, blank
-lines and `#` comments are supported. No header or unit conversion is inferred.
-"""
-read_psd(source; interpolation = :linear) = read_density(source, :psd, interpolation)
-
-"""
-    read_asd(path_or_io; interpolation=:linear)
-
-Read a two-column frequency/ASD table and convert to a `TabulatedPSD`.
-The text format is the same as [`read_psd`](@ref).
-"""
-read_asd(source; interpolation = :linear) = read_density(source, :asd, interpolation)
-
-function read_density(path::AbstractString, kind, interpolation)
-    return open(io -> read_density(io, kind, interpolation), path)
-end
-
-function read_density(io::IO, kind, interpolation)
-    text = read(io, String)
-    row = first_data_row(text)
-    isnothing(row) && throw(ArgumentError("no frequency/density rows found"))
-    # The delimiter is decided by the first data row, since comments may contain commas.
-    table = if occursin(',', row)
-        readdlm(IOBuffer(text), ',', Float64; comments = true)
-    else
-        readdlm(IOBuffer(text), Float64; comments = true)
-    end::Matrix{Float64}
+function TabulatedPSD(table::AbstractMatrix; kind = :psd, interpolation = :linear)
     size(table, 2) == 2 || throw(ArgumentError("expected two columns: frequency and density"))
     return TabulatedPSD(table[:, 1], table[:, 2]; kind, interpolation)
 end
 
-function first_data_row(text)
-    for line in eachline(IOBuffer(text))
-        row = strip(first(split(line, '#'; limit = 2)))
-        isempty(row) || return row
-    end
-    return nothing
+function TabulatedPSD(
+        source::Union{AbstractString, IO}, delim::AbstractChar;
+        kind = :psd, interpolation = :linear
+    )
+    table = readdlm(source, delim, Float64; comments = true)::Matrix{Float64}
+    return TabulatedPSD(table; kind, interpolation)
 end
 
 """

@@ -13,7 +13,7 @@ Julia workspace; each package has its own dependencies, tests, version, and publ
 | [GWDistributions](packages/GWDistributions) | Population distributions for masses, spins, orientations, and redshifts | MIT |
 | [GWSeries](packages/GWSeries) | Sample/channel series, reconstructible metadata, and physical AbstractFFTs plans | MIT |
 | [GWNoise](packages/GWNoise) | Read PSD/ASD tables and sample stationary Gaussian strain noise | GPL-2.0-or-later |
-| [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | GPL-2.0-or-later |
+| [GWMatchedFiltering](packages/GWMatchedFiltering) | Joint frequency-domain metrics, inner products, and SNRs with correlated detector noise | MIT |
 | [SurrogateWaveforms](packages/SurrogateWaveforms) | Differentiable NRSur7dq4 numerical-relativity surrogate (in progress) | MIT |
 
 ## Installation
@@ -198,8 +198,8 @@ runic --inplace .
 
 ## Licenses
 
-The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions` and `SurrogateWaveforms` use GPL-2.0-or-later.
-`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.
+The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering` and `SurrogateWaveforms` use GPL-2.0-or-later.
+`GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)) and `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)) are MIT.
 
 Waveform numerical acceptance uses a shared physical parameter CSV, public-output
 oracles, and optimal-SNR backend comparisons; see [the suite guide](test/waveforms/README.md).

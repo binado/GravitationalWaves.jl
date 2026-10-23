@@ -40,7 +40,7 @@ fixtures:
     @echo 'export GWSURROGATES_DATA_DIR='$(pwd)/reference/surrogates-data
 
 # Run all heavy AD integration suites locally (no LAL or Python setup needed).
-test-integration: test-integration-series test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates
+test-integration: test-integration-series test-integration-conversion test-integration-waveforms test-integration-detectors test-integration-inference test-integration-surrogates test-reference-surrogates
 
 # Reactant CPU compilation and Enzyme gradients for parameter conversions.
 test-integration-conversion:
@@ -71,8 +71,8 @@ benchmark-inference:
 test-integration-series:
     {{ julia }} --startup-file=no --check-bounds=yes --project=integration/GWSeries -e 'using Pkg; Pkg.instantiate(); include("integration/GWSeries/runtests.jl")'
 
-# Direct public-output comparisons against the pinned Python surrogate oracle.
-test-oracle-surrogates:
+# Native surrogates against upstream gwsurrogate (PyCall reference generator); local only.
+test-reference-surrogates:
     uv sync --project python/surrogates --locked
-    PYTHON=$(uv run --project python/surrogates python -c 'import sys; print(sys.executable)') {{ julia }} --project=test/waveforms/surrogate_oracle -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
-    {{ julia }} --check-bounds=yes --project=test/waveforms/surrogate_oracle test/waveforms/surrogate_oracle/runtests.jl
+    PYTHON=$(uv run --project python/surrogates python -c 'import sys; print(sys.executable)') {{ julia }} --project=integration/SurrogateWaveforms/gwsurrogate_reference -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
+    {{ julia }} --check-bounds=yes --project=integration/SurrogateWaveforms/gwsurrogate_reference integration/SurrogateWaveforms/gwsurrogate_reference/runtests.jl

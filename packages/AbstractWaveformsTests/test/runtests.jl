@@ -101,6 +101,9 @@ const F = 0.0:0.5:1024.0
         ids(g) = first.(applicable_cases(g))
         @test !("bbh_precessing" in ids(Shifted(0.0, 0.0)))
         @test "bbh_aligned" in ids(Shifted(0.0, 0.0))
+        @test first.(applicable_cases(Shifted(0.0, 0.0); ids = ("bbh_unequal", "bbh_precessing", "bbh_aligned"))) ==
+            ["bbh_aligned", "bbh_unequal"]
+        @test_throws ArgumentError applicable_cases(Shifted(0.0, 0.0); ids = ("nonexistent",))
         p = cases["bbh_unequal"]
         x, scales = scaled_coordinates(p)
         @test fd_adapter(p, scales)(x).mass_1 ≈ p.mass_1_msun

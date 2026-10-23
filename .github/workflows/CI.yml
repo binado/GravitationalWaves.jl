@@ -92,31 +92,6 @@ jobs:
           project: packages/${{ matrix.package }}
           coverage: 'false'
 
-  surrogate-oracle:
-    needs: changes
-    if: contains(fromJSON(needs.changes.outputs.packages), 'SurrogateWaveforms')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: '1.12'
-      - uses: julia-actions/cache@v2
-      - uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/surrogate-data
-          key: surrogate-data-v1
-      - name: Set up pinned oracle and model data
-        run: |
-          uv sync --project python/surrogates --locked
-          echo "PYTHON=$(uv run --project python/surrogates python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
-          echo "GWSURROGATES_DATA_DIR=$RUNNER_TEMP/surrogate-data" >> "$GITHUB_ENV"
-      - name: Compare public surrogate outputs
-        run: |
-          julia --project=test/waveforms/surrogate_oracle -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
-          julia --check-bounds=yes --project=test/waveforms/surrogate_oracle test/waveforms/surrogate_oracle/runtests.jl
-
   format:
     runs-on: ubuntu-latest
     steps:
@@ -128,7 +103,7 @@ jobs:
   status:
     name: CI passed
     if: always()
-    needs: [changes, test, surrogate-oracle, format]
+    needs: [changes, test, format]
     runs-on: ubuntu-latest
     permissions:
       contents: read

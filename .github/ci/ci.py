@@ -30,6 +30,7 @@ AFFECTED = {
     "SurrogateWaveforms": {"SurrogateWaveforms"},
     "AbstractWaveformsTests": {"AbstractWaveformsTests"},
 }
+LOCAL_ONLY_PREFIXES = ("packages/SurrogatePyCallWaveforms/", "integration/SurrogateWaveforms/gwsurrogate_reference/")
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 
 
@@ -45,8 +46,9 @@ def select_packages(paths):
         parts = path.split("/")
         if len(parts) >= 3 and parts[0] == "packages" and parts[1] in AFFECTED:
             selected.update(AFFECTED[parts[1]])
-        elif path.startswith("test/waveforms/surrogate_oracle/") or path.startswith("integration/SurrogatePyCallWaveforms/"):
-            selected.add("SurrogateWaveforms")
+        elif path.startswith(LOCAL_ONLY_PREFIXES):
+            # PyCall needs a configured Python; these run locally (`just test-reference-surrogates`).
+            continue
         elif path.startswith("test/waveforms/"):
             selected.update({"FrequencyDomainWaveforms", "SurrogateWaveforms"})
         elif path.startswith("python/surrogates/") or path == "python/generate_surrogates.py":
@@ -85,10 +87,6 @@ def check_status(needs):
     expected = "success" if packages else "skipped"
     if needs["test"]["result"] != expected:
         raise ValueError(f"Expected tests to be {expected}: {needs['test']['result']}")
-
-    oracle_expected = "success" if "SurrogateWaveforms" in packages else "skipped"
-    if needs["surrogate-oracle"]["result"] != oracle_expected:
-        raise ValueError(f"Expected surrogate oracle to be {oracle_expected}")
 
 
 def main():

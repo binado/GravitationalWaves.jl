@@ -21,6 +21,14 @@ filter_structure(::AbstractArray{<:Number, 3}) = BlockFilter()
 # structure of `W`. The reduction is a broadcast sum rather than `mapreduce` over several arrays or
 # `LinearAlgebra.dot`: `mapreduce` over mixed-activity arrays and BLAS `zdotc` both fail under Enzyme.
 # `a` and `b` must have the same shape (a vector is not broadcast against an `(nf, 1)` matrix).
+#
+# TODO(performance): this allocates the two whitened arrays on every call, and the block `whiten` slices
+# and copies per column. Against the earlier allocation-free metric kernels (3 channels, Apple M4, one
+# thread, `benchmarks/GWMatchedFiltering/layouts.jl`) it is about 4x slower for diagonal `W` and 6-16x
+# slower for blocks (1024 bins: 1.7 -> 6.4 us diagonal, 5.5 -> 35 us blocks; 131072 bins: 0.24 -> 0.84 ms
+# and 0.85 -> 14 ms). Add host fast paths (scalar loops over `Matrix`/`Array{T,3}` and views, a
+# channel-sized loop for blocks) that Enzyme and Reactant accept, keeping this method as the generic
+# fallback. Verify with `just benchmark-inference` and `just test-integration-inference`.
 whitened_contraction(a, b, W) = sum(conj.(whiten(a, W)) .* whiten(b, W))
 
 """

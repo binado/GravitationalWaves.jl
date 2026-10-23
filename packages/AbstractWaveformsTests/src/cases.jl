@@ -49,15 +49,22 @@ function supports_case(g, p)
 end
 
 """
-    applicable_cases(generators..., cases = default_cases())
+    applicable_cases(generators..., cases = default_cases(); ids = nothing)
 
 Sorted `(id, case)` pairs that every given generator supports, judged by `spin_support`:
-`:none` keeps only non-spinning rows, `:aligned` drops rows with transverse spin.
+`:none` keeps only non-spinning rows, `:aligned` drops rows with transverse spin. Generators do not
+declare a valid parameter range, so pass `ids` to restrict the rows to those a model covers
+(a surrogate calibrated for mass ratios up to 4 cannot evaluate a neutron-star row).
 """
-applicable_cases(g::AbstractWaveformGenerator, gs...) = applicable_cases((g, gs...), default_cases())
-applicable_cases(g::AbstractWaveformGenerator, cases::AbstractDict) = applicable_cases((g,), cases)
-function applicable_cases(gs::Tuple, cases::AbstractDict = default_cases())
-    return [(id, p) for (id, p) in sort!(collect(cases); by = first) if all(g -> supports_case(g, p), gs)]
+applicable_cases(g::AbstractWaveformGenerator, gs...; kwargs...) = applicable_cases((g, gs...), default_cases(); kwargs...)
+applicable_cases(g::AbstractWaveformGenerator, cases::AbstractDict; kwargs...) = applicable_cases((g,), cases; kwargs...)
+function applicable_cases(gs::Tuple, cases::AbstractDict = default_cases(); ids = nothing)
+    ids === nothing || (missing_ids = setdiff(ids, keys(cases))) |> isempty ||
+        throw(ArgumentError("unknown case IDs: $(sort!(collect(missing_ids)))"))
+    return [
+        (id, p) for (id, p) in sort!(collect(cases); by = first)
+            if (ids === nothing || id in ids) && all(g -> supports_case(g, p), gs)
+    ]
 end
 
 """Aligned-spin parameters with bilby names; throws for rows with transverse spin."""

@@ -1,0 +1,34 @@
+name = "SurrogatePyCallWaveforms"
+uuid = "b7d1b15a-c8df-4d2a-83d4-0e856d6d4e31"
+version = "0.1.0"
+authors = ["binado <bernardopveronese@gmail.com>"]
+
+[deps]
+AbstractWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+
+[sources]
+AbstractWaveforms = {path = "../AbstractWaveforms"}
+AbstractWaveformsTests = {path = "../AbstractWaveformsTests"}
+GWMatchedFiltering = {path = "../GWMatchedFiltering"}
+GWSeries = {path = "../GWSeries"}
+SurrogateWaveforms = {path = "../SurrogateWaveforms"}
+
+[compat]
+AbstractWaveforms = "0.3"
+AbstractWaveformsTests = "0.1"
+PyCall = "1"
+SurrogateWaveforms = "0.1"
+Test = "1"
+julia = "1.12"
+
+[extras]
+AbstractWaveformsTests = "7a0139d6-47ed-4875-916e-ca5fc9bad9e0"
+GWMatchedFiltering = "1ee9af30-ae38-4c17-b65f-ceb3f3ad9ad4"
+GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+SurrogateWaveforms = "1e29a2e4-8621-4e56-af62-04cc6fe99f1b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["AbstractWaveformsTests", "GWMatchedFiltering", "GWSeries", "PyCall", "SurrogateWaveforms", "Test"]

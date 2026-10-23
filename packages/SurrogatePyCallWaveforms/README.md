@@ -1,8 +1,10 @@
 # SurrogatePyCallWaveforms
 
-Experimental integration adapter that calls upstream `gwsurrogate` through PyCall and
-implements the `AbstractWaveforms` time-domain mode contract. It is isolated from the
-runtime packages and is not included in the default workspace or package tests.
+Experimental adapter that calls upstream `gwsurrogate` through PyCall and implements the
+`AbstractWaveforms` time-domain mode contract, so it can serve as a reference generator for
+`AbstractWaveformsTests.test_reference`. MIT licensed, like `gwsurrogate`. It is kept out of the
+root workspace and CI package matrix, since PyCall needs a configured Python: its tests and the
+native-vs-oracle comparison run locally only.
 
 ## Build PyCall with uv's interpreter
 
@@ -21,8 +23,8 @@ depot:
 ```sh
 export PYTHON="$(uv run --extra gwsurrogate python -c 'import sys; print(sys.executable)')"
 uv run --extra gwsurrogate python -c 'import gwsurrogate, numpy; print(gwsurrogate.__file__)'
-julia --project=integration/SurrogatePyCallWaveforms -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
-julia --project=integration/SurrogatePyCallWaveforms -e 'using PyCall; println(PyCall.python)'
+julia --project=packages/SurrogatePyCallWaveforms -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
+julia --project=packages/SurrogatePyCallWaveforms -e 'using PyCall; println(PyCall.python)'
 ```
 
 The last command should print the same interpreter path shown by `uv run ... sys.executable`.
@@ -47,6 +49,7 @@ The resulting generator accepts `total_mass`, `luminosity_distance`, `mass_ratio
 physical strain. `hphc_td` is inherited from `AbstractWaveforms` and uses the LAL sky-angle
 convention `(inclination, π/2 - phi_ref)`. Python evaluation is not differentiable.
 
-The native implementation is checked against this adapter in
-`integration/SurrogateWaveforms/test_pycall.jl`; see that integration environment's README
-for the oracle comparison command.
+The adapter's own tests (`julia --project=packages/SurrogatePyCallWaveforms -e 'using Pkg; Pkg.test()'`,
+after the PyCall build above) check the contract, units and argument validation. The native
+implementation is compared with it by `just test-reference-surrogates`, which runs
+`integration/SurrogateWaveforms/gwsurrogate_reference/runtests.jl`.

@@ -21,9 +21,9 @@ an aligned model.
 
 - `Pkg.test()` for FrequencyDomainWaveforms compares both unwindowed polarizations
   with LAL, including existing PN options, cutoffs and grid variants.
-- `just test-oracle-surrogates` compares both surrogate models with the pinned
-  gwsurrogate 1.2.0 PyCall oracle in its own environment, without Mooncake. CI runs
-  this as a required job whenever SurrogateWaveforms is selected.
+- `just test-reference-surrogates` compares both surrogate models with the pinned
+  gwsurrogate 1.2.0 PyCall reference generator in its own environment, without Mooncake.
+  It runs locally only.
 - `just test-integration-waveforms` and `just test-integration-surrogates` run DI
   ForwardDiff/Mooncake optimal-SNR tests locally.
 - `just test-integration-series` validates production physical Fourier AD against

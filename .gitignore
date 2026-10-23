@@ -3,3 +3,4 @@ reference/
 python/.venv/
 .claude/
 LocalPreferences.toml
+.handoff/

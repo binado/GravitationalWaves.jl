@@ -13,9 +13,11 @@ export FrequencyDomainMetric
 export complex_inner_product, noise_weighted_inner_product
 export optimal_snr_squared, optimal_snr, matched_filter_snr, residual_squared
 export likelihood_statistics, log_likelihood_ratio, check_template
+export whiten, whiten!
 
 include("types.jl")
 include("metric.jl")
 include("statistics.jl")
+include("whitened.jl")
 
 end

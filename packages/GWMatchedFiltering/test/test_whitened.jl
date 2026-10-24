@@ -57,6 +57,8 @@ end
     @test GWMatchedFiltering.whitened_contraction(h, d, Wb) ≈ oracle
     # Views take the same kernels as arrays.
     @test complex_inner_product(view(h, :, :), view(d, :, :), Wb, 0.25) ≈ complex_inner_product(h, d, Wb, 0.25)
+    # Diagonal views take the same fast path as arrays.
+    @test complex_inner_product(view(h, :, :), view(d, :, :), Wd, 0.25) ≈ complex_inner_product(h, d, Wd, 0.25)
     @test optimal_snr_squared(h .* 1.0e-22, Wd, 0.25) ≈ 1.0e-44 * optimal_snr_squared(h, Wd, 0.25)
     @test GWMatchedFiltering.filter_structure(Wd) isa GWMatchedFiltering.DiagonalFilter
     @test GWMatchedFiltering.filter_structure(Wb) isa GWMatchedFiltering.BlockFilter

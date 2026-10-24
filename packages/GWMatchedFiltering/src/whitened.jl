@@ -19,18 +19,31 @@ filter_structure(::AbstractArray{<:Number, 3}) = BlockFilter()
 
 # Σ (W aₖ)† (W bₖ): whiten both inputs, then reduce. `whiten` is the only operation that depends on the
 # structure of `W`. The reduction is a broadcast sum rather than `mapreduce` over several arrays or
-# `LinearAlgebra.dot`: `mapreduce` over mixed-activity arrays and BLAS `zdotc` both fail under Enzyme.
-# `a` and `b` must have the same shape (a vector is not broadcast against an `(nf, 1)` matrix).
+# `LinearAlgebra.dot`: `mapreduce` over mixed-activity arrays fails under Enzyme, and BLAS `zdotc` only
+# survives it through a slow fallback. `a` and `b` must have the same shape (a vector is not broadcast
+# against an `(nf, 1)` matrix).
 #
-# TODO(performance): this allocates the two whitened arrays on every call, and the block `whiten` slices
-# and copies per column. Against the earlier allocation-free metric kernels (3 channels, Apple M4, one
-# thread, `benchmarks/GWMatchedFiltering/layouts.jl`) it is about 4x slower for diagonal `W` and 6-16x
-# slower for blocks (1024 bins: 1.7 -> 6.4 us diagonal, 5.5 -> 35 us blocks; 131072 bins: 0.24 -> 0.84 ms
-# and 0.85 -> 14 ms). Add host fast paths (scalar loops over `Matrix`/`Array{T,3}` and views, a
-# channel-sized loop for blocks), selected only when `a`, `b` and `W` are all host arrays, keeping this method
-# as the generic fallback. Verify with `just benchmark-inference` and `just test-integration-inference`.
+# TODO(performance): the block `whiten` slices and copies per column. Against the earlier allocation-free
+# metric kernels (3 channels, Apple M4, one thread, `benchmarks/GWMatchedFiltering/layouts.jl`) blocks are
+# about 6-16x slower (1024 bins: 5.5 -> 35 us; 131072 bins: 0.85 -> 14 ms). Add a block host fast path
+# (a channel-sized loop over `Array{T,3}`), selected only when `a`, `b` and `W` are all host arrays.
+# Verify with `just benchmark-inference` and `just test-integration-inference`.
 # Enzyme and Reactant integration is deferred; if revisited, this file has the known Enzyme pitfalls.
-whitened_contraction(a, b, W) = sum(conj.(whiten(a, W)) .* whiten(b, W))
+whitened_contraction(a, b, W) = _whitened_contraction(filter_structure(W), a, b, W)
+
+# Generic fallback: plain array expressions, AD-safe under Enzyme and Mooncake.
+_whitened_fallback(a, b, W) = sum(conj.(whiten(a, W)) .* whiten(b, W))
+_whitened_contraction(::FilterStructure, a, b, W) = _whitened_fallback(a, b, W)
+
+# Host fast path for independent channels: fuse both whitenings into one broadcast.
+# One temporary instead of two, the same plain array expressions as the fallback,
+# so AD sees identical operations. Dispatching on matching vector or matrix layouts
+# keeps shapes compatible by construction (length mismatches still throw loudly in
+# the broadcast, as in `whiten`); mixed vector/matrix layouts keep the fallback above.
+_whitened_contraction(::DiagonalFilter, a::AbstractVector, b::AbstractVector, W::AbstractVector) =
+    sum(abs2.(W) .* conj.(a) .* b)
+_whitened_contraction(::DiagonalFilter, a::AbstractMatrix, b::AbstractMatrix, W::AbstractMatrix) =
+    sum(abs2.(W) .* conj.(a) .* b)
 
 """
     complex_inner_product(a, b, W, df)

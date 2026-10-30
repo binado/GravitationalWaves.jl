@@ -96,6 +96,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # runic-action needs Julia, which the runner image no longer ships.
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
       - uses: fredrikekre/runic-action@v1
         with:
           version: '1'

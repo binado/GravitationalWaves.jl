@@ -95,12 +95,9 @@ once and multiplies `A * exp(im * Φ)` by `(1 + cos(theta_jn)^2)/2` for plus and
 """
 function hphc_fd end
 
-# Kernels take plain Base ranges; GWSeries grid types stay at the series boundary.
-coordinate_range(grid::AbstractRange) = range(first(grid); step = step(grid), length = length(grid))
-
 """Generate peak-relative polarizations on a prototype's frequency grid; its epoch and channels are ignored."""
 function hphc_fd(prototype::FrequencySeries, params, g::AbstractWaveformGenerator)
-    data = hphc_fd(coordinate_range(frequencies(prototype)), params, g)
+    data = hphc_fd(frequencies(prototype), params, g)
     return FrequencySeries(data; epoch = 0.0, frequency_spacing = frequency_spacing(prototype), channels = (:plus, :cross))
 end
 

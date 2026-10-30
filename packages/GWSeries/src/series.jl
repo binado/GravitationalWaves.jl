@@ -169,14 +169,17 @@ grid_metadata(s::FrequencySeries) = (; epoch = epoch(s), frequency_spacing = fre
 """Return parent storage and constructor keywords without copying samples."""
 flatten(s::AbstractSeries) = (parent(s), grid_metadata(s))
 
-"""Absolute sample times as a [`TimeGrid`](@ref)."""
-times(s::TimeSeries) = parent(lookup(s, 1))
-"""Bin frequencies as a [`SpectralGrid`](@ref)."""
-frequencies(s::FrequencySeries) = parent(lookup(s, 1))
+# The grids stay inside the lookups; public accessors return their raw Base ranges, so code
+# consuming coordinates gets exactly the range arithmetic it had before DimensionalData.
+grid(s::AbstractSeries) = parent(lookup(s, 1))
+"""Absolute sample times as a Base range (`parent` of the [`TimeGrid`](@ref) lookup)."""
+times(s::TimeSeries) = parent(grid(s))
+"""Bin frequencies as a Base range (`parent` of the [`SpectralGrid`](@ref) lookup)."""
+frequencies(s::FrequencySeries) = parent(grid(s))
 coordinates(s::TimeSeries) = times(s)
 coordinates(s::FrequencySeries) = frequencies(s)
 epoch(s::TimeSeries) = first(times(s))
-epoch(s::FrequencySeries) = frequencies(s).epoch
+epoch(s::FrequencySeries) = grid(s).epoch
 channels(s::AbstractSeries) = Tuple(parent(lookup(s, 2)))
 nsamples(s::AbstractSeries) = size(s, 1)
 sampling_interval(s::TimeSeries) = step(times(s))
@@ -185,4 +188,4 @@ sampling_frequency(s::TimeSeries) = inv(sampling_interval(s))
 duration(s::TimeSeries) = nsamples(s) * sampling_interval(s)
 frequency_spacing(s::FrequencySeries) = step(frequencies(s))
 """Original time length of a spectrum produced by a real FFT, or `nothing` when unrecorded."""
-time_samples(s::FrequencySeries) = time_samples(frequencies(s))
+time_samples(s::FrequencySeries) = time_samples(grid(s))

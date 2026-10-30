@@ -11,7 +11,10 @@
     @test step(x) == sampling_interval(x) == 0.125
     @test sampling_frequency(x) == 8
     @test duration(x) == 1
-    @test times(x) isa TimeGrid
+    # Accessors return raw Base ranges; the grid types live in the lookups.
+    @test times(x) isa StepRangeLen
+    @test parent(lookup(x, GPSTime)) isa TimeGrid
+    @test parent(parent(lookup(x, GPSTime))) === times(x)
     @test times(x) == range(epoch(x); step = 0.125, length = 8)
     @test lookup(x, GPSTime) == times(x)
     @test channels(x) == (:H1, :L1, :V1)
@@ -36,10 +39,11 @@
         @test epoch(s) == 2
     end
     # Grids are bits types, so series wrappers stay cheap to copy.
-    @test isbitstype(typeof(times(x)))
+    @test isbitstype(typeof(parent(lookup(x, GPSTime))))
     h = FrequencySeries(complex.(a); epoch = 100, frequency_spacing = 0.5, channels = channels(x))
-    @test isbitstype(typeof(frequencies(h)))
-    @test frequencies(h) isa SpectralGrid
+    @test isbitstype(typeof(parent(lookup(h, Freq))))
+    @test parent(lookup(h, Freq)) isa SpectralGrid
+    @test frequencies(h) === range(0.0; step = 0.5, length = 8)
 end
 
 @testset "Grid ranges" begin
@@ -53,11 +57,16 @@ end
     @test !(g[8:-1:1] isa TimeGrid) && g[8:-1:1] == reverse(collect(g))
     @test !(reverse(g) isa TimeGrid) && reverse(g) == reverse(collect(g))
     @test view(g, 2:4) === g[2:4]
-    huge = TimeGrid(0.0, 1.0e300, 1)
-    @test !(huge[1:typemax(Int):1] isa TimeGrid)
+    # Values come from the wrapped Base range, so slices agree bitwise with it.
+    @test parent(g) === range(1126259460.125; step = 0.25, length = 8)
+    @test collect(g[2:8]) == collect(parent(g)[2:8])
+    nondyadic = TimeGrid(-0.3, 0.1, 50)[2:49]
+    @test collect(nondyadic) == collect(TimeGrid(first(nondyadic), step(nondyadic), length(nondyadic)))
+    @test isfinite(step(TimeGrid(0.0, 1.0e300, 3)[1:typemax(Int):3]))
     f = SpectralGrid(0.5, 8, 100.0, 14)
     @test f == 0:0.5:3.5
     @test f[1:8] === f
+    @test parent(f) === range(0.0; step = 0.5, length = 8)
     @test !(f[2:8] isa SpectralGrid) && f[2:8] == collect(f)[2:8]
     @test f[1:2:7] == collect(f)[1:2:7]
     c = GWSeries.ChannelNames((:H1, :L1, :V1))

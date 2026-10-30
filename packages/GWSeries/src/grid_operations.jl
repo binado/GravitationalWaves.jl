@@ -13,12 +13,12 @@ frequency-domain phases are referenced to the epoch.
 """
 function check_same_grid(a::TimeSeries, b::TimeSeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
-    check_grid(times(a), times(b))
+    check_grid(grid(a), grid(b))
     return nothing
 end
 function check_same_grid(a::FrequencySeries, b::FrequencySeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
-    check_grid(frequencies(a), frequencies(b))
+    check_grid(grid(a), grid(b))
     return nothing
 end
 check_same_grid(::AbstractSeries, ::AbstractSeries) = throw(ArgumentError("series kinds differ"))

@@ -15,15 +15,17 @@ array, meta = flatten(x)
 y = TimeSeries(2 .* array; meta...)
 parent(y)                       # ordinary matrix
 grid_metadata(y)                # canonical constructor keywords
-times(y)                        # TimeGrid: absolute GPS sample times
+times(y)                        # Base range of absolute GPS sample times
 ```
 
 `grid_metadata(TimeSeries)` contains `epoch`, `sampling_interval`, and `channels`.
 `grid_metadata(FrequencySeries)` contains `epoch`, `frequency_spacing`, `channels`, and
 `time_samples`. (DimensionalData's own `metadata` is unused and returns `NoMetadata()`.)
-The grid lives in the dimension lookups: `times(x)` is a `TimeGrid` of absolute sample
-times and `frequencies(h)` is a `SpectralGrid` from DC, which also records the epoch and
-original time length. Both are `AbstractRange`s. Sample count is derived from storage,
+The grid lives in the dimension lookups: `lookup(x, GPSTime)` wraps a `TimeGrid` of
+absolute sample times and `lookup(h, Freq)` a `SpectralGrid` from DC, which also records
+the epoch and original time length. `times(x)` and `frequencies(h)` return their raw Base
+ranges (`range(epoch; step, length)` and `range(0; step = df, length)`), so code that
+computes with coordinates gets ordinary Base range arithmetic. Sample count is derived from storage,
 so reconstruction with different row counts changes duration/extent. Constructors
 validate intrinsic metadata, one-based storage axes, and unique channel names.
 

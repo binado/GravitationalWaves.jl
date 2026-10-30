@@ -10,6 +10,10 @@ GWSeries provides DimensionalData-backed matrices for uniformly sampled time ser
   return a series only for canonical grid dims with unique channels, and a plain
   `DimArray` otherwise. Grid `getindex` methods decide which slices keep a grid
   (contiguous or strided time slices do; partial frequency bands do not).
+- Grids wrap the Base range they represent and delegate all values to it.
+  `times`/`frequencies` must return that raw range, never the grid type: Base
+  range arithmetic on custom `AbstractRange`s rebuilds via `range` and can shift
+  coordinates by an ulp, changing downstream kernel results.
 - Grid coordinates are any `Real` (epochs may be dual numbers under ForwardDiff).
   Keep grid fields concrete: a `Nothing`-typed field nested in the dims crashed
   Mooncake's rule compilation, hence the zero sentinel for unrecorded lengths.

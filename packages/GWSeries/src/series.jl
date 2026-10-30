@@ -1,19 +1,27 @@
+const TimeDims = Tuple{GPSTime{<:Sampled{<:Any, <:TimeGrid}}, Chan{<:Categorical{Symbol, <:ChannelNames}}}
+const FrequencyDims = Tuple{Freq{<:Sampled{<:Any, <:SpectralGrid}}, Chan{<:Categorical{Symbol, <:ChannelNames}}}
+
+function check_dims(a::AbstractMatrix, grid, names::ChannelNames)
+    Base.require_one_based_indexing(a)
+    size(a) == (length(grid), length(names)) || throw(DimensionMismatch("storage size $(size(a)) does not match the grid and channels"))
+    allunique(names) || throw(ArgumentError("channel names must be unique"))
+    return nothing
+end
+
 """
     TimeSeries(array; epoch, channels, sampling_interval | sampling_frequency)
 
-Rows are time samples and columns are ordered channels. Supply exactly one of
-`sampling_interval` and `sampling_frequency`. The grid fields are immutable; only the
-samples can change.
+Rows are time samples on the absolute [`GPSTime`](@ref) grid and columns are ordered
+[`Chan`](@ref) channels. Supply exactly one of `sampling_interval` and
+`sampling_frequency`. The grid is immutable; only the samples can change.
 """
-struct TimeSeries{T, A <: AbstractMatrix{T}, E <: Real, D <: Real, C <: Tuple} <: AbstractSeries{T}
+struct TimeSeries{T, A <: AbstractMatrix{T}, D <: TimeDims} <: AbstractSeries{T, D, A}
     data::A
-    epoch::E
-    sampling_interval::D
-    channels::C
-    function TimeSeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T}
-        return new{T, typeof(a), typeof(m.epoch), typeof(m.sampling_interval), typeof(m.channels)}(
-            a, m.epoch, m.sampling_interval, m.channels,
-        )
+    dims::D
+    function TimeSeries(a::AbstractMatrix{T}, grid::TimeGrid, names::ChannelNames) where {T}
+        check_dims(a, grid, names)
+        d = (GPSTime(grid_lookup(grid)), Chan(channel_lookup(names)))
+        return new{T, typeof(a), typeof(d)}(a, d)
     end
 end
 
@@ -26,18 +34,23 @@ length is recorded in `time_samples` when the spectrum comes from a real FFT (it
 the even/odd ambiguity of the inverse) and is `nothing` otherwise, in which case inverse
 transforms need an explicit length.
 """
-struct FrequencySeries{T, A <: AbstractMatrix{T}, E <: Real, D <: Real, C <: Tuple, N <: Union{Nothing, Int}} <: AbstractSeries{T}
+struct FrequencySeries{T, A <: AbstractMatrix{T}, D <: FrequencyDims} <: AbstractSeries{T, D, A}
     data::A
-    epoch::E
-    frequency_spacing::D
-    channels::C
-    time_samples::N
-    function FrequencySeries(a::AbstractMatrix{T}, m::NamedTuple, ::Validated) where {T}
-        return new{T, typeof(a), typeof(m.epoch), typeof(m.frequency_spacing), typeof(m.channels), typeof(m.time_samples)}(
-            a, m.epoch, m.frequency_spacing, m.channels, m.time_samples,
-        )
+    dims::D
+    function FrequencySeries(a::AbstractMatrix{T}, grid::SpectralGrid, names::ChannelNames) where {T}
+        check_dims(a, grid, names)
+        d = (Freq(grid_lookup(grid)), Chan(channel_lookup(names)))
+        return new{T, typeof(a), typeof(d)}(a, d)
     end
 end
+
+TimeSeries(a::AbstractMatrix, m::NamedTuple, ::Validated) =
+    TimeSeries(a, TimeGrid(m.epoch, m.sampling_interval, size(a, 1)), ChannelNames(m.channels))
+FrequencySeries(a::AbstractMatrix, m::NamedTuple, ::Validated) =
+    FrequencySeries(a, SpectralGrid(m.frequency_spacing, size(a, 1), m.epoch, m.time_samples), ChannelNames(m.channels))
+"""Rebuild a series of the same kind from storage and validated [`grid_metadata`](@ref)."""
+reconstruct(::TimeSeries, a, m) = TimeSeries(a, m, Validated())
+reconstruct(::FrequencySeries, a, m) = FrequencySeries(a, m, Validated())
 
 matrix_storage(a::AbstractMatrix{<:Number}) = a
 matrix_storage(a::AbstractVector{<:Number}) = reshape(a, :, 1)
@@ -94,49 +107,82 @@ function check_storage(a, names)
     return nothing
 end
 
-"""Canonical constructor keywords, independent of sample storage and precision."""
-metadata(s::TimeSeries) = (; epoch = s.epoch, sampling_interval = s.sampling_interval, channels = s.channels)
-metadata(s::FrequencySeries) = (; epoch = s.epoch, frequency_spacing = s.frequency_spacing, channels = s.channels, time_samples = s.time_samples)
-"""Return parent storage and constructor keywords without copying samples."""
-flatten(s::AbstractSeries) = (parent(s), metadata(s))
-Base.parent(s::AbstractSeries) = s.data
-Base.size(s::AbstractSeries) = size(parent(s))
-Base.axes(s::AbstractSeries) = axes(parent(s))
-Base.IndexStyle(::Type{<:TimeSeries{T, A}}) where {T, A} = IndexStyle(A)
-Base.IndexStyle(::Type{<:FrequencySeries{T, A}}) where {T, A} = IndexStyle(A)
-Base.@propagate_inbounds Base.getindex(s::AbstractSeries, i::Int) = parent(s)[i]
-Base.@propagate_inbounds Base.getindex(s::AbstractSeries, i::Int, j::Int) = parent(s)[i, j]
-Base.@propagate_inbounds function Base.setindex!(s::AbstractSeries, v, i::Int)
-    parent(s)[i] = v
-    return s
-end
-Base.@propagate_inbounds function Base.setindex!(s::AbstractSeries, v, i::Int, j::Int)
-    parent(s)[i, j] = v
-    return s
-end
-Base.getindex(s::AbstractSeries, i::CartesianIndex) = parent(s)[i]
-Base.setindex!(s::AbstractSeries, v, i::CartesianIndex) = (setindex!(parent(s), v, i); s)
-Base.dataids(s::AbstractSeries) = Base.dataids(parent(s))
-Base.copy(s::AbstractSeries) = rebuild(s, copy(parent(s)), metadata(s))
-# Base routines such as reverse, circshift and cumsum allocate through `similar` and then reorder or
-# combine samples, so `similar` must not claim the source grid. Use `copy` for a series-valued buffer.
-Base.similar(s::AbstractSeries, ::Type{T}) where {T} = similar(parent(s), T)
-Base.similar(s::AbstractSeries, ::Type{T}, dims::Dims) where {T} = similar(parent(s), T, dims)
-Base.similar(s::AbstractSeries, dims::Dims) = similar(parent(s), eltype(s), dims)
-rebuild(::TimeSeries, a, m) = TimeSeries(a, m, Validated())
-rebuild(::FrequencySeries, a, m) = FrequencySeries(a, m, Validated())
+# DimensionalData interface. Series carry no name, refdims, or DD metadata.
+DD.refdims(::AbstractSeries) = ()
+DD.name(::AbstractSeries) = NoName()
+DD.metadata(::AbstractSeries) = NoMetadata()
 
-epoch(s::AbstractSeries) = s.epoch
-channels(s::AbstractSeries) = s.channels
+# Every DD result path (broadcast, similar, slicing, reductions, products) rebuilds from the
+# source array, so this one method decides whether a result is still a series.
+DD.rebuild(::AbstractSeries, data, dims::Tuple, refdims, name, metadata) =
+    rebuild_series(data, dims, refdims, name, metadata)
+DD.rebuild(A::AbstractSeries; data = parent(A), dims = DD.dims(A), refdims = (), name = NoName(), metadata = NoMetadata(), kw...) =
+    rebuild_series(data, dims, refdims, name, metadata)
+rebuild_series(data::AbstractMatrix, dims::TimeDims, refdims, name, metadata) =
+    allunique(parent(lookup(dims[2]))) ? TimeSeries(data, parent(lookup(dims[1])), parent(lookup(dims[2]))) :
+    DimArray(data, dims, refdims, name, metadata)
+rebuild_series(data::AbstractMatrix, dims::FrequencyDims, refdims, name, metadata) =
+    allunique(parent(lookup(dims[2]))) ? FrequencySeries(data, parent(lookup(dims[1])), parent(lookup(dims[2]))) :
+    DimArray(data, dims, refdims, name, metadata)
+rebuild_series(data, dims, refdims, name, metadata) = DimArray(data, dims, refdims, name, metadata)
+
+"""Drop the series guarantees, keeping samples and labels."""
+dimarray(s::AbstractSeries) = DimArray(parent(s), dims(s))
+# DimensionalData keeps the source dims for these, which would mislabel reordered samples.
+for S in (:Real, :(Tuple{Vararg{Integer}}), :Any)
+    @eval Base.circshift(s::AbstractSeries, shifts::$S) = DimArray(circshift(parent(s), shifts), dims(s))
+end
+Base.diff(s::AbstractSeries; dims) = dimarray(invoke(diff, Tuple{AbstractDimArray}, s; dims))
+# Accumulating across channels mixes them; only accumulation along samples stays a series.
+function Base.cumsum(s::AbstractSeries; dims)
+    out = invoke(cumsum, Tuple{AbstractDimArray}, s; dims)
+    return dimnum(s, dims) == 1 ? out : dimarray(out)
+end
+# DimensionalData's `map` skips lookup values; compare grids as broadcasting does.
+function Base.map(f, A1::AbstractSeries, As::AbstractDimArray...)
+    DD.comparedims(A1, As...; val = true)
+    return invoke(map, Tuple{Any, AbstractDimArray, Vararg{AbstractDimArray}}, f, A1, As...)
+end
+# Assigning a series checks the destination block's grid; selectors reach this after conversion.
+function Base.setindex!(s::AbstractSeries, v::AbstractSeries, i1::DD.StandardIndices, I::DD.StandardIndices...)
+    destination = view(s, i1, I...)
+    if destination isa AbstractSeries
+        check_same_grid(destination, v)
+    else
+        DD.comparedims(destination, v; val = true)
+    end
+    setindex!(parent(s), parent(v), i1, I...)
+    return s
+end
+# Resolves an ambiguity with DimensionalData's method for DimIndices and empty index arrays.
+Base.setindex!(s::AbstractSeries, v::AbstractSeries, i1::DD._DimIndicesAmb, I::DD._DimIndicesAmb...) =
+    invoke(setindex!, Tuple{AbstractDimArray, Any, DD._DimIndicesAmb, Vararg{DD._DimIndicesAmb}}, s, v, i1, I...)
+function Base.copyto!(destination::AbstractSeries, source::AbstractSeries)
+    check_same_grid(destination, source)
+    copyto!(parent(destination), parent(source))
+    return destination
+end
+
+"""Canonical constructor keywords, independent of sample storage and precision."""
+grid_metadata(s::TimeSeries) = (; epoch = epoch(s), sampling_interval = sampling_interval(s), channels = channels(s))
+grid_metadata(s::FrequencySeries) = (; epoch = epoch(s), frequency_spacing = frequency_spacing(s), channels = channels(s), time_samples = time_samples(s))
+"""Return parent storage and constructor keywords without copying samples."""
+flatten(s::AbstractSeries) = (parent(s), grid_metadata(s))
+
+"""Absolute sample times as a [`TimeGrid`](@ref)."""
+times(s::TimeSeries) = parent(lookup(s, 1))
+"""Bin frequencies as a [`SpectralGrid`](@ref)."""
+frequencies(s::FrequencySeries) = parent(lookup(s, 1))
+coordinates(s::TimeSeries) = times(s)
+coordinates(s::FrequencySeries) = frequencies(s)
+epoch(s::TimeSeries) = first(times(s))
+epoch(s::FrequencySeries) = frequencies(s).epoch
+channels(s::AbstractSeries) = Tuple(parent(lookup(s, 2)))
 nsamples(s::AbstractSeries) = size(s, 1)
-sampling_interval(s::TimeSeries) = s.sampling_interval
+sampling_interval(s::TimeSeries) = step(times(s))
 Base.step(s::TimeSeries) = sampling_interval(s)
 sampling_frequency(s::TimeSeries) = inv(sampling_interval(s))
 duration(s::TimeSeries) = nsamples(s) * sampling_interval(s)
-times(s::TimeSeries) = range(epoch(s); step = sampling_interval(s), length = nsamples(s))
-frequency_spacing(s::FrequencySeries) = s.frequency_spacing
+frequency_spacing(s::FrequencySeries) = step(frequencies(s))
 """Original time length of a spectrum produced by a real FFT, or `nothing` when unrecorded."""
-time_samples(s::FrequencySeries) = s.time_samples
-frequencies(s::FrequencySeries) = range(zero(frequency_spacing(s)); step = frequency_spacing(s), length = nsamples(s))
-coordinates(s::TimeSeries) = times(s)
-coordinates(s::FrequencySeries) = frequencies(s)
+time_samples(s::FrequencySeries) = time_samples(frequencies(s))

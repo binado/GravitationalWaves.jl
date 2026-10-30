@@ -61,7 +61,7 @@ end
         check_gradients(
             x -> begin
                 h = hphc_td(ADModes(), (; x, theta_jn = x[5]); times = 0.0:1.0:1.0)
-                sum(h[:, :plus]) + 0.2 * sum(h[:, :cross])
+                sum(h[Chan = At(:plus)]) + 0.2 * sum(h[Chan = At(:cross)])
             end,
             [0.7, 0.2, 0.4, 0.3, theta],
         )
@@ -156,10 +156,10 @@ end
                             spin_1 = (p[3], p[4], p[5]), spin_2 = (p[6], 0.5, -0.3), inclination = p[7], phi_ref = p[8],
                         )
                         out = G.hphc_td(gen, params; dt = 1 / 1024)
-                        n = length(out[:, :plus])
-                        acc = zero(eltype(out[:, :plus]))
+                        n = length(out[Chan = At(:plus)])
+                        acc = zero(eltype(out[Chan = At(:plus)]))
                         for k in 1:n
-                            acc += out[:, :plus][k] * (1 + (k - 1) / (n - 1)) + 2 * out[:, :cross][k]
+                            acc += out[Chan = At(:plus)][k] * (1 + (k - 1) / (n - 1)) + 2 * out[Chan = At(:cross)][k]
                         end
                         1.0e21 * acc
                     end,

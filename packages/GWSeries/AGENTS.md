@@ -1,13 +1,26 @@
 # GWSeries agent guidance
 
-GWSeries provides matrix wrappers for uniformly sampled time series and complete one-sided spectra.
+GWSeries provides DimensionalData-backed matrices for uniformly sampled time series and complete one-sided spectra.
 
 - Keep storage in `(sample, channel)` order; `flatten` must return parent storage
-  and reconstructible keyword metadata without losing metadata precision.
-- Preserve metadata for same-shape `+`/`-`, scalar scaling, and broadcasting.
-  Matrix products, `similar`, and sample-reordering operations return plain arrays.
-  Contiguous time slices update epoch and channel order; partial frequency slices
-  return plain arrays, since they are not complete spectra.
+  and reconstructible `grid_metadata` keywords without losing metadata precision.
+- Grid metadata lives only in the lookups (`TimeGrid`, `SpectralGrid`,
+  `ChannelNames`); series structs hold just `data` and `dims`. `DD.rebuild` on a
+  series is the single gate deciding whether a result stays a series: it must
+  return a series only for canonical grid dims with unique channels, and a plain
+  `DimArray` otherwise. Grid `getindex` methods decide which slices keep a grid
+  (contiguous or strided time slices do; partial frequency bands do not).
+- Grid coordinates are any `Real` (epochs may be dual numbers under ForwardDiff).
+  Keep grid fields concrete: a `Nothing`-typed field nested in the dims crashed
+  Mooncake's rule compilation, hence the zero sentinel for unrecorded lengths.
+- Add explicit methods for DD operations that keep dims while reordering or
+  mixing samples (`circshift`, `diff`, `cumsum` across channels), and for paths
+  that skip lookup-value checks (`map`, `copyto!`, series `setindex!`).
+- The epoch check relies on the private `Dimensions._comparedims2` hook; keep the
+  narrow DimensionalData compat bound and the epoch-shift regression test, and
+  recheck both when upgrading DimensionalData.
+- Methods overriding DD's AbstractFFTs extension must mirror its fixed arities;
+  `Vararg` rejection methods are ambiguous with it. Run Aqua after FFT changes.
 - FrequencySeries starts at DC and records the original `time_samples` after
   `rfft`; otherwise that value is `nothing`. Inverse transforms use the recorded
   length or require it explicitly, preserving odd/even distinctions.

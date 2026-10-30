@@ -14,7 +14,7 @@ GWSeries = {path = "../GWSeries"}
 
 [compat]
 TOML = "1"
-GWSeries = "0.1"
+GWSeries = "0.2"
 Aqua = "0.8"
 ForwardDiff = "1"
 JET = "0.11, 0.12"

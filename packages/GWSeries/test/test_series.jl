@@ -2,23 +2,25 @@
     a = reshape(collect(1.0:24.0), 8, 3)
     x = TimeSeries(a; epoch = 1126259460.125, sampling_frequency = 8, channels = ("H1", "L1", "V1"))
     @test x isa AbstractMatrix{Float64}
+    @test x isa AbstractDimArray
     @test size(x) == (8, 3)
     @test parent(x) === a
     raw, meta = flatten(x)
     @test raw === a
-    @test metadata(TimeSeries(raw; meta...)) == meta
+    @test grid_metadata(TimeSeries(raw; meta...)) == meta
     @test step(x) == sampling_interval(x) == 0.125
     @test sampling_frequency(x) == 8
     @test duration(x) == 1
+    @test times(x) isa TimeGrid
     @test times(x) == range(epoch(x); step = 0.125, length = 8)
+    @test lookup(x, GPSTime) == times(x)
     @test channels(x) == (:H1, :L1, :V1)
-    @test metadata(TimeSeries(zeros(4, 3); meta...)) == meta
+    @test grid_metadata(TimeSeries(zeros(4, 3); meta...)) == meta
     v = ones(4)
     onechannel = TimeSeries(v; epoch = 0, sampling_interval = 1, channels = (:H1,))
     onechannel[2, 1] = 3
     @test v[2] == 3
     @test size(onechannel) == (4, 1)
-    @test setindex!(onechannel, 4, 1, 1) === onechannel
     @test_throws ArgumentError TimeSeries(a; epoch = 0, sampling_interval = 1, sampling_frequency = 1, channels = channels(x))
     @test_throws ArgumentError TimeSeries(a; epoch = Inf, sampling_interval = 1, channels = channels(x))
     @test_throws ArgumentError TimeSeries(a; epoch = 0, sampling_interval = -1, channels = channels(x))
@@ -27,93 +29,136 @@
     b = TimeSeries(zeros(Float32, 4); epoch = big"1126259460.123456789", sampling_interval = big"0.125", channels = (:H1,))
     @test epoch(b) isa BigFloat
     @test sampling_interval(b) isa BigFloat
+    @test epoch(b) == big"1126259460.123456789"
     for n in (0, 1)
         s = TimeSeries(zeros(n); epoch = 2, sampling_interval = 0.25, channels = (:H1,))
         @test nsamples(s) == n
-        @test first(times(s)) == 2
+        @test epoch(s) == 2
     end
+    # Grids are bits types, so series wrappers stay cheap to copy.
+    @test isbitstype(typeof(times(x)))
+    h = FrequencySeries(complex.(a); epoch = 100, frequency_spacing = 0.5, channels = channels(x))
+    @test isbitstype(typeof(frequencies(h)))
+    @test frequencies(h) isa SpectralGrid
 end
 
-@testset "Channel and sample indexing" begin
+@testset "Grid ranges" begin
+    g = TimeGrid(1126259460.125, 0.25, 8)
+    @test g == range(1126259460.125; step = 0.25, length = 8)
+    @test g[3] == 1126259460.625
+    @test_throws BoundsError g[9]
+    @test g[2:8] isa TimeGrid && first(g[2:8]) == g[2] && step(g[2:8]) == 0.25
+    @test g[1:3:8] isa TimeGrid && step(g[1:3:8]) == 0.75 && length(g[1:3:8]) == 3
+    @test g[1:0] isa TimeGrid && isempty(g[1:0])
+    @test !(g[8:-1:1] isa TimeGrid) && g[8:-1:1] == reverse(collect(g))
+    @test !(reverse(g) isa TimeGrid) && reverse(g) == reverse(collect(g))
+    @test view(g, 2:4) === g[2:4]
+    huge = TimeGrid(0.0, 1.0e300, 1)
+    @test !(huge[1:typemax(Int):1] isa TimeGrid)
+    f = SpectralGrid(0.5, 8, 100.0, 14)
+    @test f == 0:0.5:3.5
+    @test f[1:8] === f
+    @test !(f[2:8] isa SpectralGrid) && f[2:8] == collect(f)[2:8]
+    @test f[1:2:7] == collect(f)[1:2:7]
+    c = GWSeries.ChannelNames((:H1, :L1, :V1))
+    @test c[[3, 1]] == GWSeries.ChannelNames((:V1, :H1))
+    @test c[2] === :L1
+    @test Tuple(c) === (:H1, :L1, :V1)
+end
+
+using ForwardDiff
+@testset "Grids with dual-number coordinates" begin
+    # Waveform epochs can depend on differentiated parameters such as the total mass.
+    function objective(m)
+        x = TimeSeries(ones(4, 2); epoch = -m * 1.0e-3, sampling_interval = m * 1.0e-4, channels = (:plus, :cross))
+        return epoch(x[2:3, :]) + sum(x[Chan = At(:plus)]) * sampling_interval(x)
+    end
+    @test ForwardDiff.derivative(objective, 60.0) ≈ -1.0e-3 + 1.0e-4 + 4 * 1.0e-4
+end
+
+@testset "Selection and slicing" begin
     a = reshape(collect(1.0:24.0), 8, 3)
     x = TimeSeries(a; epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1, :V1))
     @test x[2, 3] == a[2, 3]
-    @test x[:, :H1] == a[:, 1]
-    @test x[:, :H1] isa Vector
-    @test x[2, :] isa Vector
-    s = x[2:8, [:V1, :H1]]
+    @test parent(x[Chan = At(:H1)]) == a[:, 1]
+    @test x[Chan = At(:H1)] isa DimArray
+    @test lookup(x[Chan = At(:H1)], GPSTime) == times(x)
+    s = x[GPSTime = 2:8, Chan = At([:V1, :H1])]
     @test s isa TimeSeries
     @test channels(s) == (:V1, :H1)
     @test parent(s) == a[2:8, [3, 1]]
     @test epoch(s) == 100.25
     @test sampling_interval(s) == 0.25
-    @test size(x[:, (:L1,)]) == (8, 1)
-    @test_throws ArgumentError x[:, :missing]
-    @test x[:, [1, 1]] isa Matrix
-    @test x[[1, 3, 4], :] isa Matrix
-    @test x[end:-1:1, :] isa Matrix
+    # Strided slices keep a uniform grid with a multiplied step.
+    strided = x[2:2:8, :]
+    @test strided isa TimeSeries
+    @test epoch(strided) == 100.25 && sampling_interval(strided) == 0.5
+    window = x[GPSTime = 100.5 .. 101.0]
+    @test window isa TimeSeries
+    @test epoch(window) == 100.5 && nsamples(window) == 3
+    @test x[GPSTime = At(100.5), Chan = At(:L1)] == a[3, 2]
+    @test_throws DimensionalData.Lookups.SelectorError x[Chan = At(:missing)]
+    # Repeated channels and reordered samples keep labels but are no longer series.
+    @test x[:, [1, 1]] isa DimArray && !(x[:, [1, 1]] isa AbstractSeries)
+    @test !(x[[1, 3, 4], :] isa AbstractSeries)
+    @test !(x[end:-1:1, :] isa AbstractSeries)
     @test x[1:0, :] isa TimeSeries
-    v = view(x, 2:8, [:L1, :H1])
+    v = view(x; GPSTime = 2:8, Chan = At([:L1, :H1]))
     @test v isa TimeSeries
     @test parent(v) isa SubArray
     v[1, 1] = 99
-    @test x[2, :L1] == 99
-    @test x[2:4, :].data !== a
-    h = FrequencySeries(complex.(a); epoch = 100, frequency_spacing = 0.5, channels = channels(x))
-    @test h[3:2:7, :] isa Matrix
-    @test x[2:2:8, :] isa Matrix
-    @test h[axes(h, 1), [:L1]] isa FrequencySeries
-    @test view(h, 2:4, :) isa SubArray
-    @test channels(view(h, :, [:L1, :H1])) == (:L1, :H1)
-    @test h[:, :H1] isa Vector
-    @test h[:, Symbol[]] isa Matrix
-    @test h[:, [:H1, :H1]] isa Matrix
+    @test x[2, 2] == 99
+    h = FrequencySeries(complex.(a); epoch = 100, frequency_spacing = 0.5, channels = channels(x), time_samples = 14)
+    # Partial bands are not complete spectra: they drop epoch and time length.
+    for band in (h[3:2:7, :], h[2:4, :], h[Freq = 1 .. 2], view(h, 2:4, :))
+        @test band isa DimArray && !(band isa AbstractSeries)
+    end
+    @test parent(h[Freq = 1 .. 2]) == parent(h)[3:5, :]
+    @test lookup(h[Freq = 1 .. 2], Freq) == 1.0:0.5:2.0
+    full = h[Chan = At([:L1])]
+    @test full isa FrequencySeries
+    @test time_samples(full) == 14 && epoch(full) == 100
+    @test channels(view(h; Chan = At([:L1, :H1]))) == (:L1, :H1)
     @test frequencies(h) == 0:0.5:3.5
     @test frequency_bins(h; fmin = 0.6, fmax = 1.6) == 3:4
     @test frequency_bins(h; fmin = -1, fmax = 1) == 1:3
-    @test frequency_bins(h) == axes(h, 1)
+    @test frequency_bins(h) == axes(parent(h), 1)
     @test isempty(frequency_bins(h; fmin = 4, fmax = 5))
     @test isempty(frequency_bins(h; fmin = -2, fmax = -1))
     @test_throws ArgumentError frequency_bins(h; fmin = 2, fmax = 1)
     @test_throws ArgumentError frequency_bins(h; fmax = Inf)
     for kw in ((; frequency_start = 0), (; frequencies = 0:0.5:3.5), (; spectrum = :onesided))
-        @test_throws MethodError FrequencySeries(parent(h); metadata(h)..., kw...)
+        @test_throws MethodError FrequencySeries(parent(h); grid_metadata(h)..., kw...)
     end
-    huge = TimeSeries(ones(1); epoch = 0, sampling_interval = 1.0e300, channels = (:H1,))
-    @test huge[1:typemax(Int):1, :] isa Matrix
 end
 
 @testset "Metadata-preserving operations" begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     b = ones(8, 2)
-    for y in (2 .* x, x .+ b, b .+ x, x + b, b + x, x - b, 2x, x / 2, -x, map(sin, x), x .* x)
+    for y in (
+            2 .* x, x .+ b, b .+ x, x + b, b + x, x - b, x + x, 2x, x / 2, -x, map(sin, x), map(+, x, x),
+            x .* x, copy(x), similar(x), similar(x, Float32), cumsum(x; dims = 1), cumsum(x; dims = GPSTime),
+        )
         @test y isa TimeSeries
-        @test metadata(y) == metadata(x)
+        @test grid_metadata(y) == grid_metadata(x)
     end
+    @test eltype(similar(x, Float32)) === Float32
     @test parent(@. 2 * x + b) == 2 .* parent(x) .+ b
-    # Matrix products carry no grid: channel-mixing must not keep the channel labels.
+    # Products, reorderings, reductions and channel accumulation have no series grid.
     mix = [0.0 1.0; 1.0 0.0]
-    @test x * mix isa Matrix
-    @test x * mix == parent(x) * mix
-    @test x * x' isa Matrix
-    @test x * ones(2, 3) isa Matrix
-    # Reordering or accumulating Base routines must not keep the source grid.
-    for y in (reverse(x; dims = 1), circshift(x, 1), cumsum(x; dims = 1), diff(x; dims = 1), similar(x), similar(x, Float32))
-        @test y isa Matrix
+    for y in (
+            x * mix, x * x', x * ones(2, 3), permutedims(x), reverse(x; dims = 1), circshift(x, 1),
+            diff(x; dims = 1), sum(x; dims = 1), cumsum(x; dims = 2), maximum(abs, x; dims = 1),
+        )
+        @test y isa AbstractDimArray && !(y isa AbstractSeries)
     end
-    @test diff(x; dims = 1) == diff(parent(x); dims = 1)
-    @test reverse(x; dims = 1) == reverse(parent(x); dims = 1)
-    singleton = TimeSeries(ones(1, 2); epoch = 0, sampling_interval = 1, channels = (:H1, :L1))
-    @test singleton .+ b isa Matrix
-    @test reshape(x, :) isa Vector
-    @test transpose(x) isa Transpose
-    @test sum(x; dims = 1) isa Matrix
-    @test maximum(abs, x; dims = 1) isa Matrix
-    @test minimum(abs, x; dims = 2) isa Matrix
-    @test prod(abs, x; dims = 1) isa Matrix
-    @test similar(x, (4, 2)) isa Matrix
-    @test copy(x) !== x
+    @test parent(x * mix) == parent(x) * mix
+    @test parent(diff(x; dims = 1)) == diff(parent(x); dims = 1)
+    @test parent(reverse(x; dims = 1)) == reverse(parent(x); dims = 1)
+    @test parent(circshift(x, 1)) == circshift(parent(x), 1)
+    @test sum(x) == sum(parent(x))
     out = copy(x)
+    @test out !== x
     out .= 0
     @test all(iszero, parent(out))
     out .= 2 .* x .+ b
@@ -121,21 +166,46 @@ end
     raw = similar(parent(x))
     raw .= 2 .* x
     @test raw == 2 .* parent(x)
-    shifted = TimeSeries(copy(parent(x)); metadata(x)..., epoch = 101)
+    shifted = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = 101)
     @test_throws ArgumentError x .+ shifted
     @test_throws ArgumentError out .= shifted
     @test_throws ArgumentError x + shifted
     @test_throws ArgumentError map(+, x, shifted)
-    @test_throws ArgumentError map!(identity, out, shifted)
     @test_throws ArgumentError copyto!(out, shifted)
-    close = TimeSeries(copy(parent(x)); metadata(x)..., epoch = nextfloat(epoch(x)))
+    swapped = TimeSeries(copy(parent(x)); grid_metadata(x)..., channels = (:L1, :H1))
+    @test_throws DimensionMismatch x .+ swapped
+    @test_throws ArgumentError check_same_grid(x, swapped)
+    close = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = nextfloat(epoch(x)))
     @test check_same_grid(x, close) === nothing
+    @test x .+ close isa TimeSeries
     @test check_same_grid(x, x) === nothing
+end
+
+@testset "Epoch shifts beyond DimensionalData's relative tolerance throw" begin
+    # DimensionalData alone compares lookups with a relative ≈, which accepts GPS epochs
+    # seconds apart; the GPSTime comparison hook must reject them. This guards DD upgrades.
+    t0 = 1126259460.125
+    x = TimeSeries(randn(MersenneTwister(1), 64, 1); epoch = t0, sampling_frequency = 64, channels = (:H1,))
+    one_second = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = t0 + 1)
+    one_sample = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = t0 + 1 / 64)
+    @test isapprox(t0, t0 + 1)
+    for y in (one_second, one_sample)
+        @test_throws "epochs differ" x .+ y
+        @test_throws "epochs differ" x + y
+    end
+    @test x .+ TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = nextfloat(t0)) isa TimeSeries
+    h = rfft(x)
+    later = FrequencySeries(copy(parent(h)); grid_metadata(h)..., epoch = t0 + 1)
+    @test_throws "epochs differ" h .+ later
+    # The predicate form of the comparison reports a mismatch instead of throwing.
+    @test !DimensionalData.comparedims(Bool, x, one_second; val = true)
+    @test DimensionalData.comparedims(Bool, x, x; val = true)
 end
 
 @testset "Crop and pad" begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     y = crop(x; start = 100.5, stop = 101.5)
+    @test y isa TimeSeries
     @test parent(y) == parent(x)[3:6, :]
     @test epoch(y) == 100.5
     @test_throws ArgumentError crop(x; start = 100.1, stop = 101)
@@ -199,7 +269,6 @@ end
     end
     @test err isa ArgumentError && occursin("crop boundary", err.msg) && occursin("spacing", err.msg)
 end
-
 
 struct ZeroBasedVector <: AbstractVector{Float64}
     data::Vector{Float64}

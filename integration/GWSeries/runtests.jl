@@ -25,3 +25,12 @@ using Test, GWSeries, FFTW, ForwardDiff, Mooncake, ChainRulesCore, Differentiati
         @test a == saved
     end
 end
+
+# Reading the grid records of a spectrum without a recorded length once crashed Mooncake's
+# rule compilation (a `Nothing`-typed field nested in the dims); keep this path compiled.
+@testset "Mooncake through unrecorded spectrum metadata" begin
+    spectrum(x) = FrequencySeries(reshape([x[1], x[2], x[1] * x[2]], :, 1); epoch = 0.0, frequency_spacing = 1.0, channels = (:H1,))
+    loss(x) = (s = spectrum(x); sum(abs2, parent(s)) + something(time_samples(s), 0) + epoch(s))
+    @test time_samples(spectrum([1.0, 2.0])) === nothing
+    @test gradient(loss, AutoMooncake(; config = nothing), [1.5, 2.0]) ≈ gradient(loss, AutoForwardDiff(), [1.5, 2.0])
+end

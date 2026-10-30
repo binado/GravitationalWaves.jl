@@ -71,14 +71,27 @@ function AbstractFFTs.irfft(s::FrequencySeries, n::Integer, dims = 1)
     a .*= n * frequency_spacing(s)
     return TimeSeries(a, inverse_metadata(s, n), Validated())
 end
-for f in (:fft, :ifft, :bfft, :plan_fft, :plan_ifft, :plan_bfft)
-    @eval AbstractFFTs.$f(s::AbstractSeries, args...; kwargs...) = throw(ArgumentError("use parent(series) for complex or two-sided transforms"))
+# DimensionalData's AbstractFFTs methods apply an absolute-epoch phase and drop the series
+# metadata. Where DD defines a method, the rejections below mirror its fixed arities, since a
+# `Vararg` method would be ambiguous with it rather than more specific.
+const TWO_SIDED = "use parent(series) for complex or two-sided transforms"
+const SERIES_PLANS = "use plan_to_frequencydomain or plan_to_timedomain for series plans"
+AbstractFFTs.rfft(s::FrequencySeries, dims = 1) = throw(ArgumentError("the series is already a spectrum; use irfft or to_timedomain"))
+AbstractFFTs.irfft(s::TimeSeries, n::Integer, dims = 1) = throw(ArgumentError("the series is in the time domain; use rfft or to_frequencydomain"))
+AbstractFFTs.plan_rfft(s::AbstractSeries, dims = 1; kwargs...) = throw(ArgumentError(SERIES_PLANS))
+AbstractFFTs.plan_irfft(s::AbstractSeries, n::Integer, dims = 1; kwargs...) = throw(ArgumentError(SERIES_PLANS))
+for f in (:fft, :ifft, :plan_fft, :plan_ifft)
+    @eval AbstractFFTs.$f(s::AbstractSeries, dims = 1; kwargs...) = throw(ArgumentError(TWO_SIDED))
+end
+# DD defines none of these, so any arity is rejected.
+for f in (:bfft, :plan_bfft)
+    @eval AbstractFFTs.$f(s::AbstractSeries, args...; kwargs...) = throw(ArgumentError(TWO_SIDED))
 end
 for f in (:fft!, :ifft!, :bfft!, :plan_fft!, :plan_ifft!, :plan_bfft!)
     @eval AbstractFFTs.$f(s::AbstractSeries, args...; kwargs...) = throw(ArgumentError("in-place FFTs cannot change a series type; use a physical transform plan or parent(series)"))
 end
 for f in (:fftshift, :ifftshift)
-    @eval AbstractFFTs.$f(s::AbstractSeries, args...) = throw(ArgumentError("shifting bins changes series coordinates; use parent(series) or the physical FFT methods"))
+    @eval AbstractFFTs.$f(s::AbstractSeries, dims = 1) = throw(ArgumentError("shifting bins changes series coordinates; use parent(series) or the physical FFT methods"))
 end
 
 """Transform a time series with physical normalization (real FFT for real samples)."""
@@ -102,7 +115,7 @@ end
 function SeriesFFTPlan{K}(fft::P, input::I, work::W, input_metadata::IM, output_metadata::OM, scale::S) where {K, P, I, W, IM, OM, S}
     return SeriesFFTPlan{K, P, I, W, IM, OM, S}(fft, input, work, input_metadata, output_metadata, scale)
 end
-metadata(p::SeriesFFTPlan) = p.output_metadata
+grid_metadata(p::SeriesFFTPlan) = p.output_metadata
 input_type(::SeriesFFTPlan{Forward}) = TimeSeries
 input_type(::SeriesFFTPlan{Inverse}) = FrequencySeries
 output_type(::SeriesFFTPlan{Forward}) = FrequencySeries
@@ -116,7 +129,7 @@ function plan_to_frequencydomain(s::TimeSeries{<:Real}; kwargs...)
     fft = AbstractFFTs.plan_rfft(input, 1; kwargs...)
     shape = (nsamples(s) ÷ 2 + 1, size(s, 2))
     work = similar(input, Complex{real(eltype(input))}, shape)
-    return SeriesFFTPlan{Forward}(fft, input, work, metadata(s), fourier_metadata(s), sampling_interval(s))
+    return SeriesFFTPlan{Forward}(fft, input, work, grid_metadata(s), fourier_metadata(s), sampling_interval(s))
 end
 plan_to_frequencydomain(s::TimeSeries; kwargs...) = throw(ArgumentError("wrapped forward transforms require real samples"))
 
@@ -128,7 +141,7 @@ function plan_to_timedomain(s::FrequencySeries; nsamples::Union{Nothing, Integer
     require_backend(input, true)
     fft = AbstractFFTs.plan_irfft(input, nsamples, 1; kwargs...)
     work = similar(input, real(eltype(input)), (nsamples, size(s, 2)))
-    return SeriesFFTPlan{Inverse}(fft, input, work, metadata(s), inverse_metadata(s, nsamples), nsamples * frequency_spacing(s))
+    return SeriesFFTPlan{Inverse}(fft, input, work, grid_metadata(s), inverse_metadata(s, nsamples), nsamples * frequency_spacing(s))
 end
 
 function transform_storage!(destination::AbstractMatrix, p::SeriesFFTPlan, input::AbstractMatrix)
@@ -142,14 +155,14 @@ end
 transform(p::SeriesFFTPlan, input::AbstractMatrix) = transform_storage!(similar(p.work), p, input)
 
 # The plan's metadata is already validated, so compare grids through the trusted constructor.
-function check_plan_series(::Type{S}, s, meta, role) where {S}
-    s isa S || throw(ArgumentError("series kind does not match transform $role"))
-    check_same_grid(rebuild(s, parent(s), meta), s)
+function check_plan_series(::Type{S}, s::S, meta, role) where {S <: AbstractSeries}
+    check_same_grid(reconstruct(s, parent(s), meta), s)
     return nothing
 end
+check_plan_series(::Type, s, meta, role) = throw(ArgumentError("series kind does not match transform $role"))
 check_plan_input(p::SeriesFFTPlan, s::AbstractSeries) = check_plan_series(input_type(p), s, p.input_metadata, "input")
 check_plan_input(::SeriesFFTPlan, ::AbstractMatrix) = nothing
-check_plan_destination(p::SeriesFFTPlan, s::AbstractSeries) = check_plan_series(output_type(p), s, metadata(p), "output")
+check_plan_destination(p::SeriesFFTPlan, s::AbstractSeries) = check_plan_series(output_type(p), s, grid_metadata(p), "output")
 check_plan_destination(::SeriesFFTPlan, ::AbstractMatrix) = nothing
 storage(s::AbstractSeries) = parent(s)
 storage(a::AbstractMatrix) = a
@@ -163,5 +176,5 @@ function transform!(destination::AbstractMatrix, p::SeriesFFTPlan, input::Abstra
 end
 function transform(p::SeriesFFTPlan, s::AbstractSeries)
     check_plan_input(p, s)
-    return output_type(p)(transform(p, parent(s)), metadata(p), Validated())
+    return output_type(p)(transform(p, parent(s)), grid_metadata(p), Validated())
 end

@@ -1,4 +1,11 @@
-abstract type AbstractSeries{T} <: AbstractMatrix{T} end
+"""
+    AbstractSeries{T,D,A} <: AbstractDimArray{T,2,D,A}
+
+Uniformly sampled `(sample, channel)` matrices whose grid metadata lives in the
+dimension lookups. Operations that keep a valid grid return a series; anything else
+returns a plain `DimArray`, keeping labels but no series guarantees.
+"""
+abstract type AbstractSeries{T, D, A} <: AbstractDimArray{T, 2, D, A} end
 struct Validated end
 
 """Promote grid metadata to at least `Float64`; wider types such as `BigFloat` are preserved."""

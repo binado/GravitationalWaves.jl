@@ -1,10 +1,11 @@
 name = "GWSeries"
 uuid = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [deps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
+DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
@@ -12,10 +13,11 @@ ChainRulesCore = "1"
 ForwardDiff = "1"
 Mooncake = "0.5"
 StaticArrays = "1"
-StaticArraysCore = "1"
 Random = "1"
 AbstractFFTs = "1"
 ArrayInterface = "7"
+DimensionalData = "0.30"
+Interfaces = "0.3"
 Aqua = "0.8"
 FFTW = "1"
 LinearAlgebra = "1"
@@ -27,16 +29,15 @@ julia = "1.12"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
-StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
-ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 
 [extensions]
 GWSeriesForwardDiffExt = "ForwardDiff"
 GWSeriesMooncakeExt = ["Mooncake", "ChainRulesCore"]
-GWSeriesStaticArraysCoreExt = "StaticArraysCore"
-GWSeriesArrayInterfaceExt = "ArrayInterface"
 
 [extras]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Interfaces = "85a1e053-f937-4924-92a5-1367d23b7b87"
+DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
@@ -46,4 +47,4 @@ JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["StaticArrays", "Random", "ArrayInterface", "Aqua", "FFTW", "JET", "Test"]
+test = ["DimensionalData", "ForwardDiff", "Interfaces", "StaticArrays", "Random", "ArrayInterface", "Aqua", "FFTW", "JET", "Test"]

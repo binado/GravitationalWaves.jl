@@ -49,7 +49,9 @@ function mismatch(a::AbstractMatrix, b::AbstractMatrix, W::AbstractArray, f::Abs
     return max(zero(overlap), 1 - overlap)
 end
 mismatch(a::FrequencySeries, b::FrequencySeries, W::AbstractArray; kwargs...) =
-    mismatch(parent(a), parent(b), W, frequencies(a); kwargs...)
+    mismatch(parent(a), parent(b), W, plain_range(frequencies(a)); kwargs...)
+# The raw method takes a plain Base range rather than the series' grid type.
+plain_range(grid::AbstractRange) = range(first(grid); step = step(grid), length = length(grid))
 
 function maximum_shifted_overlap(a, b, W, grid, scale, max_shift)
     f = collect(float.(grid))

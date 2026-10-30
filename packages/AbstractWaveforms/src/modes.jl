@@ -89,7 +89,7 @@ end
 
 """Sample polarizations at a time prototype's peak-relative coordinates, without detector placement."""
 function hphc_td(prototype::TimeSeries, params::NamedTuple, g::AbstractWaveformGenerator; kwargs...)
-    data = hphc_td(times(prototype), params, g; kwargs...)
+    data = hphc_td(coordinate_range(times(prototype)), params, g; kwargs...)
     return TimeSeries(data; epoch = epoch(prototype), sampling_interval = sampling_interval(prototype), channels = (:plus, :cross))
 end
 

@@ -50,6 +50,30 @@ end
 
 include("test_modes.jl")
 
+# Records the coordinates a kernel receives, to check that series grids are unwrapped.
+struct GridProbe <: AbstractWaveformGenerator
+    seen::Base.RefValue{Any}
+end
+function AbstractWaveforms.hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::GridProbe)
+    g.seen[] = f
+    return zeros(ComplexF64, length(f), 2)
+end
+function AbstractWaveforms.hphc_td(t::AbstractVector{<:Real}, params::NamedTuple, g::GridProbe)
+    g.seen[] = t
+    return zeros(length(t), 2)
+end
+@testset "kernels receive plain ranges from series prototypes" begin
+    probe = GridProbe(Ref{Any}(nothing))
+    fd = FrequencySeries(zeros(9, 1); epoch = 1126259460.0, frequency_spacing = 0.5, channels = (:H1,))
+    hphc_fd(fd, (;), probe)
+    @test probe.seen[] isa StepRangeLen
+    @test probe.seen[] == frequencies(fd)
+    td = TimeSeries(zeros(8, 1); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1,))
+    hphc_td(td, (;), probe)
+    @test probe.seen[] isa StepRangeLen
+    @test probe.seen[] == times(td)
+end
+
 @testset "AbstractWaveforms" begin
     @testset "Aqua" begin
         Aqua.test_all(AbstractWaveforms)

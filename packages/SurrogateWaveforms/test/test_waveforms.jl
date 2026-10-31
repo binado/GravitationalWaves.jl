@@ -236,7 +236,7 @@ end
                 @test g ≈ grad(fdm, objective, p0)[1] rtol = 1.0e-5 atol = 1.0e-5
             end
 
-            if VERSION.major == 1 && VERSION.minor in (12, 13) && isempty(VERSION.prerelease)
+            if JET.JET_AVAILABLE
                 @testset "JET optimisation" begin
                     a = (0.3, 0.2, 0.4)
                     JET.@test_opt target_modules = (SurrogateWaveforms,) SurrogateWaveforms.inertial_modes(sur, 2.0, a, a)

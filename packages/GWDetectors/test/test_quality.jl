@@ -12,7 +12,7 @@ end
 end
 
 @testitem "JET" setup = [Common, Setup_quality] begin
-    if VERSION.major == 1 && VERSION.minor in (12, 13) && isempty(VERSION.prerelease)
+    if JET.JET_AVAILABLE
         @testset "JET" begin
             JET.test_package(GWDetectors; target_modules = (GWDetectors,))
             @test (@inferred antenna_pattern(1.2, -0.4, 0.7, 2.0, detectors.H1)).plus isa Float64

@@ -115,7 +115,7 @@ end
             end
 
             # The kernels must be free of runtime dispatch for the AD backends.
-            if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
+            if JET.JET_AVAILABLE
                 @testset "JET optimisation" begin
                     y = SVector{11}(ref["probe_y"])
                     a = (0.3, 0.2, 0.4)

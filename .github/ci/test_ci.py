@@ -120,18 +120,18 @@ class SelectionTests(unittest.TestCase):
     def test_event_matrices(self):
         self.assertEqual(
             select_matrix("pull_request", '["README.md"]'),
-            {"packages": [], "julia": ["1.12"]},
+            {"packages": [], "julia": ["1.13"]},
         )
         for event in ("push", "workflow_dispatch"):
             self.assertEqual(
                 select_matrix(event, ""),
-                {"packages": list(PACKAGES), "julia": ["1.12", "1"]},
+                {"packages": list(PACKAGES), "julia": ["1.13"]},
             )
 
     def test_large_pr_falls_back_to_full_matrix(self):
         self.assertEqual(
             select_matrix("pull_request", '["README.md"]', 3001),
-            {"packages": list(PACKAGES), "julia": ["1.12"]},
+            {"packages": list(PACKAGES), "julia": ["1.13"]},
         )
 
     def test_invalid_input_fails(self):

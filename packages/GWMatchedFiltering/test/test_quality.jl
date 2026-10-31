@@ -11,7 +11,7 @@ end
 end
 
 @testitem "JET" setup = [Common, Setup_quality] begin
-    if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
+    if JET.JET_AVAILABLE
         @testset "JET" begin
             JET.test_package(GWMatchedFiltering; target_modules = (GWMatchedFiltering,))
         end

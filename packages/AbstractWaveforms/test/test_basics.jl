@@ -17,7 +17,9 @@ end
 end
 
 @testitem "JET" setup = [Common, Setup_modes] begin
-    JET.test_package(AbstractWaveforms; target_modules = (AbstractWaveforms,))
+    if JET.JET_AVAILABLE
+        JET.test_package(AbstractWaveforms; target_modules = (AbstractWaveforms,))
+    end
 end
 
 @testitem "capability fallbacks" setup = [Common] begin

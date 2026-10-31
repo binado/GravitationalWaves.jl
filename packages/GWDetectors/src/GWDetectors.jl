@@ -2,7 +2,7 @@ module GWDetectors
 
 import TOML
 import GWSeries
-using GWSeries: FrequencySeries, metadata, channels, frequencies, frequency_spacing, nsamples, epoch
+using GWSeries: FrequencySeries, grid_metadata, channels, frequencies, frequency_spacing, nsamples, epoch
 
 using LinearAlgebra: cross, dot
 using StaticArrays: SVector, @SMatrix

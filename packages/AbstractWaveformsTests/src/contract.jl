@@ -38,7 +38,7 @@ function test_generator_contract(g; params, f)
             @test frequencies(wrapped) == f
             @test epoch(wrapped) == 0
             @test parent(wrapped) == h
-            later = FrequencySeries(parent(prototype); metadata(prototype)..., epoch = 1126259461.0)
+            later = FrequencySeries(parent(prototype); grid_metadata(prototype)..., epoch = 1126259461.0)
             @test parent(hphc_fd(later, params, g)) == h
             @test h[:, 1] isa AbstractVector{<:Complex}
             @test h[:, 2] isa AbstractVector{<:Complex}

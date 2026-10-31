@@ -1,10 +1,11 @@
 # GWSeries
 
 MIT-licensed `TimeSeries` matrices for uniform time segments and `FrequencySeries`
-matrices for complete, zero-origin, one-sided spectra. Rows
-are samples or frequency bins; columns are ordered channels. Ordinary matrices,
-vectors (reshaped to one column), and views can be wrapped without copying samples.
-Metadata precision is independent of sample precision.
+matrices for complete, zero-origin, one-sided spectra, built on
+[DimensionalData.jl](https://github.com/rafaqz/DimensionalData.jl). Rows are samples
+or frequency bins (`GPSTime` or `Freq` dimensions); columns are ordered channels (`Chan`).
+Ordinary matrices, vectors (reshaped to one column), and views can be wrapped without
+copying samples. Metadata precision is independent of sample precision.
 
 ```julia
 using GWSeries
@@ -13,46 +14,71 @@ x = TimeSeries(randn(8192, 2); epoch=1126259460.125,
 array, meta = flatten(x)
 y = TimeSeries(2 .* array; meta...)
 parent(y)                       # ordinary matrix
-metadata(y)                     # canonical constructor keywords
+grid_metadata(y)                # canonical constructor keywords
+times(y)                        # Base range of absolute GPS sample times
 ```
 
-`metadata(TimeSeries)` contains `epoch`, `sampling_interval`, and `channels`.
-`metadata(FrequencySeries)` contains only `epoch`, `frequency_spacing`, and `channels`.
-Frequency coordinates are derived as `(0:nfrequency-1) * frequency_spacing`.
-Sample count is derived from storage, so reconstruction with different row counts
-changes duration/extent. Constructors validate intrinsic metadata, one-based
-storage axes, and channel count. No coordinates or channel values are type parameters.
+`grid_metadata(TimeSeries)` contains `epoch`, `sampling_interval`, and `channels`.
+`grid_metadata(FrequencySeries)` contains `epoch`, `frequency_spacing`, `channels`, and
+`time_samples`. (DimensionalData's own `metadata` is unused and returns `NoMetadata()`.)
+The grid lives in the dimension lookups: `lookup(x, GPSTime)` wraps a `TimeGrid` of
+absolute sample times and `lookup(h, Freq)` a `SpectralGrid` from DC, which also records
+the epoch and original time length. `times(x)` and `frequencies(h)` return their raw Base
+ranges (`range(epoch; step, length)` and `range(0; step = df, length)`), so code that
+computes with coordinates gets ordinary Base range arithmetic. Sample count is derived from storage,
+so reconstruction with different row counts changes duration/extent. Constructors
+validate intrinsic metadata, one-based storage axes, and unique channel names through
+DimensionalData's dimension formatting API. `rebuild(x; data, dims)` retains a series
+only for `(GPSTime, Chan)` or `(Freq, Chan)` dimensions with the appropriate grid
+wrapper, forward order, matching regular spacing, point sampling, and unique channels.
+It preserves supplied lookups (including lookup metadata) and shares the supplied
+sample storage. Noncanonical dimensions produce a `DimArray` with those exact lookup
+properties; shape or axis mismatches throw. Series carry no DD name, reference
+dimensions, or array metadata.
 
 ## Array operations and selection
 
-Same-shape arithmetic with ordinary arrays preserves metadata. Multiple series
-operands must agree on coordinates, epoch, and ordered channels.
-Broadcasting validates the operands and destination before executing on parent
-storage. Use `flatten` around repeated numerical work to avoid repeated checks.
-Only `+`, `-`, scalar scaling and broadcasting keep metadata: use `.*` for an
-elementwise product. Matrix products (`x * A`), `similar`, reductions, reshape,
-transpose, dimension permutations, and routines that reorder or accumulate samples
-(`reverse`, `circshift`, `cumsum`, `diff`, ...) return ordinary arrays, because the
-result has no meaningful grid. Use `copy(x)` for a series-valued buffer.
-Irregular sample selections also return ordinary arrays.
+Series are `AbstractDimArray`s, so DimensionalData selectors, broadcasting, reductions,
+plotting recipes, and Tables interop apply. A result is still a series only when it
+keeps a valid grid; otherwise it is a plain `DimArray` that keeps the labels but not
+the series guarantees.
+
+| Operation | Result |
+|---|---|
+| same-grid `+`, `-`, scalar `*` and `/`, broadcasting, `map`, `copy`, `similar`, `cumsum(; dims=1)`, contiguous or strided time slices, channel selection | series |
+| `reverse`, `circshift`, `diff`, partial frequency bands, reductions (`sum(; dims=1)`), `x * A`, `x * x'`, `permutedims`, repeated channels, `cumsum(; dims=2)` | `DimArray` |
+| grid, epoch, or channel-order mismatch between operands | throws |
 
 ```julia
-2 .* x                         # TimeSeries, unchanged metadata
-x[:, :H1]                      # ordinary vector
-x[:, [:H1]]                    # one-channel TimeSeries
-x[:, [:L1, :H1]]                # channels in the requested order
+2 .* x                          # TimeSeries, unchanged grid
+x[Chan = At(:H1)]               # DimArray vector with GPS times
+x[Chan = At([:L1, :H1])]        # TimeSeries, channels in the requested order
 x[101:200, :]                   # copy, advanced epoch
+x[GPSTime = t0 .. t0 + 1]       # closed interval of absolute GPS times
+x[1:2:end, :]                   # TimeSeries with doubled sampling interval
 view(x, 101:200, :)             # TimeSeries wrapping shared storage
-view(x, 1:2:8191, :)            # ordinary view
+h[Freq = 20 .. 1024]            # DimArray: a band is not a complete spectrum
 ```
 
-Unknown channel names throw. Repeated or empty channel selections and dimension-dropping
-selections return ordinary arrays/views. Only contiguous increasing time slices preserve
-TimeSeries metadata. Strided, reversed, or irregular selections return ordinary arrays.
-Frequency selections preserve FrequencySeries only when all rows remain in order;
-partial bands return ordinary arrays. Channel-only selection preserves either series type.
-`crop(x; start, stop)` and `pad(x; before, after)` apply only to TimeSeries.
-Crop uses grid-aligned half-open boundaries; padding before shifts the epoch.
+`At`, `Near`, and `..` are re-exported; load DimensionalData for its other selectors.
+Positional and keyword indices cannot be mixed in one call (`x[GPSTime = 1:4, Chan = At(:H1)]`
+works). Reversed or irregular time selections return `DimArray`s. Frequency selections
+preserve `FrequencySeries` only for the full axis; partial bands drop the epoch and time
+length. In-place reordering (`reverse!`, `sort!`) cannot change the type, so avoid it on
+series. `crop(x; start, stop)` and `pad(x; before, after)` apply only to TimeSeries. Crop
+uses grid-aligned half-open boundaries; padding before shifts the epoch.
+
+Operands are checked before executing on parent storage: broadcasting (including into a
+destination with `.=`), `+`, `-`, binary `map` in either labelled operand order,
+series-first n-ary `map`, full-array `copyto!`, and assignment into a series
+(`out[:, :] = y`) compare labelled grids. Indexed assignment compares the selected
+destination block before writing. Unlabelled array sources remain positional;
+offset-based `copyto!` retains upstream behavior. `map` reconstructs from its first
+operand, so `map(+, x, DimArray(x))` returns a series while reversing those operands
+returns a `DimArray`. Other mixed n-ary `map` calls retain upstream behavior; use
+broadcasting to validate labelled operands in arbitrary positions. Use `flatten` around
+repeated numerical work to avoid repeated checks. Static matrices combine with `+`/`-` into unlabelled static arrays;
+broadcasting them with any DimensionalData array is unsupported upstream.
 
 `frequency_bins(h; fmin, fmax)` returns indices of existing bins inside inclusive bounds,
 clipped to the available grid, without rounding bounds onto a new grid. Disjoint bounds
@@ -63,6 +89,10 @@ Coordinate comparison retains exact fast paths and a few-ulp tolerance: four ulp
 of absolute coordinates plus eight ulps of displacement and spacing. Ambiguous
 comparisons whose tolerance reaches half a sample/bin are rejected. BigFloat
 metadata is available for GPS epochs requiring sub-microsecond precision.
+DimensionalData itself compares numeric lookups with a relative `≈`, which would accept
+GPS epochs seconds apart; GWSeries replaces that comparison for `GPSTime` and `Freq`
+grids through a DimensionalData-internal hook (hence the narrow `DimensionalData` compat
+bound), so broadcasting with `strict_broadcast` (the default) applies the tolerance above.
 
 ## Physical AbstractFFTs transforms
 
@@ -72,6 +102,8 @@ supporting your parent storage (for example FFTW for CPU arrays):
 ```julia
 using AbstractFFTs, FFTW
 h = rfft(x)                    # FrequencySeries: dt*rfft(parent(x), 1)
+h = rfft(x, GPSTime)           # also GPSTime(), :GPSTime, or Val(:GPSTime)
+z = irfft(h, nsamples(x), Freq) # named frequency dimension
 z = irfft(h)                   # TimeSeries, original epoch, channels and length
 z = irfft(h, nsamples(x))      # explicit length, checked against the recorded one
 h = to_frequencydomain(x)      # real samples only
@@ -82,6 +114,9 @@ GWSeries depends only on the AbstractFFTs interface. If no backend is loaded for
 parent storage, series transforms and plans throw an `ArgumentError` naming the fix
 (`using FFTW` for CPU arrays).
 
+Series transforms accept the sample axis as an integer, dimension type or instance,
+symbol, or supported `Val` form, including single-element tuple/vector arguments.
+Channel, multiple, empty, and unknown dimensions throw before backend execution.
 Series transforms act only on dimension one, preserve epoch and channels, and
 use physical normalization. Transforms of `parent(x)` retain standard backend
 conventions. Real transforms support odd and even lengths; the original length is always required
@@ -94,7 +129,7 @@ follow the backend's real-inverse convention.
 forward = plan_to_frequencydomain(x)
 h = transform(forward, x)
 inverse = plan_to_timedomain(h)
-metadata(forward)               # output constructor keywords
+grid_metadata(forward)          # output constructor keywords
 transform!(h, forward, x)
 raw_h = transform(forward, parent(x))
 ```
@@ -102,7 +137,9 @@ raw_h = transform(forward, parent(x))
 Prepared transforms use AbstractFFTs plans, physical scaling, and reusable private
 scratch storage. Inputs are preserved. Plans are not reentrant; use separate
 plans for concurrent tasks. Raw execution accepts prevalidated arrays; wrapped
-execution also checks metadata. Backend-specific preparation keywords pass to
+execution also checks metadata. DimensionalData's own AbstractFFTs methods (`plan_rfft`,
+`fft`, ...) are rejected for series because they apply an absolute-epoch phase and drop the
+grid; use the physical methods above. Backend-specific preparation keywords pass to
 AbstractFFTs. Unsupported storage never silently moves to the CPU. Type-changing
 in-place series FFTs are rejected; use a plan with reusable output storage.
 
@@ -119,13 +156,12 @@ arrays. Prepare windows outside differentiation.
 
 AD acceptance covers fixed metadata and numerical samples, including the
 `flatten → raw kernel → reconstruction` boundary. FFT differentiation is outside
-this contract. StaticArrays interoperability uses a small optional StaticArraysCore extension.
-ArrayInterface integration is optional and does not advertise
-pointer/stride capabilities or change host-versus-traced kernel selection.
+this contract. ArrayInterface traits come from DimensionalData's extension and forward to
+the parent storage.
 
 ## Inverting a selected band
 
-A band is an ordinary array, not an independently invertible spectrum. Restore its bins
+A band is a `DimArray`, not an independently invertible spectrum. Restore its bins
 explicitly to produce a band-limited signal; zeros do not recover discarded values:
 
 ```julia

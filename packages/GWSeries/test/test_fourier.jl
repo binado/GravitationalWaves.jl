@@ -10,13 +10,17 @@
         @test epoch(h) == epoch(x)
         @test channels(h) == channels(x)
         @test parent(irfft(h, n)) ≈ a
-        @test metadata(irfft(h, n)) == metadata(x)
+        @test grid_metadata(irfft(h, n)) == grid_metadata(x)
         @test parent(to_timedomain(to_frequencydomain(x); nsamples = n)) ≈ a
         @test_throws ArgumentError rfft(x, 2)
         @test_throws ArgumentError ifft(h)
         @test_throws ArgumentError fft(x)
         @test_throws ArgumentError fft!(x)
         @test_throws MethodError to_timedomain(h[2:end, :]; nsamples = n)
+        @test h[2:end, :] isa DimArray
+        @test_throws ArgumentError rfft(h)
+        @test_throws ArgumentError irfft(x, n)
+        @test_throws ArgumentError plan_rfft(x)
         @test time_samples(h) == n
         @test parent(to_timedomain(h)) ≈ a
         @test parent(irfft(h)) ≈ a
@@ -31,7 +35,7 @@
             actual = transform(p, x)
             expected = h
             @test parent(actual) ≈ parent(expected)
-            @test metadata(p) == metadata(expected)
+            @test grid_metadata(p) == grid_metadata(expected)
             raw = transform(p, parent(x))
             @test raw ≈ parent(expected)
             target = copy(expected)
@@ -39,9 +43,9 @@
             @test parent(target) ≈ parent(expected)
             @test transform!(parent(target), p, x) === parent(target)
             @test transform!(target, p, parent(x)) === target
-            wrong_epoch = FrequencySeries(copy(parent(target)); metadata(target)..., epoch = epoch(target) + 1)
+            wrong_epoch = FrequencySeries(copy(parent(target)); grid_metadata(target)..., epoch = epoch(target) + 1)
             @test_throws ArgumentError transform!(wrong_epoch, p, parent(x))
-            shifted_input = TimeSeries(copy(parent(x)); metadata(x)..., epoch = epoch(x) + 1)
+            shifted_input = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = epoch(x) + 1)
             @test_throws ArgumentError transform!(parent(target), p, shifted_input)
             @test_throws ArgumentError transform(p, expected)
             inverse = plan_to_timedomain(actual; nsamples = n)
@@ -82,14 +86,15 @@ end
     @test irfft(bare, 9) isa TimeSeries
     # Recorded and unrecorded spectra share a grid; two different recorded lengths do not.
     @test check_same_grid(h, bare) === nothing
-    odd = FrequencySeries(copy(parent(h)); metadata(h)..., time_samples = 9)
+    odd = FrequencySeries(copy(parent(h)); grid_metadata(h)..., time_samples = 9)
     @test_throws ArgumentError check_same_grid(h, odd)
-    @test_throws DimensionMismatch FrequencySeries(copy(parent(h)); metadata(h)..., time_samples = 16)
-    @test_throws ArgumentError FrequencySeries(copy(parent(h)); metadata(h)..., time_samples = 1)
-    # Arithmetic and full-row slices keep the record.
+    @test_throws DimensionMismatch FrequencySeries(copy(parent(h)); grid_metadata(h)..., time_samples = 16)
+    @test_throws ArgumentError FrequencySeries(copy(parent(h)); grid_metadata(h)..., time_samples = 1)
+    # Arithmetic and full-row slices keep the record; partial bands drop it.
     @test time_samples(h .+ h) == 8
     @test time_samples(h[:, :]) == 8
     @test time_samples(2h) == 8
+    @test !(h[2:end, :] isa FrequencySeries)
 end
 
 @testset "Series assignment checks the destination grid" begin
@@ -97,14 +102,14 @@ end
     out = copy(x)
     out[:, :] = 2x
     @test parent(out) == 2 .* parent(x)
-    shifted = TimeSeries(copy(parent(x)); metadata(x)..., epoch = 101)
+    shifted = TimeSeries(copy(parent(x)); grid_metadata(x)..., epoch = 101)
     @test_throws ArgumentError (out[:, :] = shifted)
     # Label-indexed assignment compares against the selected channel only.
     single = TimeSeries(ones(8, 1); epoch = 100, sampling_interval = 0.25, channels = (:L1,))
-    out[:, [:L1]] = single
+    out[Chan = At([:L1])] = single
     @test all(==(1), parent(out)[:, 2])
     wrong = TimeSeries(ones(8, 1); epoch = 100, sampling_interval = 0.25, channels = (:H1,))
-    @test_throws ArgumentError (out[:, [:L1]] = wrong)
+    @test_throws ArgumentError (out[Chan = At([:L1])] = wrong)
     # Validation must not copy the destination block.
     big = TimeSeries(zeros(100_000, 2); epoch = 0, sampling_interval = 1, channels = (:H1, :L1))
     src = copy(big)
@@ -130,4 +135,25 @@ Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
     # rfft reads the wrapped storage directly; the plans and irfft copy into ordinary arrays first.
     x = TimeSeries(opaque; epoch = 0, sampling_interval = 0.25, channels = (:H1,))
     @test_throws "no AbstractFFTs backend" rfft(x)
+end
+
+@testset "Named FFT dimensions" begin
+    x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
+    h = rfft(x, 1)
+    for d in (1, GPSTime(), GPSTime, :GPSTime, Val(:GPSTime), Val{1}, Val((1,)), (GPSTime,), [GPSTime], (:GPSTime,), [1])
+        actual = rfft(x, d)
+        @test parent(actual) ≈ parent(h)
+        @test grid_metadata(actual) == grid_metadata(h)
+    end
+    for d in (1, Freq(), Freq, :Freq, Val(:Freq), Val{1}, Val((1,)), (Freq,), [Freq], (:Freq,), [1])
+        actual = irfft(h, 8, d)
+        @test parent(actual) ≈ parent(irfft(h, 8, 1))
+        @test grid_metadata(actual) == grid_metadata(x)
+    end
+    for d in (2, Chan(), Chan, :Chan, Val(:Chan), (1, 2), [1, 2], (), Int[], :unknown, 0, 3)
+        @test_throws ArgumentError rfft(x, d)
+        @test_throws ArgumentError irfft(h, 8, d)
+    end
+    @test_throws ArgumentError rfft(x, Freq)
+    @test_throws ArgumentError irfft(h, 8, GPSTime)
 end

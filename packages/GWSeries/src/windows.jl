@@ -102,7 +102,7 @@ function PlanckWindow(; nsamples::Integer, sampling_interval::Real, start_width:
 end
 function apply_window(w::PlanckWindow, h::TimeSeries)
     check_compatible(h, w)
-    return rebuild(h, apply_window(w, parent(h)), metadata(h))
+    return rebuild(h, apply_window(w, parent(h)))
 end
 function apply_window!(out::TimeSeries, w::PlanckWindow, h::TimeSeries)
     check_same_grid(out, h)

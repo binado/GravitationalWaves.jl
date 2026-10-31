@@ -83,7 +83,7 @@ include("test_vectors.jl")
 include("test_windows.jl")
 
 @testset "Flatten, raw kernel, and series reconstruction AD" begin
-    data = FrequencySeries(PIPE_DATA; metadata(PIPE_METRIC_domain)...)
+    data = FrequencySeries(PIPE_DATA; grid_metadata(PIPE_METRIC_domain)...)
     function boundary_loss(values)
         array, meta = flatten(data)
         signal = FrequencySeries(values .* array; meta...)

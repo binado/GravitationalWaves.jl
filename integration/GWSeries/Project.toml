@@ -11,7 +11,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 GWSeries = {path = "../../packages/GWSeries"}
 
 [compat]
-GWSeries = "0.1"
+GWSeries = "0.2"
 FFTW = "1"
 ForwardDiff = "1"
 Mooncake = "0.5"

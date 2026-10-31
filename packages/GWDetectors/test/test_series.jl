@@ -17,6 +17,6 @@ end
     @test channels(actual) == (:H1,)
     @test parent(actual)[:, 1] ≈ h
     # A source transform with a negative start must retain its phase reference.
-    shifted = FrequencySeries(parent(series) .* exp.(2π * im .* f .* -0.125); metadata(series)..., epoch = -0.125)
+    shifted = FrequencySeries(parent(series) .* exp.(2π * im .* f .* -0.125); grid_metadata(series)..., epoch = -0.125)
     @test parent(project_fd(shifted, sky, detectors.H1; epoch = epoch(fd))) ≈ parent(actual)
 end

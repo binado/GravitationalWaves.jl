@@ -13,16 +13,12 @@ frequency-domain phases are referenced to the epoch.
 """
 function check_same_grid(a::TimeSeries, b::TimeSeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
-    check_range(times(a), times(b), "epochs", EPOCH_HINT)
+    check_grid(grid(a), grid(b))
     return nothing
 end
 function check_same_grid(a::FrequencySeries, b::FrequencySeries)
     channels(a) == channels(b) || throw(ArgumentError("channel orders differ"))
-    check_range(frequencies(a), frequencies(b), "origins")
-    ta, tb = time_samples(a), time_samples(b)
-    ta === nothing || tb === nothing || ta == tb || throw(ArgumentError("original time lengths differ: $ta vs $tb"))
-    epoch_spacing = inv(something(ta, tb, max(2 * (nsamples(a) - 1), 1)) * frequency_spacing(a))
-    check_coordinate(epoch(a), epoch(b), epoch_spacing, "epochs", EPOCH_HINT)
+    check_grid(grid(a), grid(b))
     return nothing
 end
 check_same_grid(::AbstractSeries, ::AbstractSeries) = throw(ArgumentError("series kinds differ"))
@@ -73,8 +69,8 @@ function pad(x::TimeSeries; before::Integer = 0, after::Integer = 0)
     data = similar(parent(x), (n, size(x, 2)))
     fill!(data, zero(eltype(data)))
     data[(before + 1):(before + nsamples(x)), :] .= parent(x)
-    m = merge(metadata(x), (; epoch = origin))
-    return rebuild(x, data, m)
+    m = merge(grid_metadata(x), (; epoch = origin))
+    return reconstruct(x, data, m)
 end
 
 """Indices of existing frequency bins inside the inclusive bounds, clipped to the grid."""

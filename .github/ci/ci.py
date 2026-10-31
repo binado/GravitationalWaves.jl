@@ -65,9 +65,9 @@ def select_matrix(event, changed_files, changed_count=0):
         # GitHub's PR files API returns at most 3,000 files. Never use a partial diff.
         if changed_count > 3000:
             packages = list(PACKAGES)
-        return {"packages": packages, "julia": ["1.12"]}
+        return {"packages": packages, "julia": ["1.13"]}
     if event in {"push", "workflow_dispatch"}:
-        return {"packages": list(PACKAGES), "julia": ["1.12", "1"]}
+        return {"packages": list(PACKAGES), "julia": ["1.13"]}
     raise ValueError(f"Unsupported CI event: {event}")
 
 

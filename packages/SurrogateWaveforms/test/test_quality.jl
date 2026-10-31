@@ -11,7 +11,7 @@ end
 
 @testitem "JET" setup = [Common, Setup_quality] begin
     # JET's analysis is tied to the Julia version it was built for.
-    if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
+    if VERSION.major == 1 && VERSION.minor in (12, 13) && isempty(VERSION.prerelease)
         @testset "JET" begin
             JET.test_package(SurrogateWaveforms; target_modules = (SurrogateWaveforms,))
         end

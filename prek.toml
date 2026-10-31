@@ -7,3 +7,13 @@ name = "Runic"
 entry = "julia --startup-file=no -e 'using Runic; exit(Runic.main(ARGS))' -- --inplace"
 language = "system"
 files = '\.jl$'
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "check-added-large-files" },
+  { id = "check-toml" },
+  { id = "check-merge-conflict" },
+  { id = "no-commit-to-branch" },
+]

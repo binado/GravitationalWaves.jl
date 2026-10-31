@@ -1,13 +1,17 @@
-using FiniteDifferences
-using ForwardDiff
-using JET
-using LinearAlgebra
-using NPZ
-using Random
-using AbstractWaveforms
-using AbstractWaveformsTests
+using TestItems
 
-@testset "waveform assembly kernels" begin
+@testsnippet Setup_waveforms begin
+    using FiniteDifferences
+    using ForwardDiff
+    using JET
+    using LinearAlgebra
+    using NPZ
+    using Random
+    using AbstractWaveforms
+    using AbstractWaveformsTests
+end
+
+@testitem "waveform assembly kernels" setup = [Common, Setup_waveforms] begin
     @testset "quat_multiply" begin
         q = (0.5, -0.5, 0.5, 0.5)
         qc = (q[1], -q[2], -q[3], -q[4])
@@ -108,7 +112,7 @@ using AbstractWaveformsTests
     end
 end
 
-@testset "precessing waveform" begin
+@testitem "precessing waveform" tags = [:reference] setup = [Common, Setup_waveforms] begin
     ci = get(ENV, "CI", "false") == "true"
     for (model, params) in pairs(MODEL_PARAMS)
         fixture = joinpath(FIXTURE_DIR, "$(model)_waveforms.npz")

@@ -1,4 +1,24 @@
-@testset "Series construction and metadata" begin
+using TestItems
+
+@testsnippet Setup_series begin
+    using ForwardDiff
+
+    struct ZeroBasedVector <: AbstractVector{Float64}
+        data::Vector{Float64}
+    end
+    Base.size(x::ZeroBasedVector) = size(x.data)
+    Base.axes(x::ZeroBasedVector) = (0:(length(x.data) - 1),)
+    Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
+
+    struct ZeroBasedMatrix <: AbstractMatrix{Float64}
+        data::Matrix{Float64}
+    end
+    Base.size(x::ZeroBasedMatrix) = size(x.data)
+    Base.axes(x::ZeroBasedMatrix) = (0:(size(x, 1) - 1), axes(x.data, 2))
+    Base.getindex(x::ZeroBasedMatrix, i::Int, j::Int) = x.data[i + 1, j]
+end
+
+@testitem "Series construction and metadata" setup = [Common, Setup_series] begin
     a = reshape(collect(1.0:24.0), 8, 3)
     x = TimeSeries(a; epoch = 1126259460.125, sampling_frequency = 8, channels = ("H1", "L1", "V1"))
     @test x isa AbstractMatrix{Float64}
@@ -46,7 +66,7 @@
     @test frequencies(h) === range(0.0; step = 0.5, length = 8)
 end
 
-@testset "Grid ranges" begin
+@testitem "Grid ranges" setup = [Common, Setup_series] begin
     g = TimeGrid(1126259460.125, 0.25, 8)
     @test g == range(1126259460.125; step = 0.25, length = 8)
     @test g[3] == 1126259460.625
@@ -75,8 +95,7 @@ end
     @test Tuple(c) === (:H1, :L1, :V1)
 end
 
-using ForwardDiff
-@testset "Grids with dual-number coordinates" begin
+@testitem "Grids with dual-number coordinates" setup = [Common, Setup_series] begin
     # Waveform epochs can depend on differentiated parameters such as the total mass.
     function objective(m)
         x = TimeSeries(ones(4, 2); epoch = -m * 1.0e-3, sampling_interval = m * 1.0e-4, channels = (:plus, :cross))
@@ -85,7 +104,7 @@ using ForwardDiff
     @test ForwardDiff.derivative(objective, 60.0) ≈ -1.0e-3 + 1.0e-4 + 4 * 1.0e-4
 end
 
-@testset "Selection and slicing" begin
+@testitem "Selection and slicing" setup = [Common, Setup_series] begin
     a = reshape(collect(1.0:24.0), 8, 3)
     x = TimeSeries(a; epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1, :V1))
     @test x[2, 3] == a[2, 3]
@@ -141,7 +160,7 @@ end
     end
 end
 
-@testset "Metadata-preserving operations" begin
+@testitem "Metadata-preserving operations" setup = [Common, Setup_series] begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     b = ones(8, 2)
     for y in (
@@ -190,7 +209,7 @@ end
     @test check_same_grid(x, x) === nothing
 end
 
-@testset "Epoch shifts beyond DimensionalData's relative tolerance throw" begin
+@testitem "Epoch shifts beyond DimensionalData's relative tolerance throw" setup = [Common, Setup_series] begin
     # DimensionalData alone compares lookups with a relative ≈, which accepts GPS epochs
     # seconds apart; the GPSTime comparison hook must reject them. This guards DD upgrades.
     t0 = 1126259460.125
@@ -211,7 +230,7 @@ end
     @test DimensionalData.Dimensions.comparedims(Bool, x, x; val = true)
 end
 
-@testset "Crop and pad" begin
+@testitem "Crop and pad" setup = [Common, Setup_series] begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     y = crop(x; start = 100.5, stop = 101.5)
     @test y isa TimeSeries
@@ -229,8 +248,7 @@ end
     @test_throws MethodError crop(f; start = 0, stop = 1)
 end
 
-include("prototypes.jl")
-@testset "Grid compatibility tolerance" begin
+@testitem "Grid compatibility tolerance" setup = [Common, Setup_series] begin
     t0 = 1126259460.1
     x = time_prototype(; nsamples = 8, epoch = t0, sampling_frequency = 16, channels = (:H1,))
     mismatch(; epoch = t0, fs = 16, n = 8) =
@@ -266,7 +284,7 @@ include("prototypes.jl")
     @test_throws ArgumentError check_same_frequency_grid(0:0.5:4, 0:0.25:2)
 end
 
-@testset "Identical coordinates at high rates" begin
+@testitem "Identical coordinates at high rates" setup = [Common, Setup_series] begin
     gps = 1.2e9
     fast = time_prototype(; nsamples = 4, epoch = gps, sampling_frequency = 1.0e6, channels = (:H1,))
     @test check_same_grid(fast, fast) === nothing
@@ -279,13 +297,7 @@ end
     @test err isa ArgumentError && occursin("crop boundary", err.msg) && occursin("spacing", err.msg)
 end
 
-struct ZeroBasedVector <: AbstractVector{Float64}
-    data::Vector{Float64}
-end
-Base.size(x::ZeroBasedVector) = size(x.data)
-Base.axes(x::ZeroBasedVector) = (0:(length(x.data) - 1),)
-Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
-@testset "Axes and views" begin
+@testitem "Axes and views" setup = [Common, Setup_series] begin
     d = time_prototype(; epoch = 0, nsamples = 4, sampling_frequency = 4, channels = (:H1,))
     @test_throws ArgumentError check_data(d, ZeroBasedVector(ones(4)))
     @test check_data(d, view(ones(8), 1:2:8)) === nothing
@@ -295,14 +307,7 @@ Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
     @test_throws MethodError pad(e; after = 2)
 end
 
-struct ZeroBasedMatrix <: AbstractMatrix{Float64}
-    data::Matrix{Float64}
-end
-Base.size(x::ZeroBasedMatrix) = size(x.data)
-Base.axes(x::ZeroBasedMatrix) = (0:(size(x, 1) - 1), axes(x.data, 2))
-Base.getindex(x::ZeroBasedMatrix, i::Int, j::Int) = x.data[i + 1, j]
-
-@testset "Faithful dimensional reconstruction" begin
+@testitem "Faithful dimensional reconstruction" setup = [Common, Setup_series] begin
     DD = DimensionalData
     L = DD.Lookups
     x = TimeSeries(ones(8, 2); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1, :L1))
@@ -349,7 +354,7 @@ Base.getindex(x::ZeroBasedMatrix, i::Int, j::Int) = x.data[i + 1, j]
     @test x[1:2:end, :] isa TimeSeries
 end
 
-@testset "Mixed labelled operations validate before mutation" begin
+@testitem "Mixed labelled operations validate before mutation" setup = [Common, Setup_series] begin
     DD = DimensionalData
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1, :L1))
     labelled = DimArray(copy(parent(x)), dims(x))

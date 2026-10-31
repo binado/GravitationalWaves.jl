@@ -1,115 +1,15 @@
-using GWSeries
-using Test
-using Aqua
-using JET
-using AbstractWaveforms
-using AbstractWaveforms: check_frequency_grid, frequency_bounds
-using AbstractWaveforms: AlignedSpinQuadrupolarWaveformGenerator, amplitude_phase_fd
-using AbstractWaveformsTests
+using TestItemRunner
 
-struct Dummy <: AbstractWaveformGenerator
-    maximum::Union{Nothing, Float64}
-end
-AbstractWaveforms.approximant(::Dummy) = "Dummy"
-AbstractWaveforms.reference_frequency(::Dummy) = 50.0
-AbstractWaveforms.minimum_frequency(::Dummy) = 20.0
-AbstractWaveforms.maximum_frequency(g::Dummy) = g.maximum
+length(ARGS) <= 1 || throw(ArgumentError("expected at most one test selection: default, integration, reference, or all"))
+const TEST_SELECTION = isempty(ARGS) ? "default" : only(ARGS)
+TEST_SELECTION in ("default", "integration", "reference", "all") ||
+    throw(ArgumentError("unknown test selection: $TEST_SELECTION (expected default, integration, reference, or all)"))
 
-function AbstractWaveforms.hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::Dummy)
-    check_frequency_grid(f)
-    f_min, f_max = frequency_bounds(g, f)
-    h = [f_min <= fi <= f_max ? complex(1.0, fi) : 0.0im for fi in f]
-    return hcat(h, h)
+function selected_test(item)
+    TEST_SELECTION == "all" && return true
+    TEST_SELECTION == "default" && return :integration ∉ item.tags
+    TEST_SELECTION == "reference" && return :integration in item.tags && :reference in item.tags
+    return :integration in item.tags && :reference ∉ item.tags
 end
 
-function AbstractWaveforms.validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, ::Dummy)
-    foreach(k -> k in (:mass_1, :mass_2) || throw(ArgumentError("unknown parameter $k")), keys(params))
-    return nothing
-end
-
-# Implements only amplitude_phase_fd; polarization assembly comes from the interface.
-struct DummyQuadrupole <: AlignedSpinQuadrupolarWaveformGenerator end
-AbstractWaveforms.approximant(::DummyQuadrupole) = "DummyQuadrupole"
-AbstractWaveforms.reference_frequency(::DummyQuadrupole) = 50.0
-AbstractWaveforms.minimum_frequency(::DummyQuadrupole) = 20.0
-AbstractWaveforms.maximum_frequency(::DummyQuadrupole) = 60.0
-
-function AbstractWaveforms.amplitude_phase_fd(f::AbstractRange{Float64}, params::NamedTuple, g::DummyQuadrupole)
-    check_frequency_grid(f)
-    lo, hi = frequency_bounds(g, f)
-    amplitude = [lo <= fi <= hi ? 2.0 : 0.0 for fi in f]
-    phase = [lo <= fi <= hi ? 0.1 * fi - 2get(params, :phase, 0.0) : 0.0 for fi in f]
-    return (; amplitude, phase)
-end
-
-function AbstractWaveforms.validate_parameters(f::AbstractRange{Float64}, params::NamedTuple, ::DummyQuadrupole)
-    check_frequency_grid(f)
-    foreach(k -> k == :theta_jn || throw(ArgumentError("unknown parameter $k")), keys(params))
-    return nothing
-end
-
-include("test_modes.jl")
-
-# Records the coordinates a kernel receives, to check that series grids are unwrapped.
-struct GridProbe <: AbstractWaveformGenerator
-    seen::Base.RefValue{Any}
-end
-function AbstractWaveforms.hphc_fd(f::AbstractRange{Float64}, params::NamedTuple, g::GridProbe)
-    g.seen[] = f
-    return zeros(ComplexF64, length(f), 2)
-end
-function AbstractWaveforms.hphc_td(t::AbstractVector{<:Real}, params::NamedTuple, g::GridProbe)
-    g.seen[] = t
-    return zeros(length(t), 2)
-end
-@testset "kernels receive plain ranges from series prototypes" begin
-    probe = GridProbe(Ref{Any}(nothing))
-    fd = FrequencySeries(zeros(9, 1); epoch = 1126259460.0, frequency_spacing = 0.5, channels = (:H1,))
-    hphc_fd(fd, (;), probe)
-    @test probe.seen[] isa StepRangeLen
-    @test probe.seen[] == frequencies(fd)
-    td = TimeSeries(zeros(8, 1); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1,))
-    hphc_td(td, (;), probe)
-    @test probe.seen[] isa StepRangeLen
-    @test probe.seen[] == times(td)
-end
-
-@testset "AbstractWaveforms" begin
-    @testset "Aqua" begin
-        Aqua.test_all(AbstractWaveforms)
-    end
-
-    @testset "JET" begin
-        JET.test_package(AbstractWaveforms; target_modules = (AbstractWaveforms,))
-    end
-
-    @testset "capability fallbacks" begin
-        g = Dummy(nothing)
-        @test spin_support(g) === :aligned
-        @test supports_mode_array(g) === false
-        @test is_differentiable(g) === false
-    end
-
-    @testset "check_frequency_grid" begin
-        @test check_frequency_grid(0:0.5:10) == 0:0.5:10
-        @test_throws ArgumentError check_frequency_grid(1:0.5:10)
-        @test_throws ArgumentError check_frequency_grid(0:-0.5:-10)
-        @test_throws ArgumentError check_frequency_grid(range(0, 0; length = 1))
-    end
-
-    @testset "frequency_bounds" begin
-        f = 0:0.5:100
-        @test frequency_bounds(Dummy(nothing), f) == (20.0, 100.0)
-        @test frequency_bounds(Dummy(60.0), f) == (20.0, 60.0)
-    end
-
-    @testset "show" begin
-        @test sprint(show, Dummy(60.0)) ==
-            "Dummy(\"Dummy\"; reference_frequency=50.0, minimum_frequency=20.0, maximum_frequency=60.0)"
-    end
-
-    test_generator_contract(DummyQuadrupole(); params = (; theta_jn = 0.4), f = 0:0.5:100)
-
-    test_generator_contract(Dummy(nothing); params = (mass_1 = 30.0, mass_2 = 30.0), f = 0:0.5:100)
-    test_generator_contract(Dummy(60.0); params = (mass_1 = 30.0, mass_2 = 30.0), f = 0:0.5:100)
-end
+@run_package_tests filter = selected_test

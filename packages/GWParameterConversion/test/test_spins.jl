@@ -1,6 +1,10 @@
-using ForwardDiff
+using TestItems
 
-@testset "spins" begin
+@testsnippet Setup_spins begin
+    using ForwardDiff
+end
+
+@testitem "spins" setup = [Common, Setup_spins] begin
     @testset "effective spins" begin
         @test effective_spin(0.5, 0.5, 0.7) ≈ 0.5
         @test effective_spin(0.4, -0.4, 1.0) == 0.0
@@ -20,7 +24,7 @@ using ForwardDiff
     end
 end
 
-@testset "frames" begin
+@testitem "frames" setup = [Common, Setup_spins] begin
     base = (mass_1 = 36.0, mass_2 = 29.0, theta_jn = 0.4, phase = 1.3)
     precessing = merge(
         base, (a_1 = 0.6, a_2 = 0.4, tilt_1 = 0.7, tilt_2 = 1.9, phi_12 = 1.1, phi_jl = 2.5)

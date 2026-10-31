@@ -1,6 +1,10 @@
-using Test, GWSeries, FFTW, ForwardDiff, Mooncake, ChainRulesCore, DifferentiationInterface
+using TestItems
 
-@testset "Physical Fourier AD" begin
+@testsnippet Setup_acceptance_ad begin
+    using Test, GWSeries, FFTW, ForwardDiff, Mooncake, ChainRulesCore, DifferentiationInterface
+end
+
+@testitem "Physical Fourier AD" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
     for n in (7, 8), nc in (1, 2), dt in (0.125, 1 / 2048)
         a = reshape(sin.(1.0:(n * nc)), n, nc)
         saved = copy(a)
@@ -26,9 +30,9 @@ using Test, GWSeries, FFTW, ForwardDiff, Mooncake, ChainRulesCore, Differentiati
     end
 end
 
-# Reading the grid records of a spectrum without a recorded length once crashed Mooncake's
-# rule compilation (a `Nothing`-typed field nested in the dims); keep this path compiled.
-@testset "Mooncake through unrecorded spectrum metadata" begin
+@testitem "Mooncake through unrecorded spectrum metadata" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
+    # Reading the grid records of a spectrum without a recorded length once crashed Mooncake's
+    # rule compilation (a `Nothing`-typed field nested in the dims); keep this path compiled.
     spectrum(x) = FrequencySeries(reshape([x[1], x[2], x[1] * x[2]], :, 1); epoch = 0.0, frequency_spacing = 1.0, channels = (:H1,))
     loss(x) = (s = spectrum(x); sum(abs2, parent(s)) + something(time_samples(s), 0) + epoch(s))
     @test time_samples(spectrum([1.0, 2.0])) === nothing

@@ -1,0 +1,137 @@
+using TestItems
+
+@testsnippet Setup_acceptance_reference begin
+    using Test
+    using FrequencyDomainWaveforms
+    using LALWaveforms: LALWaveformGenerator
+    using AbstractWaveformsTests
+    using AbstractWaveforms: hphc_fd, approximant, reference_frequency, minimum_frequency, maximum_frequency
+
+    # The LAL-backed `LALWaveformGenerator` is the reference generator. It needs the LAL shared libraries
+    # (`LALWAVEFORMS_LIBDIR` or a saved preference); missing libraries fail this explicit selection. Local only:
+    # run it with `just test-reference-waveforms`.
+    lal_available() = try
+        hphc_fd(
+            range(0, 64; step = 1.0),
+            (mass_1 = 30.0, mass_2 = 30.0, luminosity_distance = 100.0, theta_jn = 0.0, phase = 0.0),
+            LALWaveformGenerator("TaylorF2"; minimum_frequency = 20.0),
+        )
+        true
+    catch err
+        err isa InterruptException && rethrow()
+        false
+    end
+
+    # The LAL generator with the same approximant and options as the native `g`.
+    function lal_twin(g)
+        common = (;
+            reference_frequency = reference_frequency(g), minimum_frequency = minimum_frequency(g),
+            maximum_frequency = maximum_frequency(g), pn_amplitude_order = g.pn_amplitude_order,
+        )
+        options = g isa TaylorF2 ? (; g.pn_spin_order, g.pn_phase_order) : (;)
+        return LALWaveformGenerator(approximant(g); common..., options...)
+    end
+
+    generator(name; kw...) = getproperty(FrequencyDomainWaveforms, Symbol(name))(; kw...)
+
+    const CASES_BY_ID = default_cases()
+    const BBH = fd_parameters(CASES_BY_ID["bbh_unequal"])
+    const BNS = fd_parameters(CASES_BY_ID["bns"])
+    const ALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = 0.0, tilt_2 = 0.0)
+    const ANTIALIGNED = (a_1 = 0.5, a_2 = 0.3, tilt_1 = Float64(π), tilt_2 = 0.0)
+    const IDS = (
+        "bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned",
+        "bbh_high_spin", "bbh_high_ratio", "bbh_light", "bns", "bns_aligned", "nsbh",
+    )
+    # Pointwise agreement is checked to `rtol` relative to the peak below; `MAX_MISMATCH` is a
+    # roundoff-level bound on the time/phase-maximized mismatch.
+    const MAX_MISMATCH = 1.0e-14
+
+    # (name, approximant, parameters, generator keywords, rtol)
+    const CASES = [
+        ("XAS equal mass", "IMRPhenomXAS", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
+        ("XAS unequal mass", "IMRPhenomXAS", BBH, (;), 1.0e-10),
+        ("XAS aligned", "IMRPhenomXAS", merge(BBH, ALIGNED), (;), 1.0e-10),
+        ("XAS antialigned", "IMRPhenomXAS", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
+        ("XAS high spin", "IMRPhenomXAS", merge(BBH, (; a_1 = 0.99, a_2 = 0.99)), (;), 1.0e-10),
+        ("XAS high ratio", "IMRPhenomXAS", merge(BBH, (; mass_1 = 100.0, mass_2 = 1.0, a_1 = 0.2)), (;), 1.0e-10),
+        ("XAS light", "IMRPhenomXAS", merge(BNS, (; mass_1 = 5.0, mass_2 = 3.0)), (;), 1.0e-10),
+        ("XAS heavy cutoff", "IMRPhenomXAS", merge(BBH, (; mass_1 = 180.0, mass_2 = 120.0)), (;), 1.0e-10),
+        ("XAS reference zero", "IMRPhenomXAS", merge(BBH, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),
+        ("XAS reference alternate", "IMRPhenomXAS", merge(BBH, ALIGNED), (; reference_frequency = 30.0), 1.0e-10),
+        ("XAS amplitude order", "IMRPhenomXAS", BBH, (; pn_amplitude_order = 3), 1.0e-10),
+        ("XAS noninteger limits", "IMRPhenomXAS", BBH, (; minimum_frequency = 20.1, maximum_frequency = 200.3), 1.0e-10),
+        ("D equal mass", "IMRPhenomD", merge(BBH, (; mass_2 = 36.0)), (;), 1.0e-10),
+        ("D unequal mass", "IMRPhenomD", BBH, (;), 1.0e-10),
+        ("D aligned spins", "IMRPhenomD", merge(BBH, ALIGNED), (;), 1.0e-10),
+        ("D anti-aligned spins", "IMRPhenomD", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
+        ("D high spin", "IMRPhenomD", merge(BBH, (; a_1 = 0.9, a_2 = 0.9, tilt_1 = 0.0, tilt_2 = 0.0)), (;), 1.0e-10),
+        ("D extreme mass ratio", "IMRPhenomD", merge(BBH, (; mass_1 = 60.0, mass_2 = 7.0, a_1 = 0.4)), (;), 1.0e-10),
+        ("D light", "IMRPhenomD", merge(BNS, (; mass_1 = 5.0, mass_2 = 3.0)), (;), 1.0e-10),
+        (
+            "D chirp mass and mass ratio", "IMRPhenomD",
+            (
+                chirp_mass = 28.0, mass_ratio = 0.8, luminosity_distance = 400.0, theta_jn = 1.0,
+                phase = 0.4, a_1 = 0.2, a_2 = 0.1, tilt_1 = 0.0, tilt_2 = 0.0,
+            ),
+            (;), 1.0e-10,
+        ),
+        ("D other reference frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; reference_frequency = 30.0), 1.0e-10),
+        ("D zero reference frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),
+        ("D maximum frequency", "IMRPhenomD", merge(BBH, ALIGNED), (; maximum_frequency = 300.0), 1.0e-10),
+        ("D amplitude order", "IMRPhenomD", BBH, (; pn_amplitude_order = 3), 1.0e-10),
+        ("F2 BNS", "TaylorF2", BNS, (;), 1.0e-10),
+        ("F2 NSBH", "TaylorF2", merge(BNS, (; mass_1 = 8.0, mass_2 = 1.4)), (;), 1.0e-10),
+        ("F2 BBH", "TaylorF2", BBH, (;), 1.0e-10),
+        ("F2 aligned spins", "TaylorF2", merge(BNS, (; a_1 = 0.05, a_2 = 0.02, tilt_1 = 0.0, tilt_2 = 0.0)), (;), 1.0e-10),
+        ("F2 anti-aligned spins", "TaylorF2", merge(BBH, ANTIALIGNED), (;), 1.0e-10),
+        ("F2 other reference frequency", "TaylorF2", merge(BNS, ALIGNED), (; reference_frequency = 25.0), 1.0e-10),
+        ("F2 zero reference frequency", "TaylorF2", merge(BNS, ALIGNED), (; reference_frequency = 0.0), 1.0e-10),
+        ("F2 maximum frequency", "TaylorF2", BNS, (; maximum_frequency = 400.0), 1.0e-10),
+        ("F2 phase order -1", "TaylorF2", merge(BNS, ALIGNED), (; pn_phase_order = -1), 1.0e-10),
+        ("F2 phase order 4", "TaylorF2", merge(BNS, ALIGNED), (; pn_phase_order = 4), 1.0e-10),
+        ("F2 phase order 6", "TaylorF2", merge(BNS, ALIGNED), (; pn_phase_order = 6), 1.0e-10),
+        ("F2 phase order 0", "TaylorF2", merge(BNS, ALIGNED), (; pn_phase_order = 0), 1.0e-10),
+        ("F2 spin order 3", "TaylorF2", merge(BNS, ALIGNED), (; pn_spin_order = 3), 1.0e-10),
+        ("F2 spin order 5", "TaylorF2", merge(BNS, ALIGNED), (; pn_spin_order = 5), 1.0e-10),
+        ("F2 spin order 0", "TaylorF2", merge(BNS, ALIGNED), (; pn_spin_order = 0), 1.0e-10),
+        ("F2 amplitude order 3", "TaylorF2", merge(BNS, ALIGNED), (; pn_amplitude_order = 3), 1.0e-10),
+        ("F2 amplitude order -1", "TaylorF2", merge(BNS, ALIGNED), (; pn_amplitude_order = -1), 1.0e-10),
+        ("F2 amplitude order 7", "TaylorF2", merge(BNS, ALIGNED), (; pn_amplitude_order = 7), 1.0e-10),
+    ]
+end
+
+@testitem "comparison with LAL" tags = [:integration, :reference, :lal, :slow] setup = [Setup_acceptance_reference] begin
+    if !lal_available()
+        error("LAL is not configured: set LALWAVEFORMS_LIBDIR before selecting reference tests")
+    else
+        grid = range(0.0, 1024.0; step = 0.25)
+        for name in ("TaylorF2", "IMRPhenomD", "IMRPhenomXAS")
+            g = generator(name; maximum_frequency = 1024.0)
+            test_reference(
+                g, lal_twin(g), applicable_cases(g, lal_twin(g); ids = IDS); grid, max_mismatch = MAX_MISMATCH,
+                rtol = 1.0e-10, exact_support = true,
+            )
+        end
+
+        @testset "options" begin
+            for (name, approximant, params, kw, rtol) in CASES
+                g = generator(approximant; kw...)
+                test_reference(
+                    g, lal_twin(g), [(name, params)]; grid, parameters = identity, max_mismatch = MAX_MISMATCH,
+                    rtol, exact_support = true,
+                )
+            end
+        end
+
+        @testset "other grids" begin
+            for approximant in ("IMRPhenomD", "TaylorF2", "IMRPhenomXAS"), df in (0.125, 1.0 / 3.0, 1.0)
+                g = generator(approximant)
+                test_reference(
+                    g, lal_twin(g), [("df = $df", merge(BBH, ALIGNED))]; grid = range(0, 512; step = df),
+                    parameters = identity, max_mismatch = MAX_MISMATCH, rtol = 1.0e-10,
+                )
+            end
+        end
+    end
+end

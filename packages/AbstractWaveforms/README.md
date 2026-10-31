@@ -99,3 +99,10 @@ The convenience `hphc_td(generator, params; dt=...)` returns a model-duration Ti
 coordinate-first method for backend-supported nonuniform times and an ordinary matrix.
 Use `h[:, :plus]` on series, `h[:, 1]` on ordinary matrices, and `flatten(h)` for series
 storage plus reconstructible metadata. Lower-level mode and amplitude/phase APIs are unchanged.
+
+## Local acceptance tests
+
+Shared harmonic assembly AD covers mode sums and both FD and TD polarization assembly, including poles, using ForwardDiff, Mooncake and finite differences.
+
+From the repository root, run `just test-integration-assembly`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

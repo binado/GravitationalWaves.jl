@@ -1,7 +1,11 @@
-using Distributions
-using Random
+using TestItems
 
-@testset "InterpolatedDistribution table" begin
+@testsnippet Setup_interpolated begin
+    using Distributions
+    using Random
+end
+
+@testitem "InterpolatedDistribution table" setup = [Common, Setup_interpolated] begin
     x = [0.0, 1.0, 2.0, 4.0]
     y = [0.0, 2.0, 2.0, 0.0]
     d = InterpolatedDistribution(x, y)
@@ -23,7 +27,7 @@ using Random
     @test logpdf(d, 4.0) == -Inf
 end
 
-@testset "InterpolatedDistribution cdf / quantile / rand" begin
+@testitem "InterpolatedDistribution cdf / quantile / rand" setup = [Common, Setup_interpolated] begin
     x = collect(range(0.0, 3.0; length = 31))
     y = @. 1 + x^2
     d = InterpolatedDistribution(x, y)

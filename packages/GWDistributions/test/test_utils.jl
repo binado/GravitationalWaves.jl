@@ -1,15 +1,19 @@
-using GWDistributions
-using Test
-using ForwardDiff
-using FastGaussQuadrature: gausslegendre
+using TestItems
 
-@testset "time conversions" begin
+@testsnippet Setup_utils begin
+    using GWDistributions
+    using Test
+    using ForwardDiff
+    using FastGaussQuadrature: gausslegendre
+end
+
+@testitem "time conversions" setup = [Common, Setup_utils] begin
     @test year_to_second(1.0) ≈ 365.25 * 24 * 3600
     @test second_to_year(year_to_second(2.5)) ≈ 2.5
     @test year_to_second(1.0) == JULIAN_YEAR_SEC
 end
 
-@testset "private trapezoid helpers" begin
+@testitem "private trapezoid helpers" setup = [Common, Setup_utils] begin
     # Piecewise-linear y on a unit grid: the trapezoid rule is exact, and every cell
     # integral is exact in Float64, so equality is bitwise.
     x = [0.0, 1.0, 2.0, 3.0]
@@ -29,7 +33,7 @@ end
     @test_throws ArgumentError GWDistributions._cumtrapz([1.0], [0.0, 1.0])
 end
 
-@testset "private _interp matches jnp.interp" begin
+@testitem "private _interp matches jnp.interp" setup = [Common, Setup_utils] begin
     xs = [0.0, 1.0, 3.0]
     ys = [1.0, 3.0, 4.0]
     @test GWDistributions._interp(0.5, xs, ys) == 2.0
@@ -46,7 +50,7 @@ end
     @test_throws ArgumentError GWDistributions._interp(0.5, xs, ys[1:2])
 end
 
-@testset "private Gauss–Legendre mapping" begin
+@testitem "private Gauss–Legendre mapping" setup = [Common, Setup_utils] begin
     rule = gausslegendre(8)
     points, weights = GWDistributions._gauss_legendre_nodes_weights(1.0, 3.0, rule)
     @test sum(weights) ≈ 2.0

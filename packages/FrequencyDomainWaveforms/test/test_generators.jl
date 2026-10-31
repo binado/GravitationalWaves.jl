@@ -1,4 +1,10 @@
-@testset "generators and input validation" begin
+using TestItems
+
+@testsnippet Setup_generators begin
+    using AbstractWaveformsTests
+end
+
+@testitem "generators and input validation" setup = [Common, Setup_generators] begin
     base = (
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3,
     )

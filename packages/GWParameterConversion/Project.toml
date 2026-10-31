@@ -12,6 +12,8 @@ GWParameterConversionChangesOfVariablesExt = "ChangesOfVariables"
 GWParameterConversionInverseFunctionsExt = "InverseFunctions"
 
 [compat]
+TestItems = "1"
+TestItemRunner = "1"
 Aqua = "0.8"
 ChangesOfVariables = "0.1"
 ForwardDiff = "1"
@@ -23,6 +25,8 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -33,4 +37,4 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "ChangesOfVariables", "ForwardDiff", "InverseFunctions", "JET", "JSON", "LinearAlgebra", "Test"]
+test = ["Aqua", "ChangesOfVariables", "ForwardDiff", "InverseFunctions", "JET", "JSON", "LinearAlgebra", "Test", "TestItems", "TestItemRunner"]

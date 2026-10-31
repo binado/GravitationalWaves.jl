@@ -32,3 +32,12 @@ and `scaled_coordinates` with `fd_adapter`/`surrogate_adapter` give dimensionles
 The reference and AD suites are heavy and meant to be run locally (see the `just test-reference-*` and
 `just test-integration-*` recipes in the repository root), not in CI. There is no JET test here: the
 contract checks call interface functions that have no methods of their own.
+
+## Acceptance support
+
+Consumer packages own their heavy `:integration` items and select them through
+`Pkg.test(test_args=["integration"])` or `["reference"]`. Small self-tests here remain default.
+The shared SNR preparation is test support at `test/support/snr.jl`; consumers load it
+with `include(joinpath(pkgdir(AbstractWaveformsTests), "test", "support", "snr.jl"))`
+in an explicit test setup. It requires GWNoise and GWMatchedFiltering in the consumer's
+test environment. See [repository testing](../../README.md#development-and-tests) for all conventions.

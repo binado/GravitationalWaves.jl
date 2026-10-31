@@ -4,9 +4,9 @@ AbstractWaveformsTests owns reusable contract, reference-generator, and gradient
 
 - Keep shared contracts in `src/contract.jl`, exported for backend tests to call;
   they must remain light enough for ordinary `Pkg.test()`.
-- Keep reference-generator and AD suites in local standalone integration workflows,
-  outside default CI; preserve time/phase-maximized mismatch semantics based on
-  GWMatchedFiltering and explicit TD window/padding preparation.
+- Keep heavy reference-generator and AD suites in tagged package test items,
+  explicitly selected locally and outside default CI; preserve time/phase-maximized
+  mismatch semantics based on GWMatchedFiltering and explicit TD window/padding preparation.
 - Route every gradient backend and finite-difference call through
   DifferentiationInterface. Compare backends with each other and FiniteDifferences;
   preserve the Mooncake extension's treatment of fixed objective configuration.
@@ -18,5 +18,5 @@ AbstractWaveformsTests owns reusable contract, reference-generator, and gradient
 - Do not add JET checks here: contract checks intentionally call method-less
   interface functions. Test consuming generators when changing shared contracts.
 
-See the [README](README.md) and [integration guide](../../integration/README.md)
+See the [README](README.md) and [testing guide](../../README.md#development-and-tests)
 for suite usage, parameter conventions, and acceptance recipes.

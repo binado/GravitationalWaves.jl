@@ -1,4 +1,9 @@
-@testset "Plain-array inner products" begin
+using TestItems
+
+@testsnippet Setup_whitened begin
+end
+
+@testitem "Plain-array inner products" setup = [Common, Setup_whitened] begin
     f = 0.0:0.5:2.0
     df = step(f)
     h = ComplexF64[0, 1, 2im, -1, 0]
@@ -42,7 +47,7 @@
     @test complex_inner_product(reshape(h, :, 1), reshape(d, :, 1), Wone, df) ≈ 12
 end
 
-@testset "Whitened contraction" begin
+@testitem "Whitened contraction" setup = [Common, Setup_whitened] begin
     rng = Xoshiro(7)
     nf = 9
     h = randn(rng, ComplexF64, nf, 2)
@@ -62,7 +67,7 @@ end
     @test GWMatchedFiltering.filter_structure(Wb) isa GWMatchedFiltering.BlockFilter
 end
 
-@testset "whiten" begin
+@testitem "whiten" setup = [Common, Setup_whitened] begin
     rng = Xoshiro(3)
     nf = 6
     d = randn(rng, ComplexF64, nf, 2)

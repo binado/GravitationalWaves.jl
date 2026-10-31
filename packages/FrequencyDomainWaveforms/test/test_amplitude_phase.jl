@@ -1,4 +1,10 @@
-@testset "analytic amplitude and phase" begin
+using TestItems
+
+@testsnippet Setup_amplitude_phase begin
+    using AbstractWaveformsTests
+end
+
+@testitem "analytic amplitude and phase" setup = [Common, Setup_amplitude_phase] begin
     f = range(0, 512; step = 0.5)
     params = (;
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
@@ -26,7 +32,7 @@
     end
 end
 
-@testset "Phenom frequency ranges starting above zero" begin
+@testitem "Phenom frequency ranges starting above zero" setup = [Common, Setup_amplitude_phase] begin
     params = (;
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0,
         theta_jn = 0.4, phase = 0.2, a_1 = 0.5, a_2 = 0.3,

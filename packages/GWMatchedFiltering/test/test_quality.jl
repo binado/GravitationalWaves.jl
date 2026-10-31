@@ -1,12 +1,19 @@
-using Aqua
-using JET
+using TestItems
 
-@testset "Aqua" begin
+@testsnippet Setup_quality begin
+
+    using Aqua
+    using JET
+end
+
+@testitem "Aqua" setup = [Common, Setup_quality] begin
     Aqua.test_all(GWMatchedFiltering)
 end
 
-if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
-    @testset "JET" begin
-        JET.test_package(GWMatchedFiltering; target_modules = (GWMatchedFiltering,))
+@testitem "JET" setup = [Common, Setup_quality] begin
+    if VERSION.major == 1 && VERSION.minor == 12 && isempty(VERSION.prerelease)
+        @testset "JET" begin
+            JET.test_package(GWMatchedFiltering; target_modules = (GWMatchedFiltering,))
+        end
     end
 end

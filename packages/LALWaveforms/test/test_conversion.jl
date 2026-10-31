@@ -1,7 +1,13 @@
-using GWParameterConversion
-using Random
+using TestItems
 
-@testset "conversion" begin
+@testsnippet Setup_conversion begin
+    using AbstractWaveformsTests
+
+    using GWParameterConversion
+    using Random
+end
+
+@testitem "conversion" setup = [Common, Setup_conversion] begin
     LW = LALWaveforms
     base = (mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3)
 

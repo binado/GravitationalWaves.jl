@@ -14,7 +14,6 @@ SurrogatePyCallWaveforms adapts upstream gwsurrogate through PyCall as the refer
   do not download a second copy. Python evaluation is not differentiable.
 - Run the package's own `Pkg.test()` after Python setup for contract and validation
   checks; run `just test-reference-surrogates` for native-vs-upstream acceptance.
-  The root recipe configures Python for the standalone reference environment.
+  The root recipe configures Python for the adapter test environment.
 
-See the [README](README.md) for adapter setup and
-[reference-suite guide](../../integration/SurrogateWaveforms/README.md) for the current pinned environment.
+See the [README](README.md) for adapter setup and the pinned reference environment.

@@ -1,9 +1,13 @@
-using Distributions
-using ForwardDiff
-using QuadGK
-using Random
+using TestItems
 
-@testset "PowerLawDelay normalization and round trip" begin
+@testsnippet Setup_delay begin
+    using Distributions
+    using ForwardDiff
+    using QuadGK
+    using Random
+end
+
+@testitem "PowerLawDelay normalization and round trip" setup = [Common, Setup_delay] begin
     for α in (-2.0, -1.0, -0.3, 1.5)
         d = PowerLawDelay(α, 0.02, 13.0)
         total, _ = quadgk(t -> exp(logpdf(d, t)), 0.02, 13.0; rtol = 1.0e-10)
@@ -23,7 +27,7 @@ using Random
     @test_throws ArgumentError PowerLawDelay(-1.0, 13.0, 0.02)
 end
 
-@testset "PowerLawDelay matches the closed forms away from α = -1" begin
+@testitem "PowerLawDelay matches the closed forms away from α = -1" setup = [Common, Setup_delay] begin
     low, high = 0.02, 13.0
     for α in (-2.5, -0.5, 0.7)
         d = PowerLawDelay(α, low, high)
@@ -41,7 +45,7 @@ end
     @test quantile(d, 0.5) ≈ low * (high / low)^0.5
 end
 
-@testset "PowerLawDelay is smooth through α = -1 under AD" begin
+@testitem "PowerLawDelay is smooth through α = -1 under AD" setup = [Common, Setup_delay] begin
     t, q = 1.0, 0.4
     dcdf = α -> ForwardDiff.derivative(a -> cdf(PowerLawDelay(a, 0.02, 13.0), t), α)
     dq = α -> ForwardDiff.derivative(a -> quantile(PowerLawDelay(a, 0.02, 13.0), q), α)

@@ -1,8 +1,12 @@
-using DataInterpolations
-using FiniteDifferences
-using ForwardDiff
+using TestItems
 
-@testset "NaturalCubicSpline" begin
+@testsnippet Setup_spline begin
+    using DataInterpolations
+    using FiniteDifferences
+    using ForwardDiff
+end
+
+@testitem "NaturalCubicSpline" setup = [Common, Setup_spline] begin
     t = [0.0, 0.3, 0.9, 1.4, 2.2, 3.0, 3.1, 4.5]
     xs = range(0.0, 4.5; length = 53)
 

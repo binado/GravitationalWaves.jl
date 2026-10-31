@@ -4,6 +4,15 @@ version = "0.3.0"
 authors = ["binado <bernardopveronese@gmail.com>"]
 
 [compat]
+TestItems = "1"
+TestItemRunner = "1"
+GWSeries = "0.2.0"
+AbstractWaveforms = "0.3.0"
+DifferentiationInterface = "0.7"
+GWDetectors = "0.2.0"
+GWNoise = "0.3.0"
+FrequencyDomainWaveforms = "0.4.0"
+Mooncake = "0.5"
 Aqua = "0.8"
 ForwardDiff = "1"
 JET = "0.11, 0.12"
@@ -14,6 +23,15 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
+AbstractWaveforms = "3fb2fa8e-f79f-4f1b-b19c-601ed048030f"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
+GWDetectors = "925a6270-1375-4f25-9f91-47b2a6fb8ffd"
+GWNoise = "364a1f13-170e-48c9-a1df-e80dad50e028"
+FrequencyDomainWaveforms = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -23,4 +41,11 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "ForwardDiff", "JET", "JSON", "LinearAlgebra", "Random", "Test"]
+test = ["Aqua", "ForwardDiff", "JET", "JSON", "LinearAlgebra", "Random", "Test", "TestItems", "TestItemRunner", "GWSeries", "AbstractWaveforms", "DifferentiationInterface", "GWDetectors", "GWNoise", "FrequencyDomainWaveforms", "Mooncake"]
+
+[sources]
+GWSeries = {path = "../GWSeries"}
+AbstractWaveforms = {path = "../AbstractWaveforms"}
+GWDetectors = {path = "../GWDetectors"}
+GWNoise = {path = "../GWNoise"}
+FrequencyDomainWaveforms = {path = "../FrequencyDomainWaveforms"}

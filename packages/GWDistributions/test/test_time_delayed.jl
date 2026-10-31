@@ -1,14 +1,18 @@
-using BackgroundCosmology: cosmology, lookback_time, age
-using Distributions
-using ForwardDiff
-using QuadGK
-using Random
+using TestItems
 
-const _TD_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
-const _TD_DELAY = PowerLawDelay(-1.0, 0.02, 13.0)
-_td_ψ(z, p) = GWDistributions._madau_dickinson_source_frame(z, p)
+@testsnippet Setup_time_delayed begin
+    using BackgroundCosmology: cosmology, lookback_time, age
+    using Distributions
+    using ForwardDiff
+    using QuadGK
+    using Random
 
-@testset "_redshift_at_lookback_time inverts lookback_time" begin
+    const _TD_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
+    const _TD_DELAY = PowerLawDelay(-1.0, 0.02, 13.0)
+    _td_ψ(z, p) = GWDistributions._madau_dickinson_source_frame(z, p)
+end
+
+@testitem "_redshift_at_lookback_time inverts lookback_time" setup = [Common, Setup_time_delayed] begin
     for c in (
             cosmology((H0 = 67.66, Ωm = 0.30966)),
             cosmology((H0 = 70.0, Ωm = 0.3, w0 = -0.9)),
@@ -29,7 +33,7 @@ _td_ψ(z, p) = GWDistributions._madau_dickinson_source_frame(z, p)
     @test gw ≈ g rtol = 0.2
 end
 
-@testset "time_delayed_merger_rate" begin
+@testitem "time_delayed_merger_rate" setup = [Common, Setup_time_delayed] begin
     kw = (; formation_rate = _td_ψ, delay = _TD_DELAY)
     @test time_delayed_merger_rate(0.0, _TD_PARAMS; kw...) ≈ _td_ψ(0.0, _TD_PARAMS)
 
@@ -51,7 +55,7 @@ end
     end
 end
 
-@testset "TimeDelayedRedshiftDistribution" begin
+@testitem "TimeDelayedRedshiftDistribution" setup = [Common, Setup_time_delayed] begin
     d = madau_dickinson_time_delayed_redshift_distribution(;
         params = _TD_PARAMS, time_delay_distribution = _TD_DELAY, maximum_redshift = 3.0, n_grid = 61
     )
@@ -74,7 +78,7 @@ end
     @test normalizer(d2) == normalizer(d)
 end
 
-@testset "time-delayed AD" begin
+@testitem "time-delayed AD" setup = [Common, Setup_time_delayed] begin
     # Derivative in the delay slope at α = -1 is finite.
     f = α -> time_delayed_merger_rate(
         1.0, _TD_PARAMS; formation_rate = _td_ψ, delay = PowerLawDelay(α, 0.02, 13.0)

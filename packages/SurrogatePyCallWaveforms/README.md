@@ -8,11 +8,11 @@ native-vs-oracle comparison run locally only.
 
 ## Build PyCall with uv's interpreter
 
-The root uv project keeps the optional reference dependencies in the `gwsurrogate` extra.
+The pinned `python/surrogates` uv project supplies the reference dependencies.
 From the repository root, create or update that environment:
 
 ```sh
-uv sync --extra gwsurrogate
+uv sync --project python/surrogates --locked
 ```
 
 PyCall chooses and records its Python interpreter when it is built. Set `PYTHON` to the
@@ -21,8 +21,8 @@ work from the repository root and can be repeated after changing the uv environm
 depot:
 
 ```sh
-export PYTHON="$(uv run --extra gwsurrogate python -c 'import sys; print(sys.executable)')"
-uv run --extra gwsurrogate python -c 'import gwsurrogate, numpy; print(gwsurrogate.__file__)'
+export PYTHON="$(uv run --project python/surrogates python -c 'import sys; print(sys.executable)')"
+uv run --project python/surrogates python -c 'import gwsurrogate, numpy; print(gwsurrogate.__file__)'
 julia --project=packages/SurrogatePyCallWaveforms -e 'using Pkg; Pkg.instantiate(); Pkg.build("PyCall")'
 julia --project=packages/SurrogatePyCallWaveforms -e 'using PyCall; println(PyCall.python)'
 ```
@@ -52,4 +52,13 @@ convention `(inclination, π/2 - phi_ref)`. Python evaluation is not differentia
 The adapter's own tests (`julia --project=packages/SurrogatePyCallWaveforms -e 'using Pkg; Pkg.test()'`,
 after the PyCall build above) check the contract, units and argument validation. The native
 implementation is compared with it by `just test-reference-surrogates`, which runs
-`integration/SurrogateWaveforms/gwsurrogate_reference/runtests.jl`.
+`Pkg.test(test_args=["reference"])` in this package. The recipe syncs the pinned Python
+environment and rebuilds PyCall against that interpreter before testing.
+
+The live `:integration :reference :python :slow` item covers both models’ signed modes
+on the model grid, a fixed time step, and explicit times, plus windowed polarizations.
+Modes agree to 1e-11 relative to the peak and polarization mismatch to 1e-14. The sole
+pointwise exclusion is upstream's known last-interval spline defect (times after the
+penultimate coorbital knot).
+Explicit reference selection fails when Python imports or model data are unavailable.
+The default adapter suite retains its local warning / CI failure behavior.

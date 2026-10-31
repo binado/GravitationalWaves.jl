@@ -1,7 +1,13 @@
-using JSON
-using NPZ
+using TestItems
 
-@testset "reference (bilby)" begin
+@testsnippet Setup_reference begin
+    using AbstractWaveformsTests
+
+    using JSON
+    using NPZ
+end
+
+@testitem "reference (bilby)" tags = [:reference] setup = [Common, Setup_reference] begin
     LW = LALWaveforms
     root = normpath(@__DIR__, "..", "..", "..")
     spec = JSON.parsefile(joinpath(root, "python", "cases.json"))

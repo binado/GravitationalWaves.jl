@@ -1,56 +1,70 @@
-using Distributions
-using ForwardDiff
-using QuadGK
-using Random
+using TestItems
 
-function _default_bbh_pair(; kwargs...)
-    params = merge(
-        (
-            α1 = 1.5,
-            α2 = 4.0,
-            m_break = 35.0,
-            μ1 = 10.0,
-            σ1 = 2.0,
-            μ2 = 35.0,
-            σ2 = 6.0,
-            m1_low = 5.0,
-            δm1 = 4.0,
-            λ0 = 0.55,
-            λ1 = 0.25,
-            βq = 1.2,
-            m2_low = 4.0,
-            δm2 = 3.0,
-            m_high = 120.0,
-        ),
-        kwargs
-    )
-    return DefaultBBHMassPair(; params...)
-end
+@testsnippet Setup_mass begin
+    using Distributions
+    using ForwardDiff
+    using QuadGK
+    using Random
 
-function _q_planck_reference(d::DefaultBBHMassPair, m1::Real)
-    q_low = d.m2_low / m1
-    q_low < 1 || return zero(promote_type(typeof(q_low), typeof(d.βq)))
-    d.δm2 == 0 && return GWDistributions._q_power_integral(d, q_low, one(q_low))
-
-    δq = d.δm2 / m1
-    q_taper_high = min(q_low + δq, one(q_low))
-    z = zero(promote_type(typeof(q_low), typeof(d.βq), typeof(δq)))
-    if q_taper_high > q_low
-        h = (q_taper_high - q_low) / δq
-        band,
-            _ = quadgk(
-            t -> (q_low + δq * t)^d.βq * GWDistributions._planck_unit_taper(t),
-            zero(h), h; rtol = 1.0e-12
+    function _default_bbh_pair(; kwargs...)
+        params = merge(
+            (
+                α1 = 1.5,
+                α2 = 4.0,
+                m_break = 35.0,
+                μ1 = 10.0,
+                σ1 = 2.0,
+                μ2 = 35.0,
+                σ2 = 6.0,
+                m1_low = 5.0,
+                δm1 = 4.0,
+                λ0 = 0.55,
+                λ1 = 0.25,
+                βq = 1.2,
+                m2_low = 4.0,
+                δm2 = 3.0,
+                m_high = 120.0,
+            ),
+            kwargs
         )
-        z += δq * band
+        return DefaultBBHMassPair(; params...)
     end
-    if q_taper_high < 1
-        z += GWDistributions._q_power_integral(d, q_taper_high, one(q_low))
+
+    function _q_planck_reference(d::DefaultBBHMassPair, m1::Real)
+        q_low = d.m2_low / m1
+        q_low < 1 || return zero(promote_type(typeof(q_low), typeof(d.βq)))
+        d.δm2 == 0 && return GWDistributions._q_power_integral(d, q_low, one(q_low))
+
+        δq = d.δm2 / m1
+        q_taper_high = min(q_low + δq, one(q_low))
+        z = zero(promote_type(typeof(q_low), typeof(d.βq), typeof(δq)))
+        if q_taper_high > q_low
+            h = (q_taper_high - q_low) / δq
+            band,
+                _ = quadgk(
+                t -> (q_low + δq * t)^d.βq * GWDistributions._planck_unit_taper(t),
+                zero(h), h; rtol = 1.0e-12
+            )
+            z += δq * band
+        end
+        if q_taper_high < 1
+            z += GWDistributions._q_power_integral(d, q_taper_high, one(q_low))
+        end
+        return z
     end
-    return z
+
+    function _primary_params(; kwargs...)
+        return merge(
+            (
+                α1 = 1.5, α2 = 4.0, m_break = 35.0, μ1 = 10.0, σ1 = 2.0, μ2 = 35.0,
+                σ2 = 6.0, m1_low = 5.0, δm1 = 4.0, λ0 = 0.55, λ1 = 0.25, m_high = 120.0,
+            ),
+            kwargs
+        )
+    end
 end
 
-@testset "Planck taper boundary behavior" begin
+@testitem "Planck taper boundary behavior" setup = [Common, Setup_mass] begin
     @test planck_taper(4.9, 5.0, 2.0) == 0.0
     @test planck_taper(5.0, 5.0, 2.0) == 0.0
     @test 0.0 < planck_taper(6.0, 5.0, 2.0) < 1.0
@@ -61,7 +75,7 @@ end
     @test isfinite(planck_taper(prevfloat(7.0), 5.0, 2.0))
 end
 
-@testset "BrokenPowerLaw normalization and support" begin
+@testitem "BrokenPowerLaw normalization and support" setup = [Common, Setup_mass] begin
     d = GWDistributions.BrokenPowerLaw(1.5, 4.0, 35.0, 5.0, 120.0)
     z, _ = quadgk(m -> pdf(d, m), minimum(d), maximum(d))
 
@@ -74,7 +88,7 @@ end
     @test pdf(d, prevfloat(35.0)) ≈ pdf(d, 35.0) rtol = 1.0e-10
 end
 
-@testset "DefaultBBHPrimaryMass normalization" begin
+@testitem "DefaultBBHPrimaryMass normalization" setup = [Common, Setup_mass] begin
     d = DefaultBBHPrimaryMass(;
         α1 = 1.0,
         α2 = 1.0,
@@ -112,7 +126,7 @@ end
     @test z_tapered ≈ 1.0 rtol = 1.0e-7
 end
 
-@testset "DefaultBBHPrimaryMass untapered mixture formula" begin
+@testitem "DefaultBBHPrimaryMass untapered mixture formula" setup = [Common, Setup_mass] begin
     d = DefaultBBHPrimaryMass(;
         α1 = 1.5,
         α2 = 4.0,
@@ -148,7 +162,7 @@ end
     end
 end
 
-@testset "DefaultBBHPrimaryMass logpdf is type-stable" begin
+@testitem "DefaultBBHPrimaryMass logpdf is type-stable" setup = [Common, Setup_mass] begin
     d = DefaultBBHPrimaryMass(;
         α1 = 1.5,
         α2 = 4.0,
@@ -170,7 +184,7 @@ end
     @test @inferred(logpdf(pair, (35.0, 25.0))) isa Float64
 end
 
-@testset "DefaultBBHMassPair logpdf and conditional normalization" begin
+@testitem "DefaultBBHMassPair logpdf and conditional normalization" setup = [Common, Setup_mass] begin
     d = _default_bbh_pair()
     @test isfinite(logpdf(d, (35.0, 25.0)))
     @test logpdf(d, (35.0, 36.0)) == -Inf
@@ -185,7 +199,7 @@ end
     @test z_conditional ≈ 1.0 rtol = 1.0e-7
 end
 
-@testset "DefaultBBHMassPair rand support and shape" begin
+@testitem "DefaultBBHMassPair rand support and shape" setup = [Common, Setup_mass] begin
     rng = MersenneTwister(1234)
     d = _default_bbh_pair()
     draws = rand(rng, d, 256)
@@ -202,7 +216,7 @@ end
     @test count(low_draws[1, :] .< 7.0) < count(low_draws[1, :] .< 13.0)
 end
 
-@testset "DefaultBBHMassPair interior logpdf is differentiable in m2" begin
+@testitem "DefaultBBHMassPair interior logpdf is differentiable in m2" setup = [Common, Setup_mass] begin
     d = _default_bbh_pair()
     grad = ForwardDiff.gradient(x -> logpdf(d, (35.0, x[1])), [25.0])
     @test all(isfinite, grad)
@@ -214,7 +228,7 @@ end
     @test all(isfinite, grad_band)
 end
 
-@testset "DefaultBBHMassPair _q_normalizer matches Planck split quadrature" begin
+@testitem "DefaultBBHMassPair _q_normalizer matches Planck split quadrature" setup = [Common, Setup_mass] begin
     for βq in (1.2, 2.5, 0.0, -1.0, -2.0), m1 in (10.0, 35.0, 80.0)
 
         d = _default_bbh_pair(βq = βq)
@@ -229,7 +243,7 @@ end
     @test GWDistributions._q_normalizer(d0, 35.0) ≈ ref0 rtol = 1.0e-10
 end
 
-@testset "DefaultBBHMassPair fixed Planck rule convergence" begin
+@testitem "DefaultBBHMassPair fixed Planck rule convergence" setup = [Common, Setup_mass] begin
     m1 = 35.0
     for βq in (2.5, 1.2, 0.0, -1.0, -2.0), δm2 in (5.0, 3.0, 0.1, 1.0e-3)
 
@@ -247,17 +261,7 @@ end
     end
 end
 
-function _primary_params(; kwargs...)
-    return merge(
-        (
-            α1 = 1.5, α2 = 4.0, m_break = 35.0, μ1 = 10.0, σ1 = 2.0, μ2 = 35.0,
-            σ2 = 6.0, m1_low = 5.0, δm1 = 4.0, λ0 = 0.55, λ1 = 0.25, m_high = 120.0,
-        ),
-        kwargs
-    )
-end
-
-@testset "primary taper normalizer matches adaptive quadrature" begin
+@testitem "primary taper normalizer matches adaptive quadrature" setup = [Common, Setup_mass] begin
     # The fixed-rule normalizer replaced adaptive quadgk. Cover a break and peaks inside
     # the taper band, a band wider and narrower than the peaks, and a band that reaches
     # m_high.
@@ -292,7 +296,7 @@ end
     @test d0.log_taper_norm == 0.0
 end
 
-@testset "BrokenPowerLaw and TruncatedPowerLaw cdf" begin
+@testitem "BrokenPowerLaw and TruncatedPowerLaw cdf" setup = [Common, Setup_mass] begin
     d = GWDistributions.BrokenPowerLaw(1.5, 4.0, 35.0, 5.0, 120.0)
     for x in (5.0, 7.0, 20.0, 35.0, 36.0, 80.0, 120.0)
         reference, _ = quadgk(m -> pdf(d, m), 5.0, x; rtol = 1.0e-12)
@@ -309,7 +313,7 @@ end
     @test cdf(t, 20.0) + ccdf(t, 20.0) ≈ 1.0
 end
 
-@testset "BrokenPowerLaw and TruncatedPowerLaw quantile" begin
+@testitem "BrokenPowerLaw and TruncatedPowerLaw quantile" setup = [Common, Setup_mass] begin
     qs = (0.0, 0.01, 0.2, 0.5, 0.8, 0.99, 1.0)
     d = GWDistributions.BrokenPowerLaw(1.5, 4.0, 35.0, 5.0, 120.0)
     for q in qs
@@ -328,7 +332,7 @@ end
     end
 end
 
-@testset "primary mass density is differentiable" begin
+@testitem "primary mass density is differentiable" setup = [Common, Setup_mass] begin
     for (build, x0) in (
             (v -> DefaultBBHPrimaryMass(; _primary_params(δm1 = v)...), 4.0),
             (v -> DefaultBBHPrimaryMass(; _primary_params(μ1 = v)...), 10.0),
@@ -343,7 +347,7 @@ end
     end
 end
 
-@testset "MaxOfTwoNormals" begin
+@testitem "MaxOfTwoNormals" setup = [Common, Setup_mass] begin
     d = MaxOfTwoNormals(1.4, 0.3)
     total, _ = quadgk(x -> exp(logpdf(d, x)), -Inf, Inf)
     @test total ≈ 1.0 rtol = 1.0e-8
@@ -359,7 +363,7 @@ end
     @test_throws ArgumentError MaxOfTwoNormals(0.0, -1.0)
 end
 
-@testset "MaxOfTwoUniforms" begin
+@testitem "MaxOfTwoUniforms" setup = [Common, Setup_mass] begin
     d = MaxOfTwoUniforms(1.1, 1.4)
     @test minimum(d) == 1.1 && maximum(d) ≈ 2.5
     total, _ = quadgk(x -> exp(logpdf(d, x)), 1.1, 2.5)

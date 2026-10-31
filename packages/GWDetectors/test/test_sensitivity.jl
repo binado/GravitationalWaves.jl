@@ -1,4 +1,10 @@
-@testset "detector sensitivities" begin
+using TestItems
+
+@testsnippet Setup_sensitivity begin
+    using StaticArrays
+end
+
+@testitem "detector sensitivities" setup = [Common, Setup_sensitivity] begin
     @test keys(sensitivities) == keys(detectors)
     @test sensitivities.H1 == sensitivities.L1 == :AplusDesign
     @test sensitivities.V1 == :avirgo_O5low_NEW

@@ -22,4 +22,4 @@ FrequencyDomainWaveforms implements native differentiable FD models with LALSimu
   `just test-integration-waveforms` for ForwardDiff/Mooncake acceptance.
 
 See the [README](README.md) for model details; use the
-[integration guide](../../integration/README.md) for current reference-suite setup.
+[testing guide](../../README.md#development-and-tests) for current reference-suite setup.

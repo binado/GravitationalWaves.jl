@@ -13,6 +13,10 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 GWSeries = {path = "../GWSeries"}
 
 [compat]
+TestItems = "1"
+TestItemRunner = "1"
+DifferentiationInterface = "0.7"
+Mooncake = "0.5"
 TOML = "1"
 GWSeries = "0.2"
 Aqua = "0.8"
@@ -25,6 +29,10 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
@@ -32,4 +40,4 @@ JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "ForwardDiff", "JET", "JSON", "Test"]
+test = ["Aqua", "ForwardDiff", "JET", "JSON", "Test", "TestItems", "TestItemRunner", "DifferentiationInterface", "Mooncake"]

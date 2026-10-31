@@ -1,4 +1,10 @@
-@testset "geometry" begin
+using TestItems
+
+@testsnippet Setup_geometry begin
+    using StaticArrays
+end
+
+@testitem "geometry" setup = [Common, Setup_geometry] begin
     @test keys(detectors) == (:H1, :L1, :V1, :K1, :E1, :E2, :E3, :S1, :S2, :R1, :R2, :C1, :C2)
     for (key, d) in pairs(detectors)
         @test d isa Detector

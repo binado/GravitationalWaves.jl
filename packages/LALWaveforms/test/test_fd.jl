@@ -1,4 +1,10 @@
-@testset "fd" begin
+using TestItems
+
+@testsnippet Setup_fd begin
+    using AbstractWaveformsTests
+end
+
+@testitem "fd" setup = [Common, Setup_fd] begin
     LW = LALWaveforms
     f = range(0, 1024; step = 0.25)
     p = (mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 500.0, theta_jn = 0.4, phase = 1.3)

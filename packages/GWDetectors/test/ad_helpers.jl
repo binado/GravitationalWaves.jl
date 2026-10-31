@@ -1,6 +1,4 @@
-if !isdefined(@__MODULE__, :time_prototype)
-    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
-end
+include("prototypes.jl")
 # Shared by the default suite and every heavy AD backend. Local epoch offsets keep
 # finite differences resolvable, while GMST still receives full GPS epochs.
 const AD_INPUT = [1.2, -0.4, 0.7, 0.25, 0.15, 0.6, -1.1, 0.2, 1.3, 0.03, -0.02, 50.0]

@@ -1,15 +1,19 @@
-if !isdefined(@__MODULE__, :time_prototype)
-    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
-end
-# A tiny shifted-axis vector verifies that equal lengths do not suffice.
-struct ShiftedVector{T} <: AbstractVector{T}
-    data::Vector{T}
-end
-Base.size(v::ShiftedVector) = size(v.data)
-Base.axes(v::ShiftedVector) = (0:(length(v.data) - 1),)
-Base.getindex(v::ShiftedVector, i::Int) = v.data[i + 1]
+using TestItems
 
-@testset "projection" begin
+@testsnippet Setup_projection begin
+    using StaticArrays
+
+    include("prototypes.jl")
+    # A tiny shifted-axis vector verifies that equal lengths do not suffice.
+    struct ShiftedVector{T} <: AbstractVector{T}
+        data::Vector{T}
+    end
+    Base.size(v::ShiftedVector) = size(v.data)
+    Base.axes(v::ShiftedVector) = (0:(length(v.data) - 1),)
+    Base.getindex(v::ShiftedVector, i::Int) = v.data[i + 1]
+end
+
+@testitem "projection" setup = [Common, Setup_projection] begin
     d = detectors.H1
     sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)
     start_time = sky.geocent_time - 0.125

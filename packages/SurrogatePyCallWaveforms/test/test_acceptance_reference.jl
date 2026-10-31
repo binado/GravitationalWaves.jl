@@ -1,22 +1,26 @@
-using Test
-using FFTW
-using GWSeries
-import AbstractWaveforms
-import SurrogateWaveforms
-import SurrogatePyCallWaveforms
-using AbstractWaveformsTests
+using TestItems
 
-# The native surrogates against upstream gwsurrogate (through PyCall) as the reference generator.
-# Local only: needs the pinned Python environment and the model data, see
-# packages/SurrogatePyCallWaveforms/README.md and `just test-reference-surrogates`.
-const F_REF = 25.0
-# Rows inside the surrogates' calibrated range (mass ratio <= 4, stellar-mass BBH).
-const IDS = ("bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned", "bbh_precessing")
-# Peak-relative times: the inspiral's last 0.1 s, merger and a short ringdown.
-const TIMES = range(-0.1, 0.01; step = 1 / 2048)
-const WINDOW = PlanckWindow(; nsamples = length(TIMES), sampling_interval = step(TIMES), start_width = 0.02, end_width = 0.005)
+@testsnippet Setup_acceptance_reference begin
+    using Test
+    using FFTW
+    using GWSeries
+    import AbstractWaveforms
+    import SurrogateWaveforms
+    import SurrogatePyCallWaveforms
+    using AbstractWaveformsTests
 
-@testset "SurrogateWaveforms against gwsurrogate" begin
+    # The native surrogates against upstream gwsurrogate (through PyCall) as the reference generator.
+    # Local only: needs the pinned Python environment and the model data, see
+    # packages/SurrogatePyCallWaveforms/README.md and `just test-reference-surrogates`.
+    const F_REF = 25.0
+    # Rows inside the surrogates' calibrated range (mass ratio <= 4, stellar-mass BBH).
+    const IDS = ("bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned", "bbh_precessing")
+    # Peak-relative times: the inspiral's last 0.1 s, merger and a short ringdown.
+    const TIMES = range(-0.1, 0.01; step = 1 / 2048)
+    const WINDOW = PlanckWindow(; nsamples = length(TIMES), sampling_interval = step(TIMES), start_width = 0.02, end_width = 0.005)
+end
+
+@testitem "SurrogateWaveforms against gwsurrogate" tags = [:integration, :reference, :python, :slow] setup = [Setup_acceptance_reference] begin
     for (model, ell_max) in ((:NRSur7dq4, 4), (:NRSur7dq4v2, 5))
         @testset "$model" begin
             surrogate = SurrogateWaveforms.load_surrogate(model)

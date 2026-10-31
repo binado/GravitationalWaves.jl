@@ -1,4 +1,10 @@
-@testset "response and timing" begin
+using TestItems
+
+@testsnippet Setup_response begin
+    using StaticArrays
+end
+
+@testitem "response and timing" setup = [Common, Setup_response] begin
     d = Detector((299792458, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1))
     # Source overhead: LAL basis X=-y, Y=-x at psi=0.
     @test antenna_pattern(0, π / 2, 0, 0, d).plus ≈ -1

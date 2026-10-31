@@ -18,19 +18,19 @@ PACKAGES = (
     "AbstractWaveformsTests",
 )
 AFFECTED = {
-    "GWSeries": {"GWSeries", "GWDetectors", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
-    "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"},
-    "LALWaveforms": {"LALWaveforms", "FrequencyDomainWaveforms"},
-    "GWParameterConversion": {"GWParameterConversion", "LALWaveforms", "FrequencyDomainWaveforms"},
-    "FrequencyDomainWaveforms": {"FrequencyDomainWaveforms"},
+    "GWSeries": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "AbstractWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "LALWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "GWParameterConversion": {"AbstractWaveforms", "LALWaveforms", "GWParameterConversion", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "FrequencyDomainWaveforms": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
     "GWDistributions": {"GWDistributions"},
-    "GWDetectors": {"GWDetectors"},
-    "GWNoise": {"GWNoise"},
-    "GWMatchedFiltering": {"GWMatchedFiltering", "GWNoise", "AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
+    "GWDetectors": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "GWNoise": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
+    "GWMatchedFiltering": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
     "SurrogateWaveforms": {"SurrogateWaveforms"},
-    "AbstractWaveformsTests": {"AbstractWaveformsTests", "AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms"},
+    "AbstractWaveformsTests": {"AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"},
 }
-LOCAL_ONLY_PREFIXES = ("packages/SurrogatePyCallWaveforms/", "integration/SurrogateWaveforms/gwsurrogate_reference/")
+LOCAL_ONLY_PREFIXES = ("packages/SurrogatePyCallWaveforms/",)
 ROOT_DOCUMENTATION = {"README.md", "AGENTS.md", "CLAUDE.md", "LICENSE"}
 
 

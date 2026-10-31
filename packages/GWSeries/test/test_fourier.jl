@@ -1,4 +1,15 @@
-@testset "Physical AbstractFFTs transforms" begin
+using TestItems
+
+@testsnippet Setup_fourier begin
+    # A storage type no backend implements: the generic AbstractFFTs fallbacks would recurse or fail obscurely.
+    struct OpaqueMatrix <: AbstractMatrix{Float64}
+        data::Matrix{Float64}
+    end
+    Base.size(a::OpaqueMatrix) = size(a.data)
+    Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
+end
+
+@testitem "Physical AbstractFFTs transforms" setup = [Common, Setup_fourier] begin
     rng = MersenneTwister(37)
     for T in (Float32, Float64), n in (7, 8, 17, 32), nc in (1, 3)
         a = randn(rng, T, n, nc)
@@ -74,7 +85,7 @@
     @test parent(irfft(full, 16)) ≈ irfft(reference, 16, 1) .* (16 * frequency_spacing(h))
 end
 
-@testset "Recorded time length" begin
+@testitem "Recorded time length" setup = [Common, Setup_fourier] begin
     x = TimeSeries(randn(MersenneTwister(5), 8); epoch = 0, sampling_interval = 0.25, channels = (:H1,))
     h = rfft(x)
     # Spectra that did not come from a series FFT leave the length unrecorded and need it explicitly.
@@ -97,7 +108,7 @@ end
     @test !(h[2:end, :] isa FrequencySeries)
 end
 
-@testset "Series assignment checks the destination grid" begin
+@testitem "Series assignment checks the destination grid" setup = [Common, Setup_fourier] begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     out = copy(x)
     out[:, :] = 2x
@@ -117,14 +128,7 @@ end
     @test @allocated(big[:, :] = src) < 10_000
 end
 
-# A storage type no backend implements: the generic AbstractFFTs fallbacks would recurse or fail obscurely.
-struct OpaqueMatrix <: AbstractMatrix{Float64}
-    data::Matrix{Float64}
-end
-Base.size(a::OpaqueMatrix) = size(a.data)
-Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
-
-@testset "Missing AbstractFFTs backend" begin
+@testitem "Missing AbstractFFTs backend" setup = [Common, Setup_fourier] begin
     @test GWSeries.backend_loaded(AbstractFFTs.plan_rfft, Tuple{Matrix{Float64}, Int})
     @test GWSeries.backend_loaded(AbstractFFTs.plan_brfft, Tuple{Matrix{ComplexF64}, Int, Int})
     opaque = OpaqueMatrix(randn(MersenneTwister(2), 8, 1))
@@ -137,7 +141,7 @@ Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
     @test_throws "no AbstractFFTs backend" rfft(x)
 end
 
-@testset "Named FFT dimensions" begin
+@testitem "Named FFT dimensions" setup = [Common, Setup_fourier] begin
     x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
     h = rfft(x, 1)
     for d in (1, GPSTime(), GPSTime, :GPSTime, Val(:GPSTime), Val{1}, Val((1,)), (GPSTime,), [GPSTime], (:GPSTime,), [1])

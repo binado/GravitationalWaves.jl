@@ -1,11 +1,15 @@
-import Quaternionic
-import SphericalFunctions
-using FiniteDifferences
-using ForwardDiff
-using LinearAlgebra
-using Random
+using TestItems
 
-@testset "Wigner-D" begin
+@testsnippet Setup_wignerd begin
+    import Quaternionic
+    import SphericalFunctions
+    using FiniteDifferences
+    using ForwardDiff
+    using LinearAlgebra
+    using Random
+end
+
+@testitem "Wigner-D" setup = [Common, Setup_wignerd] begin
     oracle(R, l) = SphericalFunctions.D(R, l)[l]
 
     function rotor_cases()

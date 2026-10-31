@@ -153,20 +153,44 @@ julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 
 The waveform tests require the reference setup below for full coverage.
 
-The default suites include ForwardDiff checks. Heavy ForwardDiff/Mooncake waveform, detector and inference
-tests run separately, locally, rather than in CI:
+The default suites include ForwardDiff checks. Heavy acceptance suites (AD, SNR, live references)
+run separately, locally, rather than in CI:
 
 ```sh
-just test-integration              # all suites; installs their dependencies on first use
+just test-integration              # all suites, including live LAL and Python references
 just test-integration-waveforms    # ForwardDiff and Mooncake waveform gradients
 just test-integration-detectors    # detector gradients (ForwardDiff and Mooncake)
 ```
 
-These recipes require Julia 1.12 or newer and `just`, and need no LAL or Python setup.
-Set `JULIA='julia +1.12'` to select a Julia version. Their standalone environments live
-under `integration/`, outside the root workspace; ordinary `Pkg.test()` does not
-install or precompile Mooncake. Enzyme and Reactant support is deferred. Run the affected integration
-suite before submitting changes to the numerical kernels or AD integration tests.
+These recipes require Julia 1.12 or newer and `just`. Set `JULIA='julia +1.12'`
+to select a Julia version. The Julia acceptance recipes need no LAL or Python;
+the aggregate also runs the two live reference recipes, which require their configured
+libraries and Python interpreter. Enzyme and Reactant support is deferred.
+Run the affected acceptance suite before submitting numerical or AD changes.
+
+Every package uses independently discoverable TestItems, with TestItemRunner under
+`Pkg.test()`. The optional single positional test argument selects items by tags:
+
+| `test_args` | Selection |
+|---|---|
+| `[]` or `["default"]` | Items without `:integration` (the CI suite; local only for SurrogatePyCallWaveforms) |
+| `["integration"]` | Items with `:integration`, excluding `:reference` |
+| `["reference"]` | Live items with both `:integration` and `:reference`; fixture-based items tagged only `:reference` run by default |
+| `["all"]` | Every item in the package |
+
+Unknown selections and multiple arguments fail before any item executes. For example:
+
+```sh
+julia --startup-file=no --check-bounds=yes --project=packages/GWSeries -e 'using Pkg; Pkg.test(test_args=["integration"])'
+```
+
+Acceptance tests live under each owning package's `test/` directory. Test dependencies,
+including Mooncake where used, are resolved and may be precompiled even for the default
+selection, increasing initial installation cost. Numerical packages gain no runtime
+dependencies from this migration. PyCall remains confined to SurrogatePyCallWaveforms,
+which stays outside workspace membership and CI. Fixture-based reference and lightweight
+AD tests remain in the default selection; live reference selections fail if required
+libraries, Python imports, or data are unavailable.
 
 The reference tests compare against bilby output generated locally (not committed):
 
@@ -188,6 +212,64 @@ LD_PRELOAD=/lib/x86_64-linux-gnu/libm.so.6 julia --project
 
 Without fixtures the reference tests warn and skip; with `CI=true` they fail.
 
+### Acceptance ownership
+
+Shared cases come from `packages/AbstractWaveformsTests/data/parameters.csv`:
+solar masses, Mpc, radians, and dimensionless Cartesian spins in the LAL source frame
+at the reference epoch, with inclination measured from orbital angular momentum.
+FD generators require aligned magnitude/tilt spins. Surrogates use total mass,
+q = m1/m2 (the inverse of bilby's mass ratio), Cartesian spins, and observer azimuth
+π/2 - phi_ref. Case selection follows generator capabilities; precessing cases
+are never projected onto aligned models.
+
+- [GWSeries](packages/GWSeries/README.md): physical Fourier AD and metadata regression.
+- [GWDetectors](packages/GWDetectors/README.md): geometry, timing and projection AD.
+- [GWMatchedFiltering](packages/GWMatchedFiltering/README.md): composed likelihoods, vectors and windows.
+- [FrequencyDomainWaveforms](packages/FrequencyDomainWaveforms/README.md): waveform AD, SNR, Jacobians and live LAL comparison.
+- [SurrogateWaveforms](packages/SurrogateWaveforms/README.md): native kernels, dynamics, waveform AD and SNR.
+- [AbstractWaveforms](packages/AbstractWaveforms/README.md): shared harmonic assembly AD.
+- [SurrogatePyCallWaveforms](packages/SurrogatePyCallWaveforms/README.md): native-vs-gwsurrogate reference comparison.
+
+### Acceptance SNR conventions
+
+The FD grid is 0:0.5:1024 Hz; generators use 20–1024 Hz. The TD grid has 432 samples
+starting at -0.2 seconds with dt=1/2048 s. The reference is the first dynamics node
+(`f_ref=0`), and spins are specified in that reference frame. The window has start
+and end Planck widths of 0.02 and 0.005 seconds; 80 zero samples are appended after
+windowing, for N=512, df=4 Hz. There is no taper-power renormalization. The Fourier
+convention is dt*rfft along rows, with no epoch phase factor. An overall epoch
+phase would leave this objective unchanged. Native FD outputs are not tapered.
+
+Fixed response coefficients (Fplus,Fcross)=(0.7,0.3) combine both polarizations.
+Each model/case is checked with both bundled ET-D (`ET_000A_18_ETD_hlf`) and CE
+reference (`cosmic_explorer_strain`) curves. These are one-sided PSDs in strain²/Hz,
+read through GWNoise with log-log interpolation. The analysis band is 20–512 Hz
+intersected with table/grid coverage. Only active bins are interpolated; no PSD
+extrapolation is permitted. GWMatchedFiltering supplies 4df normalization and
+excludes DC; the TD metric explicitly receives N and excludes even-length Nyquist.
+Native FD grids have no inferred time length.
+
+Configuration, windows, padding buffers, model data, grids, and PSD metrics are
+prepared outside differentiation. Only waveform parameters are differentiated.
+Mass/distance coordinates are scaled by their fixture values, spins/angles by one.
+FD tilt signs are fixed at preparation, so the local signed-spin coordinate is
+smooth at zero. Shared PSD preparation lives at
+`packages/AbstractWaveformsTests/test/support/snr.jl`. Gradients are compared
+componentwise after division by base SNR,
+with rtol 1e-8 (FD) / 1e-6 (TD) and atol 1e-8. Values use rtol 1e-10. Finite-difference
+spot checks use smooth aligned FD and generic-precession TD cases; boundary and
+zero-spin cases compare backend conventions without asserting differentiability
+where the physical parameterization has a kink. Every case tests cache reuse at
+a nearby distance and the analytic inverse-distance derivative. A phase-sensitive
+overlap checks the phase derivative that an SNR norm can miss.
+
+### PSD provenance follow-up
+
+Reuse the maintainer-supplied GWNoise tables verbatim; do not duplicate them here.
+Their exact external source/version and licensing attribution were not supplied.
+Resolving that attribution remains an explicit follow-up, not a completed claim
+of this test migration. GWNoise documents units and validates frequency coverage.
+
 ## Formatting
 
 Code is formatted with [Runic](https://github.com/fredrikekre/Runic.jl):
@@ -201,6 +283,3 @@ runic --inplace .
 
 The root [LICENSE](LICENSE) and every package except `GWSeries`, `AbstractWaveforms`, `GWDistributions`, `GWMatchedFiltering`, `SurrogateWaveforms`, `AbstractWaveformsTests` and `SurrogatePyCallWaveforms` use GPL-2.0-or-later.
 `GWSeries` ([LICENSE](packages/GWSeries/LICENSE)), `AbstractWaveforms` ([LICENSE](packages/AbstractWaveforms/LICENSE)), `GWDistributions` ([LICENSE](packages/GWDistributions/LICENSE)), `GWMatchedFiltering` ([LICENSE](packages/GWMatchedFiltering/LICENSE)), `SurrogateWaveforms` ([LICENSE](packages/SurrogateWaveforms/LICENSE)), `AbstractWaveformsTests` ([LICENSE](packages/AbstractWaveformsTests/LICENSE)) and `SurrogatePyCallWaveforms` ([LICENSE](packages/SurrogatePyCallWaveforms/LICENSE)) are MIT.
-
-Waveform numerical acceptance uses a shared physical parameter CSV, reference-generator
-comparisons, and optimal-SNR backend comparisons; see [the suite guide](integration/README.md).

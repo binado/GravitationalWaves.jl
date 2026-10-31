@@ -9,8 +9,8 @@ using TestItems
     using AbstractWaveformsTests: test_modes_td_contract
     using SurrogatePyCallWaveforms
 
-    # Needs a Python with gwsurrogate (PyCall built against it) and the NRSur7dq4 model data. Without
-    # them the tests are skipped locally and fail on CI.
+    # Only checks that PyCall can import gwsurrogate; model data is resolved later. When this is false
+    # the `ModelFixture` warns (errors with CI=true) and the `if READY` bodies record `@test_skip`.
     function python_ready()
         return try
             pyimport("gwsurrogate.surrogate")

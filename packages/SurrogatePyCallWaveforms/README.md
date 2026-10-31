@@ -55,7 +55,6 @@ implementation is compared with it by `just test-reference-surrogates`, which ru
 `Pkg.test(test_args=["reference"])` in this package. The recipe syncs the pinned Python
 environment and rebuilds PyCall against that interpreter before testing.
 
-
 The live `:integration :reference :python :slow` item covers both models’ signed modes
 on the model grid, a fixed time step, and explicit times, plus windowed polarizations.
 Modes agree to 1e-11 relative to the peak and polarization mismatch to 1e-14. The sole

@@ -33,7 +33,6 @@ The reference and AD suites are heavy and meant to be run locally (see the `just
 `just test-integration-*` recipes in the repository root), not in CI. There is no JET test here: the
 contract checks call interface functions that have no methods of their own.
 
-
 ## Acceptance support
 
 Consumer packages own their heavy `:integration` items and select them through

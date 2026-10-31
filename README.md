@@ -153,8 +153,8 @@ julia --project=packages/GWDetectors -e 'using Pkg; Pkg.test()'
 
 The waveform tests require the reference setup below for full coverage.
 
-The default suites include ForwardDiff checks. Heavy ForwardDiff/Mooncake waveform, detector and inference
-tests run separately, locally, rather than in CI:
+The default suites include ForwardDiff checks. Heavy acceptance suites (AD, SNR, live references)
+run separately, locally, rather than in CI:
 
 ```sh
 just test-integration              # all suites, including live LAL and Python references
@@ -173,15 +173,15 @@ Every package uses independently discoverable TestItems, with TestItemRunner und
 
 | `test_args` | Selection |
 |---|---|
-| `[]` or `["default"]` | Items without `:integration` (the CI suite) |
+| `[]` or `["default"]` | Items without `:integration` (the CI suite; local only for SurrogatePyCallWaveforms) |
 | `["integration"]` | Items with `:integration`, excluding `:reference` |
-| `["reference"]` | Items with both `:integration` and `:reference` |
+| `["reference"]` | Live items with both `:integration` and `:reference`; fixture-based items tagged only `:reference` run by default |
 | `["all"]` | Every item in the package |
 
 Unknown selections and multiple arguments fail before any item executes. For example:
 
 ```sh
-julia --check-bounds=yes --project=packages/GWSeries -e 'using Pkg; Pkg.test(test_args=["integration"])'
+julia --startup-file=no --check-bounds=yes --project=packages/GWSeries -e 'using Pkg; Pkg.test(test_args=["integration"])'
 ```
 
 Acceptance tests live under each owning package's `test/` directory. Test dependencies,

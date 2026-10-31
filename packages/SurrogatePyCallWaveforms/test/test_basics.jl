@@ -24,6 +24,8 @@ end
         @test AbstractWaveforms.spin_support(g) === :precessing
         @test !AbstractWaveforms.is_differentiable(g)
         @test AbstractWaveforms.supports_mode_array(g)
+    else
+        @test_skip READY
     end
 end
 
@@ -31,6 +33,8 @@ end
     if READY
 
         test_modes_td_contract(g; params, times)
+    else
+        @test_skip READY
     end
 end
 
@@ -48,6 +52,8 @@ end
         farther = waveform_modes_td(g, merge(params, (; luminosity_distance = 2params.luminosity_distance)); times)
         @test farther.modes ≈ base.modes ./ 2 rtol = 1.0e-12
         @test base.mode_indices == Tuple((l, m) for l in 2:4 for m in (-l):l)
+    else
+        @test_skip READY
     end
 end
 
@@ -58,5 +64,7 @@ end
         @test_throws ArgumentError load_generator(data_path(:NRSur7dq4); model = :nonsense, f_ref = 25.0)
         @test_throws ArgumentError load_generator(data_path(:NRSur7dq4); ell_max = 9, f_ref = 25.0)
         @test_throws ArgumentError load_generator(data_path(:NRSur7dq4); f_ref = 10.0, f_low = 20.0)
+    else
+        @test_skip READY
     end
 end

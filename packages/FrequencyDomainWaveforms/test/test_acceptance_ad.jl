@@ -9,7 +9,7 @@ using TestItems
     include("ad_helpers.jl")
 end
 
-@testitem "Waveform parameter gradients" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
+@testitem "Waveform parameter gradients (acceptance)" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
     test_waveform_gradients(
         Pair{String, Any}[
             "ForwardDiff" => AutoForwardDiff(),

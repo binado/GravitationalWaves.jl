@@ -1,6 +1,6 @@
 using TestItems
 
-# Evaluated afresh in each test item, including mutable fixtures and dummy types.
+# Evaluated afresh in each test item.
 @testsnippet Common begin
     using Test
     using Random

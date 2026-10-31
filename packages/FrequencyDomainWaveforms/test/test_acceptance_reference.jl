@@ -43,7 +43,8 @@ using TestItems
         "bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned",
         "bbh_high_spin", "bbh_high_ratio", "bbh_light", "bns", "bns_aligned", "nsbh",
     )
-    # Unwindowed polarizations agree to about 1e-12 relative to the largest sample; mismatch is quadratic in that.
+    # Pointwise agreement is checked to `rtol` relative to the peak below; `MAX_MISMATCH` is a
+    # roundoff-level bound on the time/phase-maximized mismatch.
     const MAX_MISMATCH = 1.0e-14
 
     # (name, approximant, parameters, generator keywords, rtol)

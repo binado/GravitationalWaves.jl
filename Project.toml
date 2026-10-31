@@ -1,5 +1,6 @@
 [workspace]
 projects = [
+    "notebooks",
     "packages/AbstractWaveforms",
     "packages/AbstractWaveformsTests",
     "packages/FrequencyDomainWaveforms",

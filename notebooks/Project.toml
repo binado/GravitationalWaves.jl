@@ -1,0 +1,12 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+FrequencyDomainWaveforms = "ebce0e49-e927-4bc6-bbb0-6e114e9e4884"
+GWSeries = "c6f5b3e8-0a6d-4d75-a48c-df33b132a8df"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+
+[sources]
+FrequencyDomainWaveforms = {path = "../packages/FrequencyDomainWaveforms"}
+GWSeries = {path = "../packages/GWSeries"}
+
+[compat]
+Makie = "~0.24.16"

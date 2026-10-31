@@ -29,10 +29,10 @@ params = (;
 )
 
 # ╔═╡ 5ccaa5c5-5ef2-40ff-87fc-486de091927f
-waveform_generator = IMRPhenomXAS(; minimum_frequency = 20.0, maximum_frequency = 512.0)
+waveform_generator = IMRPhenomXAS(; minimum_frequency = 20.0, maximum_frequency = 2048.0)
 
 # ╔═╡ 9572a2c4-79c4-4aa3-920e-2baa7595fb48
-frequency_grid = 0.0:0.25:512.0
+frequency_grid = 5.0:0.25:2048.0
 
 # ╔═╡ 493f4649-c69d-4883-9d4c-2e46272ad545
 prototype = FrequencySeries(zeros(ComplexF64, length(frequency_grid));
@@ -45,7 +45,7 @@ begin
 end
 
 # ╔═╡ 46a7670e-2380-4b30-99f6-041dfe14e123
-lines(waveform; representation = :magnitude, axis = (; title = "IMRPhenomXAS polarizations", ylabel = "Strain magnitude (1/Hz)"))
+lines(waveform; representation = :real, axis = (; title = "IMRPhenomXAS polarizations", ylabel = "Strain magnitude (1/Hz)", xscale = log10))
 
 # ╔═╡ Cell order:
 # ╠═28a57670-87d2-417a-8336-27ea28b1ec7e

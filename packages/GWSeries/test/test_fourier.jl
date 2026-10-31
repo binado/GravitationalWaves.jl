@@ -136,3 +136,24 @@ Base.getindex(a::OpaqueMatrix, i::Int, j::Int) = a.data[i, j]
     x = TimeSeries(opaque; epoch = 0, sampling_interval = 0.25, channels = (:H1,))
     @test_throws "no AbstractFFTs backend" rfft(x)
 end
+
+@testset "Named FFT dimensions" begin
+    x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 100, sampling_interval = 0.25, channels = (:H1, :L1))
+    h = rfft(x, 1)
+    for d in (1, GPSTime(), GPSTime, :GPSTime, Val(:GPSTime), Val{1}, Val((1,)), (GPSTime,), [GPSTime], (:GPSTime,), [1])
+        actual = rfft(x, d)
+        @test parent(actual) ≈ parent(h)
+        @test grid_metadata(actual) == grid_metadata(h)
+    end
+    for d in (1, Freq(), Freq, :Freq, Val(:Freq), Val{1}, Val((1,)), (Freq,), [Freq], (:Freq,), [1])
+        actual = irfft(h, 8, d)
+        @test parent(actual) ≈ parent(irfft(h, 8, 1))
+        @test grid_metadata(actual) == grid_metadata(x)
+    end
+    for d in (2, Chan(), Chan, :Chan, Val(:Chan), (1, 2), [1, 2], (), Int[], :unknown, 0, 3)
+        @test_throws ArgumentError rfft(x, d)
+        @test_throws ArgumentError irfft(h, 8, d)
+    end
+    @test_throws ArgumentError rfft(x, Freq)
+    @test_throws ArgumentError irfft(h, 8, GPSTime)
+end

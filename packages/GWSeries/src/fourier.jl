@@ -24,8 +24,14 @@ function require_backend(a::AbstractArray, inverse::Bool)
     return nothing
 end
 
-function transform_dims(dims)
-    (dims == 1 || dims == (1,) || dims == [1]) || throw(ArgumentError("series FFTs transform only the sample dimension (1)"))
+fft_dim_query(d) = d
+fft_dim_query(::Val{D}) where {D} = fft_dim_query(D)
+fft_dim_query(::Type{Val{D}}) where {D} = fft_dim_query(D)
+fft_dim_query(d::Union{Tuple, AbstractVector}) = map(fft_dim_query, Tuple(d))
+
+function transform_dims(s::AbstractSeries, dims)
+    normalized = dimnum(s, fft_dim_query(dims))
+    (normalized == 1 || normalized == (1,)) || throw(ArgumentError("series FFTs transform only the sample dimension (1)"))
     return 1
 end
 
@@ -53,7 +59,7 @@ end
 
 """Physical dt*rfft along rows; the loaded AbstractFFTs backend owns execution."""
 function AbstractFFTs.rfft(s::TimeSeries{<:Real}, dims = 1)
-    transform_dims(dims)
+    transform_dims(s, dims)
     check_fourier_domain(s)
     a = physical_rfft(parent(s), sampling_interval(s))
     return FrequencySeries(a, fourier_metadata(s), Validated())
@@ -62,7 +68,7 @@ AbstractFFTs.rfft(s::TimeSeries, dims = 1) = throw(ArgumentError("wrapped forwar
 
 AbstractFFTs.irfft(s::FrequencySeries) = AbstractFFTs.irfft(s, inverse_length(s, nothing))
 function AbstractFFTs.irfft(s::FrequencySeries, n::Integer, dims = 1)
-    transform_dims(dims)
+    transform_dims(s, dims)
     n = inverse_length(s, n)
     check_fourier_domain(s; nsamples = n)
     spectrum = complex.(parent(s))

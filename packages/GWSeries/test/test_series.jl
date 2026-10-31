@@ -207,8 +207,8 @@ end
     later = FrequencySeries(copy(parent(h)); grid_metadata(h)..., epoch = t0 + 1)
     @test_throws "epochs differ" h .+ later
     # The predicate form of the comparison reports a mismatch instead of throwing.
-    @test !DimensionalData.comparedims(Bool, x, one_second; val = true)
-    @test DimensionalData.comparedims(Bool, x, x; val = true)
+    @test !DimensionalData.Dimensions.comparedims(Bool, x, one_second; val = true)
+    @test DimensionalData.Dimensions.comparedims(Bool, x, x; val = true)
 end
 
 @testset "Crop and pad" begin
@@ -293,4 +293,121 @@ Base.getindex(x::ZeroBasedVector, i::Int) = x.data[i + 1]
     @test frequency_spacing(e) == 0.5
     @test isempty(frequency_bins(e))
     @test_throws MethodError pad(e; after = 2)
+end
+
+struct ZeroBasedMatrix <: AbstractMatrix{Float64}
+    data::Matrix{Float64}
+end
+Base.size(x::ZeroBasedMatrix) = size(x.data)
+Base.axes(x::ZeroBasedMatrix) = (0:(size(x, 1) - 1), axes(x.data, 2))
+Base.getindex(x::ZeroBasedMatrix, i::Int, j::Int) = x.data[i + 1, j]
+
+@testset "Faithful dimensional reconstruction" begin
+    DD = DimensionalData
+    L = DD.Lookups
+    x = TimeSeries(ones(8, 2); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1, :L1))
+    for s in (x, rfft(x))
+        d = dims(s)
+        l = lookup(s, 1)
+        # Canonical lookups, including their metadata, are retained verbatim.
+        tagged = rebuild(l; metadata = Dict(:source => "measurement"))
+        td = (rebuild(d[1], tagged), d[2])
+        canonical = rebuild(s; dims = td)
+        @test canonical isa (s isa TimeSeries ? TimeSeries : FrequencySeries)
+        @test parent(canonical) === parent(s)
+        @test dims(canonical) === td
+        @test DD.metadata(lookup(canonical, 1)) === DD.metadata(tagged)
+        for modified in (
+                rebuild(l; sampling = L.Intervals(L.Start())),
+                rebuild(l; order = L.ReverseOrdered()),
+                rebuild(l; span = L.Irregular((nothing, nothing))),
+                rebuild(l; span = L.Regular(nextfloat(step(parent(l))))),
+                rebuild(l; sampling = L.Intervals(L.Center()), metadata = Dict(:unit => :seconds)),
+            )
+            supplied = (rebuild(d[1], modified), d[2])
+            y = rebuild(s; dims = supplied)
+            @test y isa DimArray
+            @test dims(y) === supplied
+            @test lookup(y, 1) === modified
+            @test parent(y) === parent(s)
+        end
+        @test_throws DimensionMismatch rebuild(s; data = zeros(1, 2))
+        @test_throws DimensionMismatch rebuild(s; data = ZeroBasedMatrix(ones(size(s))))
+        @test_throws DimensionMismatch rebuild(s; data = zeros(size(s, 1), 1))
+        @test dims(copy(s)) === d
+        @test parent(copy(s)) !== parent(s)
+        @test parent(view(s, :, :)) isa SubArray
+        @test !(s[:, [1, 1]] isa AbstractSeries)
+        # Canonical series deliberately carry no DD array name, refdims, metadata.
+        renamed = rebuild(s; name = :ignored, refdims = (DD.Z(1),), metadata = Dict(:a => 1))
+        @test DD.name(renamed) isa DD.NoName
+        @test DD.refdims(renamed) == ()
+        @test DD.metadata(renamed) isa DD.NoMetadata
+    end
+    @test x[:, 1:0] isa TimeSeries
+    @test x[1:0, :] isa TimeSeries
+    @test x[1:2:end, :] isa TimeSeries
+end
+
+@testset "Mixed labelled operations validate before mutation" begin
+    DD = DimensionalData
+    x = TimeSeries(reshape(collect(1.0:16.0), 8, 2); epoch = 1126259460.125, sampling_interval = 0.25, channels = (:H1, :L1))
+    labelled = DimArray(copy(parent(x)), dims(x))
+    @test map(+, x, labelled) isa TimeSeries
+    @test map(+, labelled, x) isa DimArray
+    @test parent(map(+, labelled, x)) == 2 .* parent(x)
+    @test parent(map(+, x, labelled, x)) == 3 .* parent(x)
+    for other in (
+                TimeSeries(fill(-1.0, size(x)); grid_metadata(x)..., epoch = epoch(x) + 1),
+                TimeSeries(fill(-1.0, size(x)); grid_metadata(x)..., sampling_interval = 0.5),
+                TimeSeries(fill(-1.0, size(x)); grid_metadata(x)..., channels = (:L1, :H1)),
+            ), source in (
+                other, DimArray(parent(other), dims(other)),
+                DimArray(parent(other), (GPSTime(times(other)), dims(other, Chan))),
+                DimArray(parent(other), (GPSTime(collect(times(other))), dims(other, Chan))),
+            )
+        @test_throws Union{ArgumentError, DimensionMismatch} map(+, x, source)
+        @test_throws Union{ArgumentError, DimensionMismatch} map(+, source, x)
+        @test_throws Union{ArgumentError, DimensionMismatch} map(+, x, labelled, source)
+        out = copy(x)
+        saved = copy(parent(out))
+        @test_throws Union{ArgumentError, DimensionMismatch} copyto!(out, source)
+        @test parent(out) == saved
+        @test_throws Union{ArgumentError, DimensionMismatch} out[:, :] = source
+        @test parent(out) == saved
+    end
+    for coordinates in (times(x), collect(times(x)))
+        plain = DimArray(copy(parent(x)), (GPSTime(coordinates), dims(x, Chan)))
+        @test parent(map(+, plain, x)) == 2 .* parent(x)
+        @test parent(map(+, x, plain)) == 2 .* parent(x)
+        @test parent(copyto!(copy(x), plain)) == parent(x)
+    end
+    out = copy(x)
+    @test copyto!(out, labelled) === out
+    out[GPSTime = 2:4, Chan = At([:L1])] = DimArray(fill(42.0, 3, 1), dims(x[2:4, [2]]))
+    @test all(==(42), parent(out)[2:4, 2])
+    saved = copy(parent(out))
+    @test_throws ArgumentError out[2:4, :] = DimArray(parent(x)[1:3, :], dims(x[1:3, :]))
+    @test parent(out) == saved
+    out[:, :] = zeros(size(x))
+    @test all(iszero, parent(out))
+    @test copyto!(out, ones(size(x))) === out
+    @test all(isone, parent(out))
+    # Empty indices must reach the terminal validation without dispatch ambiguity.
+    out[Int[], :] = DimArray(zeros(0, 2), dims(x[1:0, :]))
+    h = rfft(x)
+    odd = FrequencySeries(fill(0.0im, size(h)); grid_metadata(h)..., time_samples = 9)
+    for source in (odd, DimArray(parent(odd), dims(odd)))
+        @test_throws "original time lengths differ" map(+, h, source)
+        @test_throws "original time lengths differ" map(+, source, h)
+        out = copy(h)
+        saved = copy(parent(out))
+        @test_throws "original time lengths differ" copyto!(out, source)
+        @test_throws "original time lengths differ" out[:, :] = source
+        @test parent(out) == saved
+    end
+    @test DD.Dimensions.comparedims(Bool, x, x; val = true)
+    @test parent(x .+ x[:, [1]]) == parent(x) .+ parent(x)[:, [1]]
+    singleton = TimeSeries(ones(1, 2); grid_metadata(x)...)
+    @test parent(x .+ singleton) == parent(x) .+ 1
 end

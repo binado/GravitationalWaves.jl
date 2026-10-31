@@ -18,9 +18,7 @@ Rows are time samples on the absolute [`GPSTime`](@ref) grid and columns are ord
 struct TimeSeries{T, A <: AbstractMatrix{T}, D <: TimeDims} <: AbstractSeries{T, D, A}
     data::A
     dims::D
-    function TimeSeries(a::AbstractMatrix{T}, grid::TimeGrid, names::ChannelNames) where {T}
-        check_dims(a, grid, names)
-        d = (GPSTime(grid_lookup(grid)), Chan(channel_lookup(names)))
+    function TimeSeries(a::AbstractMatrix{T}, d::TimeDims, ::Validated) where {T}
         return new{T, typeof(a), typeof(d)}(a, d)
     end
 end
@@ -37,15 +35,25 @@ transforms need an explicit length.
 struct FrequencySeries{T, A <: AbstractMatrix{T}, D <: FrequencyDims} <: AbstractSeries{T, D, A}
     data::A
     dims::D
-    function FrequencySeries(a::AbstractMatrix{T}, grid::SpectralGrid, names::ChannelNames) where {T}
-        check_dims(a, grid, names)
-        d = (Freq(grid_lookup(grid)), Chan(channel_lookup(names)))
+    function FrequencySeries(a::AbstractMatrix{T}, d::FrequencyDims, ::Validated) where {T}
         return new{T, typeof(a), typeof(d)}(a, d)
     end
 end
 
+function TimeSeries(a::AbstractMatrix, grid::TimeGrid, names::ChannelNames)
+    check_dims(a, grid, names)
+    d = DD.format((GPSTime(grid_lookup(grid)), Chan(channel_lookup(names))), a)
+    return TimeSeries(a, d, Validated())
+end
+
 TimeSeries(a::AbstractMatrix, m::NamedTuple, ::Validated) =
     TimeSeries(a, TimeGrid(m.epoch, m.sampling_interval, size(a, 1)), ChannelNames(m.channels))
+function FrequencySeries(a::AbstractMatrix, grid::SpectralGrid, names::ChannelNames)
+    check_dims(a, grid, names)
+    d = DD.format((Freq(grid_lookup(grid)), Chan(channel_lookup(names))), a)
+    return FrequencySeries(a, d, Validated())
+end
+
 FrequencySeries(a::AbstractMatrix, m::NamedTuple, ::Validated) =
     FrequencySeries(a, SpectralGrid(m.frequency_spacing, size(a, 1), m.epoch, m.time_samples), ChannelNames(m.channels))
 """Rebuild a series of the same kind from storage and validated [`grid_metadata`](@ref)."""
@@ -118,13 +126,26 @@ DD.rebuild(::AbstractSeries, data, dims::Tuple, refdims, name, metadata) =
     rebuild_series(data, dims, refdims, name, metadata)
 DD.rebuild(A::AbstractSeries; data = parent(A), dims = DD.dims(A), refdims = (), name = NoName(), metadata = NoMetadata(), kw...) =
     rebuild_series(data, dims, refdims, name, metadata)
-rebuild_series(data::AbstractMatrix, dims::TimeDims, refdims, name, metadata) =
-    allunique(parent(lookup(dims[2]))) ? TimeSeries(data, parent(lookup(dims[1])), parent(lookup(dims[2]))) :
-    DimArray(data, dims, refdims, name, metadata)
-rebuild_series(data::AbstractMatrix, dims::FrequencyDims, refdims, name, metadata) =
-    allunique(parent(lookup(dims[2]))) ? FrequencySeries(data, parent(lookup(dims[1])), parent(lookup(dims[2]))) :
-    DimArray(data, dims, refdims, name, metadata)
-rebuild_series(data, dims, refdims, name, metadata) = DimArray(data, dims, refdims, name, metadata)
+function canonical_dims(d::Union{TimeDims, FrequencyDims})
+    l = lookup(first(d))
+    return DD.order(l) isa ForwardOrdered && DD.span(l) isa Regular &&
+        isequal(step(DD.span(l)), step(parent(l))) && DD.sampling(l) isa Points &&
+        allunique(parent(lookup(last(d))))
+end
+canonical_dims(d) = false
+series_from_dims(data::AbstractMatrix, dims::TimeDims) = TimeSeries(data, dims, Validated())
+series_from_dims(data::AbstractMatrix, dims::FrequencyDims) = FrequencySeries(data, dims, Validated())
+
+function rebuild_series(data, dims, refdims, name, metadata)
+    # Validate shape/axes without reformatting or replacing supplied lookup properties.
+    axes(data) == map(first, map(axes, dims)) ||
+        throw(DimensionMismatch("storage axes do not match dimension axes"))
+    if data isa AbstractMatrix && canonical_dims(dims)
+        Base.require_one_based_indexing(data)
+        return series_from_dims(data, dims)
+    end
+    return DimArray(data, dims, refdims, name, metadata)
+end
 
 """Drop the series guarantees, keeping samples and labels."""
 dimarray(s::AbstractSeries) = DimArray(parent(s), dims(s))
@@ -138,27 +159,52 @@ function Base.cumsum(s::AbstractSeries; dims)
     out = invoke(cumsum, Tuple{AbstractDimArray}, s; dims)
     return dimnum(s, dims) == 1 ? out : dimarray(out)
 end
-# DimensionalData's `map` skips lookup values; compare grids as broadcasting does.
-function Base.map(f, A1::AbstractSeries, As::AbstractDimArray...)
-    DD.comparedims(A1, As...; val = true)
-    return invoke(map, Tuple{Any, AbstractDimArray, Vararg{AbstractDimArray}}, f, A1, As...)
-end
-# Assigning a series checks the destination block's grid; selectors reach this after conversion.
-function Base.setindex!(s::AbstractSeries, v::AbstractSeries, i1::DD.StandardIndices, I::DD.StandardIndices...)
-    destination = view(s, i1, I...)
-    if destination isa AbstractSeries
-        check_same_grid(destination, v)
-    else
-        DD.comparedims(destination, v; val = true)
+# Public comparisons check labels and lookup properties; owned grids add strict epochs
+# and recorded spectral lengths (including for a DimArray retaining series dimensions).
+function check_labelled_operands(a::AbstractDimArray, bs::AbstractDimArray...)
+    for b in bs
+        a isa AbstractSeries && b isa AbstractSeries && check_same_grid(a, b)
+        Dimensions.comparedims(a, b; val = true)
+        for (da, db) in zip(dims(a), dims(b))
+            check_labelled_dimension(da, db)
+        end
     end
-    setindex!(parent(s), parent(v), i1, I...)
-    return s
+    return nothing
 end
-# Resolves an ambiguity with DimensionalData's method for DimIndices and empty index arrays.
-Base.setindex!(s::AbstractSeries, v::AbstractSeries, i1::DD._DimIndicesAmb, I::DD._DimIndicesAmb...) =
-    invoke(setindex!, Tuple{AbstractDimArray, Any, DD._DimIndicesAmb, Vararg{DD._DimIndicesAmb}}, s, v, i1, I...)
-function Base.copyto!(destination::AbstractSeries, source::AbstractSeries)
-    check_same_grid(destination, source)
+check_labelled_dimension(a, b) = nothing
+check_labelled_dimension(a::GPSTime, b::GPSTime) = check_labelled_coordinates(a, b, "epochs", EPOCH_HINT)
+check_labelled_dimension(a::Freq, b::Freq) = check_labelled_coordinates(a, b, "origins", "")
+function check_labelled_coordinates(a, b, origin, hint)
+    ga, gb = parent(lookup(a)), parent(lookup(b))
+    if comparable_grids(ga, gb)
+        check_grid(ga, gb)
+    elseif ga isa AbstractRange{<:Real} && gb isa AbstractRange{<:Real}
+        check_range(ga, gb, origin, hint)
+    elseif ga isa Union{TimeGrid, SpectralGrid} && gb isa AbstractVector{<:Real}
+        check_labelled_values(ga, gb, origin, hint)
+    elseif gb isa Union{TimeGrid, SpectralGrid} && ga isa AbstractVector{<:Real}
+        check_labelled_values(gb, ga, origin, hint)
+    end
+    return nothing
+end
+function check_labelled_values(grid, values, origin, hint)
+    length(grid) == length(values) || throw(DimensionMismatch("grid sample counts differ"))
+    for (a, b) in zip(grid, values)
+        check_coordinate(a, b, step(grid), origin, hint)
+    end
+    return nothing
+end
+
+function checked_map(f, a, bs...)
+    check_labelled_operands(a, bs...)
+    return invoke(map, Tuple{Any, AbstractDimArray, Vararg{AbstractDimArray}}, f, a, bs...)
+end
+Base.map(f, a::AbstractSeries, bs::AbstractDimArray...) = checked_map(f, a, bs...)
+Base.map(f, a::AbstractDimArray, b::AbstractSeries) = checked_map(f, a, b)
+Base.map(f, a::AbstractSeries, b::AbstractSeries) = checked_map(f, a, b)
+
+function Base.copyto!(destination::AbstractSeries, source::AbstractDimArray)
+    check_labelled_operands(destination, source)
     copyto!(parent(destination), parent(source))
     return destination
 end

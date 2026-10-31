@@ -20,9 +20,15 @@ GWSeries provides DimensionalData-backed matrices for uniformly sampled time ser
 - Add explicit methods for DD operations that keep dims while reordering or
   mixing samples (`circshift`, `diff`, `cumsum` across channels), and for paths
   that skip lookup-value checks (`map`, `copyto!`, series `setindex!`).
-- The epoch check relies on the private `Dimensions._comparedims2` hook; keep the
-  narrow DimensionalData compat bound and the epoch-shift regression test, and
-  recheck both when upgrading DimensionalData.
+- Keep private DD 0.30 dependencies isolated in `src/dd_compat.jl`:
+  `Dimensions._comparedims2` is required because tuple comparison bypasses public
+  pairwise dispatch; epoch-shift, predicate, and singleton-broadcast regressions
+  guard its tolerance and behavior. `DD.StandardIndices` routes terminal assignment
+  after selector conversion; `DD._DimIndicesAmb` resolves overlapping selector and
+  empty-index-array methods. Mixed labelled assignment and empty-index regressions,
+  plus Aqua, cover these aliases. Keep specializations on GWSeries-owned types,
+  retain the narrow compatibility bound, and recheck all adapters on DD upgrades.
+  Use public `DD.Dimensions.comparedims` for ordinary operand validation.
 - Methods overriding DD's AbstractFFTs extension must mirror its fixed arities;
   `Vararg` rejection methods are ambiguous with it. Run Aqua after FFT changes.
 - FrequencySeries starts at DC and records the original `time_samples` after

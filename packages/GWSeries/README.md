@@ -27,7 +27,14 @@ the epoch and original time length. `times(x)` and `frequencies(h)` return their
 ranges (`range(epoch; step, length)` and `range(0; step = df, length)`), so code that
 computes with coordinates gets ordinary Base range arithmetic. Sample count is derived from storage,
 so reconstruction with different row counts changes duration/extent. Constructors
-validate intrinsic metadata, one-based storage axes, and unique channel names.
+validate intrinsic metadata, one-based storage axes, and unique channel names through
+DimensionalData's dimension formatting API. `rebuild(x; data, dims)` retains a series
+only for `(GPSTime, Chan)` or `(Freq, Chan)` dimensions with the appropriate grid
+wrapper, forward order, matching regular spacing, point sampling, and unique channels.
+It preserves supplied lookups (including lookup metadata) and shares the supplied
+sample storage. Noncanonical dimensions produce a `DimArray` with those exact lookup
+properties; shape or axis mismatches throw. Series carry no DD name, reference
+dimensions, or array metadata.
 
 ## Array operations and selection
 
@@ -62,9 +69,15 @@ series. `crop(x; start, stop)` and `pad(x; before, after)` apply only to TimeSer
 uses grid-aligned half-open boundaries; padding before shifts the epoch.
 
 Operands are checked before executing on parent storage: broadcasting (including into a
-destination with `.=`), `+`, `-`, `map`, `copyto!`, and assignment of a series
-(`out[:, :] = y`) compare grids. Use `flatten` around repeated numerical work to avoid
-repeated checks. Static matrices combine with `+`/`-` into unlabelled static arrays;
+destination with `.=`), `+`, `-`, binary `map` in either labelled operand order,
+series-first n-ary `map`, full-array `copyto!`, and assignment into a series
+(`out[:, :] = y`) compare labelled grids. Indexed assignment compares the selected
+destination block before writing. Unlabelled array sources remain positional;
+offset-based `copyto!` retains upstream behavior. `map` reconstructs from its first
+operand, so `map(+, x, DimArray(x))` returns a series while reversing those operands
+returns a `DimArray`. Other mixed n-ary `map` calls retain upstream behavior; use
+broadcasting to validate labelled operands in arbitrary positions. Use `flatten` around
+repeated numerical work to avoid repeated checks. Static matrices combine with `+`/`-` into unlabelled static arrays;
 broadcasting them with any DimensionalData array is unsupported upstream.
 
 `frequency_bins(h; fmin, fmax)` returns indices of existing bins inside inclusive bounds,
@@ -89,6 +102,8 @@ supporting your parent storage (for example FFTW for CPU arrays):
 ```julia
 using AbstractFFTs, FFTW
 h = rfft(x)                    # FrequencySeries: dt*rfft(parent(x), 1)
+h = rfft(x, GPSTime)           # also GPSTime(), :GPSTime, or Val(:GPSTime)
+z = irfft(h, nsamples(x), Freq) # named frequency dimension
 z = irfft(h)                   # TimeSeries, original epoch, channels and length
 z = irfft(h, nsamples(x))      # explicit length, checked against the recorded one
 h = to_frequencydomain(x)      # real samples only
@@ -99,6 +114,9 @@ GWSeries depends only on the AbstractFFTs interface. If no backend is loaded for
 parent storage, series transforms and plans throw an `ArgumentError` naming the fix
 (`using FFTW` for CPU arrays).
 
+Series transforms accept the sample axis as an integer, dimension type or instance,
+symbol, or supported `Val` form, including single-element tuple/vector arguments.
+Channel, multiple, empty, and unknown dimensions throw before backend execution.
 Series transforms act only on dimension one, preserve epoch and channels, and
 use physical normalization. Transforms of `parent(x)` retain standard backend
 conventions. Real transforms support odd and even lengths; the original length is always required

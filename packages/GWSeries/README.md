@@ -38,6 +38,24 @@ dimensions, or array metadata.
 
 ## Array operations and selection
 
+### Plotting with Makie
+
+Load a Makie backend such as CairoMakie to plot all channels as lines with a
+legend. Time is shown in seconds relative to the GPS epoch; frequency is in Hz.
+Complex frequency series require an explicit representation: `:magnitude`,
+`:phase`, `:real`, or `:imaginary`. Real frequency values are plotted as stored.
+
+```julia
+using CairoMakie
+lines(x)
+lines(h; representation = :magnitude)
+```
+
+Use `lines!(ax, x)` to add lines to an existing axis; call `axislegend(ax)`
+when a legend is wanted. Pass `axis` and `figure` keyword tuples to `lines`
+to customize the created axis and figure. Makie also exports `TimeSeries`, so
+use `GWSeries.TimeSeries` when constructing one after loading both packages.
+
 Series are `AbstractDimArray`s, so DimensionalData selectors, broadcasting, reductions,
 plotting recipes, and Tables interop apply. A result is still a series only when it
 keeps a valid grid; otherwise it is a plain `DimArray` that keeps the labels but not

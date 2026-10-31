@@ -1,14 +1,14 @@
 [workspace]
 projects = [
     "packages/AbstractWaveforms",
-    "packages/LALWaveforms",
-    "packages/GWParameterConversion",
-    "packages/FrequencyDomainWaveforms",
-    "packages/GWDistributions",
-    "packages/GWDetectors",
-    "packages/GWSeries",
-    "packages/GWNoise",
-    "packages/GWMatchedFiltering",
-    "packages/SurrogateWaveforms",
     "packages/AbstractWaveformsTests",
+    "packages/FrequencyDomainWaveforms",
+    "packages/GWDetectors",
+    "packages/GWDistributions",
+    "packages/GWMatchedFiltering",
+    "packages/GWNoise",
+    "packages/GWParameterConversion",
+    "packages/GWSeries",
+    "packages/LALWaveforms",
+    "packages/SurrogateWaveforms",
 ]

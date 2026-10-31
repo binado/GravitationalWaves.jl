@@ -37,9 +37,16 @@ must have the same shape. Matched-filter SNR assumes a finite nonzero template, 
 
 ## Differentiation and performance
 
-ForwardDiff and Mooncake acceptance lives in `integration/GWMatchedFiltering`; only strain
+ForwardDiff and Mooncake acceptance lives in the package’s `test/test_acceptance_*.jl` files; only strain
 parameters are differentiated, `W` and `df` are fixed. Enzyme and Reactant are not supported
 (see `AGENTS.md` for the pitfalls found). The kernels are written as array expressions so they
 trace and differentiate, which allocates: for three channels they are roughly 4x (diagonal) to
 6-16x (blocks) slower than hand-written host loops. A host fast path is a recorded TODO in
 `src/whitened.jl`. Layout measurements live in `benchmarks/GWMatchedFiltering`.
+
+## Local acceptance tests
+
+The acceptance items check joint metrics, waveform/projection/likelihood composition, metadata and reconstruction boundaries, single-channel vectors and fixed Planck windows.
+
+From the repository root, run `just test-integration-inference`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

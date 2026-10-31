@@ -1,10 +1,14 @@
-using FiniteDifferences
-using ForwardDiff
-using JET
-using NPZ
-using StaticArrays
+using TestItems
 
-@testset "dynamics kernels" begin
+@testsnippet Setup_dynamics begin
+    using FiniteDifferences
+    using ForwardDiff
+    using JET
+    using NPZ
+    using StaticArrays
+end
+
+@testitem "dynamics kernels" setup = [Common, Setup_dynamics] begin
     @testset "ab4_dy integrates a cubic derivative exactly" begin
         # Derivative samples k(t) = 1 + 2t - t^2 + 0.5t^3 at t = 0, dt1, dt1+dt2, dt1+dt2+dt3.
         k(t) = 1 + 2t - t^2 + 0.5t^3
@@ -54,7 +58,7 @@ using StaticArrays
     end
 end
 
-@testset "dynamics surrogate" begin
+@testitem "dynamics surrogate" setup = [Common, Setup_dynamics] begin
     ci = get(ENV, "CI", "false") == "true"
     for (model, params) in pairs(MODEL_PARAMS)
         fixture = joinpath(FIXTURE_DIR, "$(model)_dynamics.npz")

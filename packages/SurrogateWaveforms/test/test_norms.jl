@@ -1,7 +1,11 @@
-using FiniteDifferences
-using ForwardDiff
+using TestItems
 
-@testset "guarded norms" begin
+@testsnippet Setup_norms begin
+    using FiniteDifferences
+    using ForwardDiff
+end
+
+@testitem "guarded norms" setup = [Common, Setup_norms] begin
     fdm = central_fdm(5, 1)
 
     @testset "values" begin

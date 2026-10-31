@@ -1,4 +1,4 @@
-# Shared optimal-SNR setup for the heavy gradient suites under integration/. Needs GWNoise and
+# Shared optimal-SNR setup for tagged package acceptance tests. Needs GWNoise and
 # GWMatchedFiltering in the including environment.
 using GWNoise, GWMatchedFiltering
 

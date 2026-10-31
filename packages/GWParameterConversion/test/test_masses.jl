@@ -1,6 +1,10 @@
-using ForwardDiff
+using TestItems
 
-@testset "masses" begin
+@testsnippet Setup_masses begin
+    using ForwardDiff
+end
+
+@testitem "masses" setup = [Common, Setup_masses] begin
     G = GWParameterConversion
     pairs = [(36.0, 29.0), (50.0, 20.0), (30.0, 30.0), (10.5, 1.4), (1.4, 1.35)]
 

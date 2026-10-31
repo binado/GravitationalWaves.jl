@@ -1,12 +1,16 @@
-import BackgroundCosmology
-using BackgroundCosmology: cosmology, comoving_volume_element
-using Distributions
-using ForwardDiff
-using Random
+using TestItems
 
-const _RS_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
+@testsnippet Setup_redshift begin
+    import BackgroundCosmology
+    using BackgroundCosmology: cosmology, comoving_volume_element
+    using Distributions
+    using ForwardDiff
+    using Random
 
-@testset "madau_dickinson_rate" begin
+    const _RS_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
+end
+
+@testitem "madau_dickinson_rate" setup = [Common, Setup_redshift] begin
     γ, κ, z_peak = 2.7, 3.0, 2.0
     @test madau_dickinson_rate(0.0, γ, κ, z_peak) ≈ 1.0
     @test madau_dickinson_rate(0.0, γ, κ, z_peak, 17.0) ≈ 17.0
@@ -17,7 +21,7 @@ const _RS_PARAMS = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0,
     end
 end
 
-@testset "RedshiftDistribution table" begin
+@testitem "RedshiftDistribution table" setup = [Common, Setup_redshift] begin
     d = madau_dickinson_redshift_distribution(; params = _RS_PARAMS, maximum_redshift = 2.0, n_grid = 101)
     c = cosmology(_RS_PARAMS)
     z = collect(range(0.0, 2.0; length = 101))
@@ -53,7 +57,7 @@ end
     @test all(s -> insupport(d, s), samples)
 end
 
-@testset "RedshiftDistribution distance accessors" begin
+@testitem "RedshiftDistribution distance accessors" setup = [Common, Setup_redshift] begin
     d = madau_dickinson_redshift_distribution(; params = _RS_PARAMS, maximum_redshift = 2.0, n_grid = 101)
     c = cosmology(_RS_PARAMS)
     # On a node: exact; between nodes: linear; outside: clamped.
@@ -82,14 +86,14 @@ end
     @test distance_ratio(dgr, 1.7) ≈ 1.0
 end
 
-@testset "RedshiftDistribution with w0waCDM" begin
+@testitem "RedshiftDistribution with w0waCDM" setup = [Common, Setup_redshift] begin
     p = merge(_RS_PARAMS, (w0 = -0.9, wa = 0.1))
     d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)
     @test isfinite(normalizer(d))
     @test isfinite(logpdf(d, 1.0))
 end
 
-@testset "RedshiftDistribution preserves AD" begin
+@testitem "RedshiftDistribution preserves AD" setup = [Common, Setup_redshift] begin
     f = Ωm -> begin
         p = (H0 = 67.66, Ωm = Ωm, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
         d = madau_dickinson_redshift_distribution(; params = p, maximum_redshift = 2.0, n_grid = 51)

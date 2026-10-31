@@ -1,4 +1,10 @@
-@testset "Fixed-whitening strain derivatives" begin
+using TestItems
+
+@testsnippet Setup_ad begin
+    include("ad_helpers.jl")
+end
+
+@testitem "Fixed-whitening strain derivatives" tags = [:ad] setup = [Common, Setup_ad] begin
     x = [0.8, 0.2]
     for loss in (diagonal_loss, correlated_loss, statistics_loss)
         actual = ForwardDiff.gradient(loss, x)

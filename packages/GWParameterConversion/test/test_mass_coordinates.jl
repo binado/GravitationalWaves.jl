@@ -1,8 +1,13 @@
-using ChangesOfVariables: with_logabsdet_jacobian
-using InverseFunctions: inverse
-using LinearAlgebra: logabsdet
+using TestItems
 
-@testset "mass coordinates" begin
+@testsnippet Setup_mass_coordinates begin
+    using ForwardDiff
+    using ChangesOfVariables: with_logabsdet_jacobian
+    using InverseFunctions: inverse
+    using LinearAlgebra: logabsdet
+end
+
+@testitem "mass coordinates" setup = [Common, Setup_mass_coordinates] begin
     transforms = (
         (chirp_mass_and_mass_ratio_to_component_masses, component_masses_to_chirp_mass_and_mass_ratio, :chirp_mass),
         (total_mass_and_mass_ratio_to_component_masses, component_masses_to_total_mass_and_mass_ratio, :total_mass),

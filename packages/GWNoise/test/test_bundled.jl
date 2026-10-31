@@ -1,4 +1,6 @@
-@testset "bundled PSDs" begin
+using TestItems
+
+@testitem "bundled PSDs" setup = [Common] begin
     @test length(available_psds()) == 12
     @test length(unique(available_psds())) == 12
     for name in available_psds()

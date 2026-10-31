@@ -1,6 +1,10 @@
-using LinearAlgebra
+using TestItems
 
-@testset "Plain-array noise covariance" begin
+@testsnippet Setup_arrays begin
+    using LinearAlgebra
+end
+
+@testitem "Plain-array noise covariance" setup = [Common, Setup_arrays] begin
     @testset "band_psd" begin
         curve = TabulatedPSD([0, 64], [2, 2])
         f = range(0.0; step = 1.0, length = 65)
@@ -95,7 +99,7 @@ using LinearAlgebra
     end
 end
 
-@testset "Noise and matched-filtering normalization contract" begin
+@testitem "Noise and matched-filtering normalization contract" setup = [Common, Setup_arrays] begin
     using GWMatchedFiltering: whiten, complex_inner_product, noise_weighted_inner_product, optimal_snr_squared
     rng = Xoshiro(11)
     df = 0.25

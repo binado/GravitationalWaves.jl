@@ -1,8 +1,12 @@
-using ForwardDiff
+using TestItems
 
-to_masses(nt) = convert_parameters(nt, (:mass_1, :mass_2))
+@testsnippet Setup_convert begin
+    using ForwardDiff
 
-@testset "convert_parameters" begin
+    to_masses(nt) = convert_parameters(nt, (:mass_1, :mass_2))
+end
+
+@testitem "convert_parameters" setup = [Common, Setup_convert] begin
     m1, m2 = 36.0, 29.0
     mc, mt, q, eta = chirp_mass(m1, m2), total_mass(m1, m2), mass_ratio(m1, m2), symmetric_mass_ratio(m1, m2)
     masses = (:mass_1, :mass_2)

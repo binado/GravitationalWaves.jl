@@ -1,13 +1,21 @@
-using ADTypes: AutoForwardDiff, AutoMooncake
-using AbstractWaveformsTests
-using Mooncake: Mooncake
-include("../common/snr.jl")
+using TestItems
 
-const SNR_GRID = LinRange(0.0, 1024.0, 2049)
-const SNR_IDS = ("bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned")
-const SNR_BACKENDS = (AutoForwardDiff(), AutoMooncake(; config = nothing))
+@testsnippet Setup_acceptance_snr begin
+    using GWSeries
+    using Test
+    using FrequencyDomainWaveforms
 
-@testset "FD optimal SNR" begin
+    using ADTypes: AutoForwardDiff, AutoMooncake
+    using AbstractWaveformsTests
+    using Mooncake: Mooncake
+    include(joinpath(pkgdir(AbstractWaveformsTests), "test", "support", "snr.jl"))
+
+    const SNR_GRID = LinRange(0.0, 1024.0, 2049)
+    const SNR_IDS = ("bbh_equal", "bbh_unequal", "bbh_aligned", "bbh_antialigned")
+    const SNR_BACKENDS = (AutoForwardDiff(), AutoMooncake(; config = nothing))
+end
+
+@testitem "FD optimal SNR" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_snr] begin
     f = SNR_GRID
     for G in (TaylorF2, IMRPhenomD, IMRPhenomXAS)
         generator = G(; minimum_frequency = 20.0, maximum_frequency = 1024.0)
@@ -29,7 +37,7 @@ const SNR_BACKENDS = (AutoForwardDiff(), AutoMooncake(; config = nothing))
     end
 end
 
-@testset "FD waveform Jacobian" begin
+@testitem "FD waveform Jacobian" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_snr] begin
     for G in (TaylorF2, IMRPhenomD, IMRPhenomXAS)
         generator = G(; minimum_frequency = 20.0, maximum_frequency = 1024.0)
         @testset "$G" begin

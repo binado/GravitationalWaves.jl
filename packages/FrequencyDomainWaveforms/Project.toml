@@ -10,10 +10,20 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
+AbstractWaveformsTests = {path = "../AbstractWaveformsTests"}
+LALWaveforms = {path = "../LALWaveforms"}
+GWMatchedFiltering = {path = "../GWMatchedFiltering"}
+GWNoise = {path = "../GWNoise"}
+GWSeries = {path = "../GWSeries"}
 AbstractWaveforms = {path = "../AbstractWaveforms"}
 GWParameterConversion = {path = "../GWParameterConversion"}
 
 [compat]
+TestItems = "1"
+TestItemRunner = "1"
+ADTypes = "1"
+GWNoise = "0.3"
+Mooncake = "0.5"
 AbstractWaveforms = "0.3"
 AbstractWaveformsTests = "0.1"
 Aqua = "0.8"
@@ -31,6 +41,11 @@ Test = "1"
 julia = "1.12"
 
 [extras]
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+GWNoise = "364a1f13-170e-48c9-a1df-e80dad50e028"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 AbstractWaveformsTests = "7a0139d6-47ed-4875-916e-ca5fc9bad9e0"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
@@ -43,4 +58,4 @@ LALWaveforms = "46d55bfd-a6ec-4788-a7e2-8ddbff47c71c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["AbstractWaveformsTests", "Aqua", "DifferentiationInterface", "FiniteDifferences", "ForwardDiff", "GWMatchedFiltering", "GWSeries", "JET", "LALWaveforms", "Test"]
+test = ["AbstractWaveformsTests", "Aqua", "DifferentiationInterface", "FiniteDifferences", "ForwardDiff", "GWMatchedFiltering", "GWSeries", "JET", "LALWaveforms", "Test", "TestItems", "TestItemRunner", "ADTypes", "GWNoise", "Mooncake"]

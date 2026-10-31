@@ -151,3 +151,10 @@ noise, calibration, and a network container remain future work.
 Projection accepts polarization series and returns detector series. For repeated AD
 work, retain fixed frequency/epoch keywords and plain sample arrays. Metadata is
 configuration; runtime-changing grids and FFT differentiation are outside acceptance.
+
+## Local acceptance tests
+
+Geometry, timing, antenna and phase-sensitive projection gradients compare ForwardDiff and Mooncake, reusing the package-local AD helpers.
+
+From the repository root, run `just test-integration-detectors`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

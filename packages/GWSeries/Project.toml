@@ -9,6 +9,9 @@ DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
+TestItems = "1"
+TestItemRunner = "1"
+DifferentiationInterface = "0.7"
 ChainRulesCore = "1"
 ForwardDiff = "1"
 Mooncake = "0.5"
@@ -35,6 +38,11 @@ GWSeriesForwardDiffExt = "ForwardDiff"
 GWSeriesMooncakeExt = ["Mooncake", "ChainRulesCore"]
 
 [extras]
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Interfaces = "85a1e053-f937-4924-92a5-1367d23b7b87"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
@@ -47,4 +55,4 @@ JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DimensionalData", "ForwardDiff", "Interfaces", "StaticArrays", "Random", "ArrayInterface", "Aqua", "FFTW", "JET", "Test"]
+test = ["DimensionalData", "ForwardDiff", "Interfaces", "StaticArrays", "Random", "ArrayInterface", "Aqua", "FFTW", "JET", "Test", "TestItems", "TestItemRunner", "Mooncake", "ChainRulesCore", "DifferentiationInterface"]

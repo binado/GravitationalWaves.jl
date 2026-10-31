@@ -4,23 +4,23 @@ import unittest
 from ci import PACKAGES, check_status, select_matrix, select_packages
 
 
-CONVERSION_AFFECTED = ["LALWaveforms", "GWParameterConversion", "FrequencyDomainWaveforms"]
+CONVERSION_AFFECTED = ["AbstractWaveforms", "LALWaveforms", "GWParameterConversion", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"]
 
 
 class SelectionTests(unittest.TestCase):
     def test_package_dependencies(self):
         cases = {
-            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "GWSeries": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWSeries", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "GWDistributions": ["GWDistributions"],
-            "GWDetectors": ["GWDetectors"],
-            "GWNoise": ["GWNoise"],
+            "GWDetectors": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDetectors", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "GWNoise": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "GWMatchedFiltering": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
-            "AbstractWaveformsTests": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "AbstractWaveformsTests": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
             "SurrogateWaveforms": ["SurrogateWaveforms"],
-            "FrequencyDomainWaveforms": ["FrequencyDomainWaveforms"],
-            "LALWaveforms": ["LALWaveforms", "FrequencyDomainWaveforms"],
-            "AbstractWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "SurrogateWaveforms", "AbstractWaveformsTests"],
-            "GWParameterConversion": CONVERSION_AFFECTED,
+            "FrequencyDomainWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "LALWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "AbstractWaveforms": ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
+            "GWParameterConversion": ["AbstractWaveforms", "LALWaveforms", "GWParameterConversion", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
         }
         for package, expected in cases.items():
             for suffix in (
@@ -62,7 +62,7 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(
                     select_packages([f"python/{name}"]),
-                    CONVERSION_AFFECTED + ["GWDetectors", "GWMatchedFiltering"],
+                    [p for p in PACKAGES if p in set(CONVERSION_AFFECTED) | {"GWDetectors", "GWMatchedFiltering"}],
                 )
 
     def test_surrogate_python_tooling_selects_only_surrogates(self):
@@ -90,13 +90,13 @@ class SelectionTests(unittest.TestCase):
                     "README.md",
                 ]
             ),
-            ["LALWaveforms", "FrequencyDomainWaveforms", "GWDistributions"],
+            ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWDistributions", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
         )
 
     def test_local_only_paths_select_nothing(self):
         for path in ("packages/SurrogatePyCallWaveforms/src/SurrogatePyCallWaveforms.jl",
                      "packages/SurrogatePyCallWaveforms/Project.toml",
-                     "integration/SurrogateWaveforms/gwsurrogate_reference/runtests.jl"):
+                     "packages/SurrogatePyCallWaveforms/test/test_acceptance_reference.jl"):
             self.assertEqual(select_packages([path]), [])
 
     def test_cross_package_rename(self):
@@ -108,13 +108,13 @@ class SelectionTests(unittest.TestCase):
                     "packages/GWParameterConversion/src/new.jl",
                 ]
             ),
-            CONVERSION_AFFECTED + ["GWDistributions"],
+            [p for p in PACKAGES if p in set(CONVERSION_AFFECTED) | {"GWDistributions"}],
         )
 
     def test_unusual_filenames_are_data(self):
         self.assertEqual(
             select_packages(["packages/FrequencyDomainWaveforms/test/space ' quote $(cmd)\n.jl"]),
-            ["FrequencyDomainWaveforms"],
+            ["AbstractWaveforms", "LALWaveforms", "FrequencyDomainWaveforms", "GWNoise", "GWMatchedFiltering", "SurrogateWaveforms", "AbstractWaveformsTests"],
         )
 
     def test_event_matrices(self):

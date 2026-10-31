@@ -1,4 +1,6 @@
-@testset "Planck windows" begin
+using TestItems
+
+@testitem "Planck windows" setup = [Common] begin
     domain(n; fs = 8, epoch = 0, channels = (:H1,)) =
         TimeSeries(zeros(n, length(channels)); epoch, sampling_frequency = fs, channels)
     weights(td; kwargs...) = PlanckWindow(td; kwargs...).weights

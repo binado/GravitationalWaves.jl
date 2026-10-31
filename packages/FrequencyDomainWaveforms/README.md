@@ -136,3 +136,10 @@ needs no LAL libraries.
 ## License
 
 GPL-2.0-or-later: the models are ports of LALSimulation.
+
+## Local acceptance tests
+
+Acceptance checks ForwardDiff/Mooncake waveform gradients, boundaries and cache reuse, optimal SNR, phase sensitivity and forward-mode Jacobians. `just test-reference-waveforms` selects the live LAL reference items and requires `LALWAVEFORMS_LIBDIR` or a saved library preference. Polarizations agree to mismatch 1e-14 and peak-relative pointwise tolerance 1e-10, with identical zero support; missing libraries fail this explicit selection.
+
+From the repository root, run `just test-integration-waveforms`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

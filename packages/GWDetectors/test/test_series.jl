@@ -1,7 +1,12 @@
-if !isdefined(@__MODULE__, :time_prototype)
-    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
+using TestItems
+
+@testsnippet Setup_series begin
+    using StaticArrays
+
+    include("prototypes.jl")
 end
-@testset "Domain projection preconditions" begin
+
+@testitem "Domain projection preconditions" setup = [Common, Setup_series] begin
     f = 0:0.25:8
     pol = (; plus = complex.(sin.(f)), cross = complex.(cos.(f)))
     sky = (; ra = 1.2, dec = -0.4, psi = 0.7, geocent_time = 1126259462.25)

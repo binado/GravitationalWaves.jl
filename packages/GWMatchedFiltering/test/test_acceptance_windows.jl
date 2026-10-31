@@ -1,7 +1,22 @@
-if !isdefined(@__MODULE__, :time_prototype)
-    include(joinpath(@__DIR__, "../../packages/GWSeries/test/prototypes.jl"))
+using TestItems
+
+@testsnippet Setup_acceptance_windows begin
+    using Test
+    using GWMatchedFiltering
+    using GWSeries
+    using GWDetectors
+    using FrequencyDomainWaveforms
+    using GWNoise
+    using LinearAlgebra
+    using Random
+    using ForwardDiff
+    using DifferentiationInterface
+    using Mooncake: Mooncake
+
+    include("prototypes.jl")
 end
-@testset "Fixed Planck window ForwardDiff and Mooncake" begin
+
+@testitem "Fixed Planck window ForwardDiff and Mooncake" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_windows] begin
     td = time_prototype(; epoch = 1126259460.125, nsamples = 17, sampling_frequency = 8, channels = (:H1,))
     window = PlanckWindow(td; start_width = 0.5, end_width = 0.75)
     w = window.weights

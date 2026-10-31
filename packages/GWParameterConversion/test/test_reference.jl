@@ -1,6 +1,10 @@
-using JSON
+using TestItems
 
-@testset "reference (bilby)" begin
+@testsnippet Setup_reference begin
+    using JSON
+end
+
+@testitem "reference (bilby)" tags = [:reference] setup = [Common, Setup_reference] begin
     file = joinpath(@__DIR__, "..", "..", "..", "reference", "conversion.json")
     if !isfile(file)
         msg = "bilby conversion fixtures missing ($file); " *

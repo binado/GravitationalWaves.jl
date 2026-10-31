@@ -51,8 +51,8 @@ manifest and dependency changes already present in the working tree.
   Consult [.github/ci/ci.py](.github/ci/ci.py) for package-selection rules rather
   than maintaining a second dependency map here.
 - Run relevant integration suites for numerical kernels or AD changes before
-  submitting them. These use standalone environments under `integration/`;
-  ordinary package tests do not run them.
+  submitting them. These are tagged package test items selected with
+  `Pkg.test(test_args=["integration"])`; ordinary package tests do not run them.
 - Check [.github/workflows/CI.yml](.github/workflows/CI.yml) for current Julia
   versions, setup, formatting, and required checks. Local integration acceptance
   remains necessary even when default CI passes.

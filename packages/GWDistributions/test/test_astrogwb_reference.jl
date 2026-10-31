@@ -1,8 +1,12 @@
-using Distributions
+using TestItems
 
-# Values printed by astrogwb (JAX, x64) with H0 = 67.66, Ω_m = 0.30966, γ = 2.7, κ = 3.0,
-# z_peak = 2.0, local_merger_rate = 17 on the default grid (z ∈ [0, 10], 1000 nodes).
-@testset "astrogwb reference values" begin
+@testsnippet Setup_astrogwb_reference begin
+    using Distributions
+end
+
+@testitem "astrogwb reference values" tags = [:reference] setup = [Common, Setup_astrogwb_reference] begin
+    # Values printed by astrogwb (JAX, x64) with H0 = 67.66, Ω_m = 0.30966, γ = 2.7, κ = 3.0,
+    # z_peak = 2.0, local_merger_rate = 17 on the default grid (z ∈ [0, 10], 1000 nodes).
     params = (H0 = 67.66, Ωm = 0.30966, γ = 2.7, κ = 3.0, z_peak = 2.0, local_merger_rate = 17.0)
     zs = [0.1, 0.5, 1.0, 2.5, 7.0]
     qs = [0.1, 0.5, 0.9]

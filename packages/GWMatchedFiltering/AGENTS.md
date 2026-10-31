@@ -18,5 +18,5 @@ GWMatchedFiltering computes whitened frequency-domain statistics on plain arrays
   waveform/projection/likelihood acceptance; use `just benchmark-inference` for
   performance changes and storage-layout comparisons.
 
-See the [README](README.md), [integration guide](../../integration/README.md), and
+See the [README](README.md), [testing guide](../../README.md#development-and-tests), and
 [benchmark guide](../../benchmarks/GWMatchedFiltering/README.md).

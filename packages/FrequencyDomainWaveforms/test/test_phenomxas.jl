@@ -1,7 +1,13 @@
-using ForwardDiff
-using LinearAlgebra
+using TestItems
 
-@testset "IMRPhenomXAS internals and boundaries" begin
+@testsnippet Setup_phenomxas begin
+    using AbstractWaveformsTests
+
+    using ForwardDiff
+    using LinearAlgebra
+end
+
+@testitem "IMRPhenomXAS internals and boundaries" setup = [Common, Setup_phenomxas] begin
     @testset "small pivoted solves" begin
         for n in (3, 4, 5), shift in 0:(n - 1)
             A = [sin(i * j) + (i == j ? 3.0 : 0.0) for i in 1:n, j in 1:n]

@@ -191,3 +191,10 @@ reuses AbstractFFTs' ChainRules pullback, including one-sided endpoint weights.
 Mooncake's bridge currently supports dense Float32/Float64 sample matrices with
 matching spacing precision. Inverse transforms and mutable prepared-plan AD are
 not covered by this contract. See `just test-integration-series` for validation.
+
+## Local acceptance tests
+
+Physical Fourier gradients are compared with explicit DFTs across odd/even lengths, multiple channels, DC/interior/final bins, cotangents, and prepared-gradient reuse. The unrecorded-spectrum metadata regression also runs here.
+
+From the repository root, run `just test-integration-series`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

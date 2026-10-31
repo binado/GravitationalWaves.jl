@@ -1,6 +1,12 @@
-import ForwardDiff as FD
+using TestItems
 
-@testset "model building blocks" begin
+@testsnippet Setup_internals begin
+    using AbstractWaveformsTests
+
+    import ForwardDiff as FD
+end
+
+@testitem "model building blocks" setup = [Common, Setup_internals] begin
     G = FrequencyDomainWaveforms
 
     @testset "TaylorF2 phasing" begin
@@ -130,7 +136,7 @@ import ForwardDiff as FD
     end
 end
 
-@testset "TaylorF2 amplitude_phase_fd is zero outside the band" begin
+@testitem "TaylorF2 amplitude_phase_fd is zero outside the band" setup = [Common, Setup_internals] begin
     f = range(0, 256; step = 0.25)
     params = (
         mass_1 = 36.0, mass_2 = 29.0, luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,
@@ -151,7 +157,7 @@ end
     @test all(iszero, amplitude_phase_fd(f, params, TaylorF2(; minimum_frequency = 300.0, maximum_frequency = 400.0)).amplitude)
 end
 
-@testset "IMRPhenomD requires mass_1 ≥ mass_2" begin
+@testitem "IMRPhenomD requires mass_1 ≥ mass_2" setup = [Common, Setup_internals] begin
     f = range(0, 512; step = 0.25)
     g = IMRPhenomD(; minimum_frequency = 20.0, maximum_frequency = 500.0)
     base = (; luminosity_distance = 400.0, theta_jn = 0.4, phase = 1.2)
@@ -162,7 +168,7 @@ end
     )
 end
 
-@testset "IMRPhenomD amplitude_phase_fd band and cutoff" begin
+@testitem "IMRPhenomD amplitude_phase_fd band and cutoff" setup = [Common, Setup_internals] begin
     f = range(0, 256; step = 0.25)
     base = (
         luminosity_distance = 450.0, theta_jn = 0.7, phase = 1.1,

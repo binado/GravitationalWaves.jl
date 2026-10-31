@@ -1,4 +1,10 @@
-@testset "library" begin
+using TestItems
+
+@testsnippet Setup_library begin
+    using AbstractWaveformsTests
+end
+
+@testitem "library" setup = [Common, Setup_library] begin
     LW = LALWaveforms
 
     @testset "discovery" begin

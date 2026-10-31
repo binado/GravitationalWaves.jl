@@ -1,9 +1,13 @@
-if !isdefined(@__MODULE__, :time_prototype)
-    include(joinpath(@__DIR__, "../../GWSeries/test/prototypes.jl"))
-end
-using JSON
+using TestItems
 
-@testset "LAL and Bilby fixtures" begin
+@testsnippet Setup_reference begin
+    using StaticArrays
+
+    include("prototypes.jl")
+    using JSON
+end
+
+@testitem "LAL and Bilby fixtures" tags = [:reference] setup = [Common, Setup_reference] begin
     path = joinpath(@__DIR__, "../../../reference/detectors.json")
     if !isfile(path)
         if get(ENV, "CI", "false") == "true"

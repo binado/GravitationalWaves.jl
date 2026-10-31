@@ -23,4 +23,4 @@ SurrogateWaveforms is a differentiable time-domain port of the NRSur7dq4 family 
   `just test-reference-surrogates` for the configured PyCall upstream comparison.
 
 See the [README](README.md) for AD rules, data attribution, and the intentional spline correction;
-see the [integration guide](../../integration/SurrogateWaveforms/README.md) for reference setup.
+see the [acceptance setup](../SurrogatePyCallWaveforms/README.md) for reference setup.

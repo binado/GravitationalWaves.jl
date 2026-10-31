@@ -1,6 +1,12 @@
-include("ad_helpers.jl")
+using TestItems
 
-@testset "ForwardDiff" begin
+@testsnippet Setup_ad begin
+    using StaticArrays
+
+    include("ad_helpers.jl")
+end
+
+@testitem "ForwardDiff" tags = [:ad] setup = [Common, Setup_ad] begin
     for loss in (geometry_loss, antenna_loss, timing_loss, projection_loss)
         actual = ForwardDiff.gradient(loss, AD_INPUT)
         expected = map(eachindex(AD_INPUT)) do i

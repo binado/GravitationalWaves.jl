@@ -1,18 +1,24 @@
-using GWSeries
-using Test
-using FrequencyDomainWaveforms
-using Mooncake: Mooncake
+using TestItems
 
-include("../../packages/FrequencyDomainWaveforms/test/ad_helpers.jl")
+@testsnippet Setup_acceptance_ad begin
+    using GWSeries
+    using Test
+    using FrequencyDomainWaveforms
+    using Mooncake: Mooncake
 
-test_waveform_gradients(
-    Pair{String, Any}[
-        "ForwardDiff" => AutoForwardDiff(),
-        "Mooncake" => AutoMooncake(; config = nothing),
-    ]
-)
+    include("ad_helpers.jl")
+end
 
-@testset "Mooncake boundaries and cache reuse" begin
+@testitem "Waveform parameter gradients" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
+    test_waveform_gradients(
+        Pair{String, Any}[
+            "ForwardDiff" => AutoForwardDiff(),
+            "Mooncake" => AutoMooncake(; config = nothing),
+        ]
+    )
+end
+
+@testitem "Mooncake boundaries and cache reuse" tags = [:integration, :ad, :slow] setup = [Setup_acceptance_ad] begin
     for G in (TaylorF2, IMRPhenomD, IMRPhenomXAS)
         generator = G(; minimum_frequency = 20.0)
         function loss(x)
@@ -42,5 +48,3 @@ test_waveform_gradients(
         @test tangents[2][1] ≈ ForwardDiff.derivative(FrequencyDomainWaveforms.xas_isco, a) rtol = 1.0e-10
     end
 end
-
-include("test_snr.jl")

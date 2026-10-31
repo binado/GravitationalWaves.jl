@@ -1,6 +1,11 @@
-using JSON
+using TestItems
 
-@testset "bilby and NumPy references" begin
+@testsnippet Setup_reference begin
+
+    using JSON
+end
+
+@testitem "bilby and NumPy references" tags = [:reference] setup = [Common, Setup_reference] begin
     path = joinpath(@__DIR__, "..", "..", "..", "reference", "inference.json")
     if isfile(path)
         reference = JSON.parsefile(path)

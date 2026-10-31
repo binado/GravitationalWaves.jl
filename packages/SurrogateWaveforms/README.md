@@ -46,7 +46,7 @@ download. Tests compare against `gwsurrogate`; generate the fixtures with
 ForwardDiff and Mooncake both differentiate the kernels,
 the coorbital surrogate, the dynamics integration and the full strain for both models, and agree
 with finite differences (`just test-integration-surrogates`, a local suite in
-`integration/SurrogateWaveforms`; CI does not run it). Enzyme and Reactant are out of scope.
+the package’s `test/test_acceptance_*.jl` files; CI does not run it). Enzyme and Reactant are out of scope.
 
 Cost of the gradient of a scalar functional of `hphc_td` (`ell_max = 4`, about 2600 samples at
 2048 Hz, 8 parameters: mass, mass ratio, six spin/orientation parameters), Apple M-series CPU,
@@ -130,3 +130,10 @@ plus/cross columns and supports the same time coordinates as `waveform_modes_td`
 prototype's peak-relative time grid with channels `(:plus, :cross)`. The existing
 `hphc_td(generator, params; dt=...)` and `times=uniform_range` conveniences still
 return TimeSeries. Detector GPS arrival-time placement is separate from these calls.
+
+## Local acceptance tests
+
+Acceptance checks native kernels, both models’ coorbital modes, dynamics, fixed-reference-time waveform gradients and SI strain, plus windowed and padded TD SNR. It requires model data from Scratch or `GWSURROGATES_DATA_DIR`, and needs no Python. Shared harmonic assembly AD belongs to AbstractWaveforms. The live upstream comparison belongs to [SurrogatePyCallWaveforms](../SurrogatePyCallWaveforms/README.md).
+
+From the repository root, run `just test-integration-surrogates`. These `:integration` items are excluded
+from default `Pkg.test()` and CI. See the [selection and SNR conventions](../../README.md#development-and-tests).

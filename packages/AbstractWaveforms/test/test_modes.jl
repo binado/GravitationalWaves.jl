@@ -1,39 +1,43 @@
-using AbstractWaveforms: mode_sum, sylm_m2
+using TestItems
 
-struct SyntheticModes{T, F} <: HigherModesWaveformGenerator
-    td::T
-    fd::F
-    calls::Base.RefValue{Int}
-end
-SyntheticModes(td, fd) = SyntheticModes(td, fd, Ref(0))
-function AbstractWaveforms.waveform_modes_td(g::SyntheticModes, p; kwargs...)
-    g.calls[] += 1
-    return g.td
-end
-function AbstractWaveforms.waveform_modes_fd(f, p, g::SyntheticModes)
-    g.calls[] += 1
-    return g.fd
-end
-AbstractWaveforms.mode_angles(p, ::SyntheticModes) = (p.theta_jn, get(p, :azimuth, 0.0))
-AbstractWaveforms.minimum_frequency(::SyntheticModes) = 0.0
-AbstractWaveforms.maximum_frequency(::SyntheticModes) = nothing
+@testsnippet Setup_modes begin
+    using AbstractWaveforms: mode_sum, sylm_m2
 
-struct QuadrupoleModes <: HigherModesWaveformGenerator end
-AbstractWaveforms.minimum_frequency(::QuadrupoleModes) = 20.0
-AbstractWaveforms.maximum_frequency(::QuadrupoleModes) = 60.0
-function AbstractWaveforms.waveform_modes_fd(f, p, ::QuadrupoleModes)
-    a = amplitude_phase_fd(f, p, DummyQuadrupole())
-    h = a.amplitude .* cis.(a.phase)
-    # Each branch contains one helicity; sqrt(16π/5) makes the usual face-on strain.
-    z = zero.(h)
-    scale = sqrt(16π / 5)
-    return (; mode_indices = ((2, 2), (2, -2)), positive = hcat(z, scale .* h), negative = hcat(scale .* conj.(h), z))
+    struct SyntheticModes{T, F} <: HigherModesWaveformGenerator
+        td::T
+        fd::F
+        calls::Base.RefValue{Int}
+    end
+    SyntheticModes(td, fd) = SyntheticModes(td, fd, Ref(0))
+    function AbstractWaveforms.waveform_modes_td(g::SyntheticModes, p; kwargs...)
+        g.calls[] += 1
+        return g.td
+    end
+    function AbstractWaveforms.waveform_modes_fd(f, p, g::SyntheticModes)
+        g.calls[] += 1
+        return g.fd
+    end
+    AbstractWaveforms.mode_angles(p, ::SyntheticModes) = (p.theta_jn, get(p, :azimuth, 0.0))
+    AbstractWaveforms.minimum_frequency(::SyntheticModes) = 0.0
+    AbstractWaveforms.maximum_frequency(::SyntheticModes) = nothing
+
+    struct QuadrupoleModes <: HigherModesWaveformGenerator end
+    AbstractWaveforms.minimum_frequency(::QuadrupoleModes) = 20.0
+    AbstractWaveforms.maximum_frequency(::QuadrupoleModes) = 60.0
+    function AbstractWaveforms.waveform_modes_fd(f, p, ::QuadrupoleModes)
+        a = amplitude_phase_fd(f, p, DummyQuadrupole())
+        h = a.amplitude .* cis.(a.phase)
+        # Each branch contains one helicity; sqrt(16π/5) makes the usual face-on strain.
+        z = zero.(h)
+        scale = sqrt(16π / 5)
+        return (; mode_indices = ((2, 2), (2, -2)), positive = hcat(z, scale .* h), negative = hcat(scale .* conj.(h), z))
+    end
+
+    # Independent O(N²) DFT; no FFT dependency or assumptions about signed-mode symmetry.
+    dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(x) - 1)) for k in bins]
 end
 
-# Independent O(N²) DFT; no FFT dependency or assumptions about signed-mode symmetry.
-dft(x, bins) = [sum(x[n + 1] * cis(-2π * k * n / length(x)) for n in 0:(length(x) - 1)) for k in bins]
-
-@testset "higher modes" begin
+@testitem "higher modes" setup = [Common, Setup_modes] begin
     @test supports_mode_array(QuadrupoleModes()) === true
     @test supports_mode_array(DummyQuadrupole()) === false
 

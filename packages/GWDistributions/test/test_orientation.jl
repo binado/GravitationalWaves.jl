@@ -1,8 +1,12 @@
-using Distributions
-using QuadGK
-using Random
+using TestItems
 
-@testset "UniformCosine" begin
+@testsnippet Setup_orientation begin
+    using Distributions
+    using QuadGK
+    using Random
+end
+
+@testitem "UniformCosine" setup = [Common, Setup_orientation] begin
     d = UniformCosine()
     total, _ = quadgk(x -> exp(logpdf(d, x)), 0.0, π)
     @test total ≈ 1.0 rtol = 1.0e-10
